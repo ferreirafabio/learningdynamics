@@ -1,5 +1,5 @@
-# Singulation
-template: https://github.com/MrGemy95/Tensorflow-Project-Template
+# Graph networks for robotic interaction
+project template: https://github.com/MrGemy95/Tensorflow-Project-Template
 
 
 Folder structure
