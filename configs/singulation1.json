@@ -1,0 +1,11 @@
+{
+  "exp_name": "singulation1",
+  "num_epochs": 10,
+  "num_iter_per_epoch": 10,
+  "learning_rate": 0.001,
+  "batch_size": 16,
+  "n_nodes_attr": 10,
+  "n_edges_attr": 6,
+  "n_globals_attr": 6,
+  "global_output_size": 6,
+}

@@ -1,8 +1,9 @@
 import tensorflow as tf
+import numpy as np
 
 
 class BaseModel:
-    def __init__(self, config):
+    def __init__(self, config, edge_output_size=None, node_output_size=None, global_output_size=None, name=None):
         self.config = config
         # init the global step
         self.init_global_step()
