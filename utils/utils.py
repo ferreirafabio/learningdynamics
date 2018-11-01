@@ -25,7 +25,7 @@ def chunks(l, n):
     yield l[i:i + n]
 
 
-def get_file_paths_from_dir(source_path, file_type=".npz", order=True):
+def get_all_experiment_file_paths_from_dir(source_path, file_type=".npz", order=True):
     assert os.path.exists(source_path)
 
     file_paths = {}
@@ -128,8 +128,16 @@ def load_data_from_list_of_paths(batch_element, get_path=False):
     return experiment
 
 
+def load_image_data_from_dir(source_path, data_type="rgb"):
+    all_paths = get_all_experiment_file_paths_from_dir(source_path=source_path)
+    image_data = []
+    for path in all_paths:
+        dct = load_images_of_experiment(path, data_type)
+        image_data.append(dct)
+    return image_data
 
-def get_experiment_image_data_from_dir(source_path, experiment_number, type="seg"):
+
+def get_experiment_image_data_from_dir(source_path, experiment_number, data_type="seg"):
     """
     loads and returns all the image data from a single experiment. Expects the following folder structure:
         folder 'experiment number'
@@ -140,29 +148,49 @@ def get_experiment_image_data_from_dir(source_path, experiment_number, type="seg
     Args:
         source_path: the root directory of all the experiments
         experiment_number: integer indicating the number of the experiment to be used
-        type: keyword used to identify the type of data (e.g. either 0rgb.npz or seg.npz)
+        data_type: keyword used to identify the type of data (e.g. either 0rgb.npz or seg.npz), can also be a list, e.g. ['seg', 'rgb']
 
     Returns:
         A list of m ndarrays representing the single images while is m is the number of images in the experiment
     """
-    assert type in ['seg', 'rgb']
+    allowed_types = ['seg', 'rgb']
 
-    all_paths = get_file_paths_from_dir(source_path)
+    if type(data_type) == list:
+        assert all([i in allowed_types for i in data_type])
+    else:
+        assert data_type in ['seg', 'rgb']
+
+    all_paths = get_all_experiment_file_paths_from_dir(source_path)
     try:
         experiment_paths = all_paths[experiment_number]
     except:
         print("no data found under the specified number")
         return
 
+    return load_images_of_experiment(experiment_paths, data_type)
+
+
+def load_images_of_experiment(experiment, data_type):
+    """
+    loads images from pure paths for an entire experiment
+    Args:
+        experiment: a list of lists where each list contains paths as strings
+        data_type: keyword that identifies the type of files to be loaded into a dict
+    Returns:
+        a list of ndarrays containing the images
+    """
+    if type(data_type) != list:
+        data_type = [data_type]
+
     image_data_paths = []
-    for experiment_step in experiment_paths:
-        if experiment_step is not None:
-            image_data_paths.append([path for path in experiment_step if type in path])
+    for experiment_step in experiment:
+        image_data_paths.append([path for path in experiment_step for i in data_type if i in path])
 
     images_dict = load_data_from_list_of_paths(image_data_paths, get_path=False)
 
 
     return convert_dict_to_list(images_dict)
+
 
 
 def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_type="seg"):
@@ -184,8 +212,11 @@ def convert_dict_to_list(dct):
     """ assumes a dict of subdicts of which each subdict only contains one key containing the desired data """
     lst = []
     for value in dct.values():
-        element = next(iter(value.values())) # get the first element, assuming the dicts contain only the desired data
-        lst.append(element)
+        if len(value) > 1:
+            lst.append(list(value.values()))
+        else:
+            element = next(iter(value.values())) # get the first element, assuming the dicts contain only the desired data
+            lst.append(element)
     return lst
 
 
@@ -207,6 +238,7 @@ if __name__ == '__main__':
     exp_number = 5
     dest_path = os.path.join(source_path, str(exp_number))
 
-    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_number=exp_number, type="rgb")
-    save_image_data_to_disk(dest_path, img_type="rgb")
+    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_number=exp_number, data_type="seg")
+    save_image_data_to_disk(image_data, dest_path, img_type="rgb")
+    all_image_data = load_image_data_from_dir(source_path, data_type=["rgb", "seg"])
 
