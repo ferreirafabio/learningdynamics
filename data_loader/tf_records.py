@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_file_paths_from_dir
+from utils.utils import chunks, get_file_paths_from_dir, load_all_experiments_from_dir
 
 
 
@@ -33,33 +33,8 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train"):
     filenames_split = list(chunks(file_paths, NUM_SEQUENCES_PER_BATCH))
 
 
-    def load_batch_from_dir(batch):
-        """ returns a dict of dicts containing the available attribute information about an experiment, e.g.
-        all_experiments
-            - experiment 0
-                - trajectory sample t=0
-                    - attributes
-                - trajectory sample t=1
-                    - attributes (e.g. img, segmented image, gripper position, ...)
-                    etc.
-         """
-        all_experiments = {}
-        for i, batch_element in enumerate(batch):
-            experiment = {}
-            for j, trajectory in enumerate(batch_element):
-                trajectory_step_data = {}
-                for traj in trajectory:
-                    with np.load(traj) as fhandle:
-                        key = list(fhandle.keys())[0]
-                        data = fhandle[key]
-                        trajectory_step_data[key] = data
-                        trajectory_step_data["path"] = traj
-                experiment[j] = trajectory_step_data
-            all_experiments[i] = experiment
-        return all_experiments
-
     for i, batch in enumerate(filenames_split, 1):
-        loaded_batch = load_batch_from_dir(batch)
+        loaded_batch = load_all_experiments_from_dir(batch)
         filename = os.path.join(dest_path, name + str(i) + '_of_' + str(len(filenames_split)) + '.tfrecords')
         print('Writing', filename)
         options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
