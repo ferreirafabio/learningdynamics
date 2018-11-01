@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_file_paths_from_dir, load_all_experiments_from_dir
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
 
 
 
@@ -29,7 +29,7 @@ def _bytes_feature(value):
 
 
 def create_tfrecords_from_dir(source_path, dest_path, name="train"):
-    file_paths = get_file_paths_from_dir(source_path)
+    file_paths = get_all_experiment_file_paths_from_dir(source_path)
     filenames_split = list(chunks(file_paths, NUM_SEQUENCES_PER_BATCH))
 
 
