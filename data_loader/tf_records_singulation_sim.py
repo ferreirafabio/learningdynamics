@@ -91,14 +91,16 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_vary
                 # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
                 # final list has length number_objects * experiment_length, object 0 has elements 0..exp_length etc.
                 objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
-                objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct]
+                objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct] # todo: check if converts back
+
+                gripperpos = [array.tobytes() for array in gripperpos] # convert back with np.frombuffer
 
                 # todo: check why objpos and objvel cannot be resolved
                 feature["experiment_length"] = len(experiment.keys())
                 feature['img'] = _bytes_feature(img)
                 feature['seg'] = _bytes_feature(seg)
                 feature['object_segments'] = _bytes_feature(objects_segments)
-                feature['gripperpos'] = _float_feature(gripperpos)
+                feature['gripperpos'] = _bytes_feature(gripperpos)
                 #feature['objpos'] = _float_feature(objpos)
                 #feature['objvel'] = _float_feature(objvel)
                 feature['experiment_id'] = _bytes_feature(experiment_id.to_string())
