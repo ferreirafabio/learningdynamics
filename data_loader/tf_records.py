@@ -1,11 +1,13 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
+import matplotlib.pyplot as plt
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_batch_to_list
+from data_prep.segmentation import get_segments_from_all_experiments
 
 
 
-NUM_SEQUENCES_PER_BATCH = 50
+NUM_SEQUENCES_PER_BATCH = 10
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -35,6 +37,15 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train"):
 
     for i, batch in enumerate(filenames_split, 1):
         loaded_batch = load_all_experiments_from_dir(batch)
+        loaded_batch_list = convert_batch_to_list(loaded_batch, ["img", "seg"])
+        segments = get_segments_from_all_experiments(loaded_batch_list)
+
+        for experiment in segments:
+            for experiment_step in experiment:
+                for img in experiment_step.values():
+                    plt.imshow(img)
+                    plt.show()
+
         filename = os.path.join(dest_path, name + str(i) + '_of_' + str(len(filenames_split)) + '.tfrecords')
         print('Writing', filename)
         options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
@@ -47,6 +58,8 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train"):
                 feature['imagecount'] = _int64_feature(i)
                 feature['img'] = _bytes_feature(trajectory_step['img'].tostring())
                 feature['seg'] = _bytes_feature(trajectory_step['seg'].tostring())
+
+
                 # todo: add additional segmentation masks
                 feature['gripper_pos_x'] = _float_feature(trajectory_step['gripperpos'][0])
                 feature['gripper_pos_y'] = _float_feature(trajectory_step['gripperpos'][1])
