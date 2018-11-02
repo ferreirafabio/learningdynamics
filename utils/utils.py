@@ -121,7 +121,7 @@ def load_all_experiments_from_dir(data_list):
     return all_experiments
 
 
-def load_data_from_list_of_paths(batch_element, get_path=False):
+def load_data_from_list_of_paths(batch_element):
     """
     loads all the data from a single experiment which is represented by a list of paths
     Args:
@@ -137,12 +137,16 @@ def load_data_from_list_of_paths(batch_element, get_path=False):
             with np.load(traj) as fhandle:
                 key = list(fhandle.keys())[0]
                 data = fhandle[key]
+                # save some space:
+                if key in ['img', 'seg']:
+                    data = data.astype(np.uint8)
                 trajectory_step_data[key] = data
-                if get_path:
-                    trajectory_step_data["path"] = traj
+                trajectory_step_data['experiment_number'] = get_dir_name(traj)
         experiment[j] = trajectory_step_data
     return experiment
 
+def get_dir_name(path):
+    return os.path.basename(os.path.dirname(path))
 
 def get_all_experiment_image_data_from_dir(source_path, data_type="rgb"):
     all_paths = get_all_experiment_file_paths_from_dir(source_path=source_path)
