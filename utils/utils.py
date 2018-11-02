@@ -141,7 +141,7 @@ def load_data_from_list_of_paths(batch_element):
                 if key in ['img', 'seg']:
                     data = data.astype(np.uint8)
                 trajectory_step_data[key] = data
-                trajectory_step_data['experiment_number'] = get_dir_name(traj)
+                trajectory_step_data['experiment_id'] = get_dir_name(traj)
         experiment[j] = trajectory_step_data
     return experiment
 
@@ -157,7 +157,7 @@ def get_all_experiment_image_data_from_dir(source_path, data_type="rgb"):
     return image_data
 
 
-def get_experiment_image_data_from_dir(source_path, experiment_number, data_type="seg"):
+def get_experiment_image_data_from_dir(source_path, experiment_id, data_type="seg"):
     """
     loads and returns all the image data from a single experiment. Expects the following folder structure:
         folder 'experiment number'
@@ -167,7 +167,7 @@ def get_experiment_image_data_from_dir(source_path, experiment_number, data_type
 
     Args:
         source_path: the root directory of all the experiments
-        experiment_number: integer indicating the number of the experiment to be used
+        experiment_id: integer indicating the number of the experiment to be used
         data_type: keyword used to identify the type of data (e.g. either 0rgb.npz or seg.npz), can also be a list, e.g. ['seg', 'rgb']
 
     Returns:
@@ -182,7 +182,7 @@ def get_experiment_image_data_from_dir(source_path, experiment_number, data_type
 
     all_paths = get_all_experiment_file_paths_from_dir(source_path)
     try:
-        experiment_paths = all_paths[experiment_number]
+        experiment_paths = all_paths[experiment_id]
     except:
         print("no data found under the specified number")
         return
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     exp_number = 5
     dest_path = os.path.join(source_path, str(exp_number))
 
-    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_number=exp_number, data_type="seg")
+    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_id=exp_number, data_type="seg")
     save_image_data_to_disk(image_data, dest_path, img_type="rgb")
     all_image_data = get_all_experiment_image_data_from_dir(source_path, data_type=["rgb", "seg"])
 
