@@ -119,7 +119,7 @@ def crop_by_mask(img, mask=None):
 
 if __name__ == '__main__':
     source_path = "../data/source"
-    single_experiment_image_data = get_experiment_image_data_from_dir(source_path="../data/source", experiment_number=60, data_type=["seg",
+    single_experiment_image_data = get_experiment_image_data_from_dir(source_path="../data/source", experiment_id=60, data_type=["seg",
                                                                                                                                "rgb"])
     """ assumes the assignment order of segments to objects is the same within an experiment """
     """ single step """
