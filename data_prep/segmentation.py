@@ -35,6 +35,7 @@ def get_segments_from_experiment_step(images):
     n_segments = get_number_of_segment(seg)
     masks = get_segments_indices(seg)
     seg_rgb_data = {
+        "n_segments": n_segments,
         "full_seg": seg,
         "full_rgb": rgb
     }
