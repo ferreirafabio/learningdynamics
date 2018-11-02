@@ -17,6 +17,22 @@ def get_args():
     args = argparser.parse_args()
     return args
 
+def convert_batch_to_list(batch, fltr):
+    """
+    Args:
+        batch:
+        fltr: a list of words specifying the keys to keep in the list
+    Returns:
+
+    """
+    assert type(batch) == dict
+    data = []
+    for batch_element in batch.values():
+        sublist = []
+        for i in batch_element.values():
+            sublist.append([v for k, v in i.items() for i in fltr if i in k])
+        data.append(sublist)
+    return data
 
 def chunks(l, n):
   """Yield successive n-sized chunks from l.
@@ -128,7 +144,7 @@ def load_data_from_list_of_paths(batch_element, get_path=False):
     return experiment
 
 
-def load_image_data_from_dir(source_path, data_type="rgb"):
+def get_all_experiment_image_data_from_dir(source_path, data_type="rgb"):
     all_paths = get_all_experiment_file_paths_from_dir(source_path=source_path)
     image_data = []
     for path in all_paths:
@@ -240,5 +256,5 @@ if __name__ == '__main__':
 
     image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_number=exp_number, data_type="seg")
     save_image_data_to_disk(image_data, dest_path, img_type="rgb")
-    all_image_data = load_image_data_from_dir(source_path, data_type=["rgb", "seg"])
+    all_image_data = get_all_experiment_image_data_from_dir(source_path, data_type=["rgb", "seg"])
 
