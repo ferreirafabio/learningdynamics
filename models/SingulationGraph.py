@@ -16,8 +16,6 @@ class SingulationGraph():
 
         self.nx_graph = nx.complete_graph(node_output_size, nx.MultiDiGraph())
 
-        nose =
-
         self.nx_graph = nx.MultiDiGraph()
         self.nx_graph.add_nodes_from(np.arange(node_output_size))
 
