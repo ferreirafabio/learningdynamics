@@ -1,14 +1,11 @@
 import tensorflow as tf
 import numpy as np
 import os
-import itertools
-import matplotlib.pyplot as plt
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_batch_to_list
-from data_prep.segmentation import get_segments_from_all_experiments, get_segments_from_experiment_step
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
+from data_prep.segmentation import get_segments_from_experiment_step
 from data_prep.segmentation import get_number_of_segment
+from sklearn.model_selection import train_test_split
 
-
-NUM_SEQUENCES_PER_BATCH = 10
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -40,7 +37,9 @@ def add_to_dict(dct, data, i, key):
     dct[i] = lst
     return dct
 
-def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_varying_number_object_experiments=True):
+
+def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_varying_number_object_experiments=True,
+                              n_sequences_per_batch = 10, test_size=0.2):
     """
 
     :param source_path:
@@ -49,74 +48,83 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_vary
     :return:
     """
     file_paths = get_all_experiment_file_paths_from_dir(source_path)
-    filenames_split = list(chunks(file_paths, NUM_SEQUENCES_PER_BATCH))
+    train_paths, test_paths = train_test_split(file_paths, test_size=test_size)
+    filenames_split_train = list(chunks(train_paths, n_sequences_per_batch))
+    filenames_split_test = list(chunks(test_paths, n_sequences_per_batch))
 
+    filenames = [filenames_split_train, filenames_split_test]
+    train_ids = ["train"] * len(filenames_split_train)
+    test_ids = ["test"] * len(filenames_split_test)
+    identifiers = [train_ids, test_ids]
 
-    for i, batch in enumerate(filenames_split, 1):
-        loaded_batch = load_all_experiments_from_dir(batch)
+    for i, queue in enumerate(zip(filenames, identifiers)):
+        all_batches = queue[0]
+        name = queue[1][i]
+        for j, batch in enumerate(all_batches, 1):
+            loaded_batch = load_all_experiments_from_dir(batch)
 
-        filename = os.path.join(dest_path, name + str(i) + '_of_' + str(len(filenames_split)) + '.tfrecords')
-        print('Writing', filename)
+            filename = os.path.join(dest_path, name + str(j) + '_of_' + str(len(all_batches)) + '.tfrecords')
+            print('Writing', filename)
 
-        options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
-        feature = {}
-        identifier = "_object_full_seg_rgb"
+            options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+            feature = {}
+            identifier = "_object_full_seg_rgb"
 
-        with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
-            for experiment in loaded_batch.values():
+            with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
+                for experiment in loaded_batch.values():
 
-                if not experiment:
-                    continue
-
-                objects_segments = {}
-                gripperpos = []
-                objpos = []
-                objvel = []
-                img = []
-                seg = []
-
-                if discard_varying_number_object_experiments:
-                    skip = check_if_skip(experiment)
-                    if skip:
+                    if not experiment:
                         continue
 
-                number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
-                n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
-                experiment_id = int(experiment[0]['experiment_id'])
+                    objects_segments = {}
+                    gripperpos = []
+                    objpos = []
+                    objvel = []
+                    img = []
+                    seg = []
 
-                objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
-                                                            experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
-                                                            identifier, seg_only_for_initialization=True)
+                    if discard_varying_number_object_experiments:
+                        skip = check_if_skip(experiment)
+                        if skip:
+                            continue
 
-                # can't store a list of lists as tfrecords, therefore concatenate all object lists (which each contain an entire
-                # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
-                # final list has length number_objects * experiment_length, object 0 has elements 0..exp_length etc.
-                objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
-                objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct] # todo: check if converts back
+                    number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
+                    n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
+                    experiment_id = int(experiment[0]['experiment_id'])
 
-                # maintain shape of (n, 3) with n=experiment length but convert 3d entries into bytes for serialization
-                gripperpos = [array.tobytes() for array in gripperpos] # convert back with np.frombuffer
+                    objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
+                                                                experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
+                                                                identifier, seg_only_for_initialization=True)
 
-                # objvel and objpos get reshaped into a long list of z = n_manipulable_objects * experiment_length,
-                # e.g. for 3 objects: obj1_t, obj2_t, obj3_t, obj1_t+1, ..., obj3_z
-                # to access 2nd object in timestep 20, index is 20*n_manipulable_objects+1
-                objvel = [objct.tobytes() for trajectory_step_objvel in objvel for objct in trajectory_step_objvel.values()]
-                objpos = [objct.tobytes() for trajectory_step_objpos in objpos for objct in trajectory_step_objpos.values()]
+                    # can't store a list of lists as tfrecords, therefore concatenate all object lists (which each contain an entire
+                    # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
+                    # final list has length number_objects * experiment_length, object 0 has elements 0..exp_length etc.
+                    objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
+                    objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct] # todo: check if converts back
+
+                    # maintain shape of (n, 3) with n=experiment length but convert 3d entries into bytes for serialization
+                    gripperpos = [array.tobytes() for array in gripperpos] # convert back with np.frombuffer
+
+                    # objvel and objpos get reshaped into a long list of z = n_manipulable_objects * experiment_length,
+                    # e.g. for 3 objects: obj1_t, obj2_t, obj3_t, obj1_t+1, ..., obj3_z
+                    # to access 2nd object in timestep 20, index is 20*n_manipulable_objects+1
+                    objvel = [objct.tobytes() for trajectory_step_objvel in objvel for objct in trajectory_step_objvel.values()]
+                    objpos = [objct.tobytes() for trajectory_step_objpos in objpos for objct in trajectory_step_objpos.values()]
 
 
-                feature["experiment_length"] = _int64_feature(len(experiment.keys()))
-                feature['img'] = _bytes_feature(img)
-                feature['seg'] = _bytes_feature(seg)
-                feature['object_segments'] = _bytes_feature(objects_segments)
-                feature['gripperpos'] = _bytes_feature(gripperpos)
-                feature['objpos'] = _bytes_feature(objpos)
-                feature['objvel'] = _bytes_feature(objvel)
-                feature['experiment_id'] = _int64_feature(experiment_id)
-                feature['n_total_objects'] = _int64_feature(number_of_total_objects)
-                feature['n_manipulable_objects'] = _int64_feature(n_manipulable_objects)
+                    feature["experiment_length"] = _int64_feature(len(experiment.keys()))
+                    feature['img'] = _bytes_feature(img)
+                    feature['seg'] = _bytes_feature(seg)
+                    feature['object_segments'] = _bytes_feature(objects_segments)
+                    feature['gripperpos'] = _bytes_feature(gripperpos)
+                    feature['objpos'] = _bytes_feature(objpos)
+                    feature['objvel'] = _bytes_feature(objvel)
+                    feature['experiment_id'] = _int64_feature(experiment_id)
+                    feature['n_total_objects'] = _int64_feature(number_of_total_objects)
+                    feature['n_manipulable_objects'] = _int64_feature(n_manipulable_objects)
 
-                example = tf.train.Example(features=tf.train.Features(feature=feature))
-                writer.write(example.SerializeToString())
+                    example = tf.train.Example(features=tf.train.Features(feature=feature))
+                    writer.write(example.SerializeToString())
 
 
 def check_if_skip(experiment):
@@ -128,6 +136,7 @@ def check_if_skip(experiment):
         # if number of objects vary and should be discarded, go to next experiment
         return False
     return True
+
 
 def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpos, objvel, img, seg, identifier,
                                  seg_only_for_initialization=True):
@@ -150,5 +159,3 @@ def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpo
 
     return objects_segments, gripperpos, objpos, objvel, img, seg
 
-if __name__ == '__main__':
-    create_tfrecords_from_dir("../data/source", "../data/destination")
