@@ -39,7 +39,7 @@ def add_to_dict(dct, data, i, key):
 
 
 def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_object_experiments=True,
-                              n_sequences_per_batch = 10, test_size=0.2):
+                              n_sequences_per_batch = 10, test_size=0.2, seg_only_for_initialization=True):
     """
 
     :param source_path:
@@ -94,11 +94,12 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
 
                     objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
                                                                 experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
-                                                                identifier, seg_only_for_initialization=True)
+                                                                identifier, seg_only_for_initialization=seg_only_for_initialization)
 
                     # can't store a list of lists as tfrecords, therefore concatenate all object lists (which each contain an entire
                     # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
-                    # final list has length number_objects * experiment_length, object 0 has elements 0..exp_length etc.
+                    # final list has length number_objects * experiment_length OR 1(if seg only used for init), object 0 has elements
+                    # 0..exp_length etc.
                     objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
                     objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct]
 
@@ -141,14 +142,14 @@ def check_if_skip(experiment):
 def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpos, objvel, img, seg, identifier,
                                  seg_only_for_initialization=True):
 
+    stop_object_segments = False
+
     for j, trajectory_step in enumerate(experiment.values()):
         segments = get_segments_from_experiment_step([trajectory_step['img'], trajectory_step['seg']])
-        if not seg_only_for_initialization:
+        if not seg_only_for_initialization or not stop_object_segments:
             for k in range(segments['n_segments']):
-                # segmentations (single) are object-specific
                 objects_segments = add_to_dict(dct=objects_segments, data=segments, i=k, key=str(k) + identifier)
-        else:
-            objects_segments = add_to_dict(dct=objects_segments, data=segments, i=0, key=str(0) + identifier)
+                stop_object_segments = True
 
         # img, seg, gripperpos and objvel is object-unspecific
         seg.append(trajectory_step['seg'].tobytes())
