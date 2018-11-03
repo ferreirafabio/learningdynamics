@@ -30,4 +30,4 @@ def add_node(graph_instance, node_tensor):
 
 
 if __name__ == '__main__':
-    
+    edge()
