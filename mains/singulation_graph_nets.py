@@ -31,7 +31,7 @@ def main():
 
 
     # create an instance of the model you want
-    model = SingulationGraph(config)
+    model = SingulationGraph(config, n_segm_masks)
     # create tensorboard logger
     logger = Logger(sess, config)
     # create trainer and pass all the previous components to it
