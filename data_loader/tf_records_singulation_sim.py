@@ -81,7 +81,8 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_vary
                         continue
 
                 number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
-                experiment_id = experiment[0]['experiment_id']
+                n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
+                experiment_id = int(experiment[0]['experiment_id'])
 
                 objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
                                                             experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
@@ -93,22 +94,30 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_vary
                 objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
                 objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct] # todo: check if converts back
 
+                # maintain shape of (n, 3) with n=experiment length but convert 3d entries into bytes for serialization
                 gripperpos = [array.tobytes() for array in gripperpos] # convert back with np.frombuffer
 
-                # todo: check why objpos and objvel cannot be resolved
-                feature["experiment_length"] = len(experiment.keys())
+                # objvel and objpos get reshaped into a long list of z = n_manipulable_objects * experiment_length,
+                # e.g. for 3 objects: obj1_t, obj2_t, obj3_t, obj1_t+1, ..., obj3_z
+                # to access 2nd object in timestep 20, index is 20*n_manipulable_objects+1
+                objvel = [objct.tobytes() for trajectory_step_objvel in objvel for objct in trajectory_step_objvel.values()]
+                objpos = [objct.tobytes() for trajectory_step_objpos in objpos for objct in trajectory_step_objpos.values()]
+
+
+                feature["experiment_length"] = _int64_feature(len(experiment.keys()))
                 feature['img'] = _bytes_feature(img)
                 feature['seg'] = _bytes_feature(seg)
                 feature['object_segments'] = _bytes_feature(objects_segments)
                 feature['gripperpos'] = _bytes_feature(gripperpos)
-                #feature['objpos'] = _float_feature(objpos)
-                #feature['objvel'] = _float_feature(objvel)
-                feature['experiment_id'] = _bytes_feature(experiment_id.to_string())
-                feature['n_total_objects'] = number_of_total_objects
-                feature['n_manipulable_objects'] = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
+                feature['objpos'] = _bytes_feature(objpos)
+                feature['objvel'] = _bytes_feature(objvel)
+                feature['experiment_id'] = _int64_feature(experiment_id)
+                feature['n_total_objects'] = _int64_feature(number_of_total_objects)
+                feature['n_manipulable_objects'] = _int64_feature(n_manipulable_objects)
 
                 example = tf.train.Example(features=tf.train.Features(feature=feature))
                 writer.write(example.SerializeToString())
+
 
 def check_if_skip(experiment):
     check_lst = []
