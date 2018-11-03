@@ -38,7 +38,7 @@ def add_to_dict(dct, data, i, key):
     return dct
 
 
-def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_varying_number_object_experiments=True,
+def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_object_experiments=True,
                               n_sequences_per_batch = 10, test_size=0.2):
     """
 
@@ -100,17 +100,17 @@ def create_tfrecords_from_dir(source_path, dest_path, name="train", discard_vary
                     # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
                     # final list has length number_objects * experiment_length, object 0 has elements 0..exp_length etc.
                     objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
-                    objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct] # todo: check if converts back
+                    objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct]
 
                     # maintain shape of (n, 3) with n=experiment length but convert 3d entries into bytes for serialization
-                    gripperpos = [array.tobytes() for array in gripperpos] # convert back with np.frombuffer
+                    # convert back with np.frombuffer
+                    gripperpos = [array.tobytes() for array in gripperpos]
 
                     # objvel and objpos get reshaped into a long list of z = n_manipulable_objects * experiment_length,
                     # e.g. for 3 objects: obj1_t, obj2_t, obj3_t, obj1_t+1, ..., obj3_z
                     # to access 2nd object in timestep 20, index is 20*n_manipulable_objects+1
                     objvel = [objct.tobytes() for trajectory_step_objvel in objvel for objct in trajectory_step_objvel.values()]
                     objpos = [objct.tobytes() for trajectory_step_objpos in objpos for objct in trajectory_step_objpos.values()]
-
 
                     feature["experiment_length"] = _int64_feature(len(experiment.keys()))
                     feature['img'] = _bytes_feature(img)
