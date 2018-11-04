@@ -27,11 +27,12 @@ def main():
     # create your data generator
     data = DataGenerator(config)
 
-    n_segm_masks = 5
+    n_manipulable_objects = 3
+    n_total_objects = 5
 
 
     # create an instance of the model you want
-    model = SingulationGraph(config, n_segm_masks)
+    model = SingulationGraph(config, n_total_objects, n_manipulable_objects)
     # create tensorboard logger
     logger = Logger(sess, config)
     # create trainer and pass all the previous components to it
