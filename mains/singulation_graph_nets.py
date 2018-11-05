@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from data_loader.data_generator import DataGenerator
-from models.SingulationGraph import SingulationGraph
+from models.singulation_graph import create_singulation_graph_nx, create_graph_and_get_graph_ph
 from trainers.example_trainer import ExampleTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
@@ -32,15 +32,18 @@ def main():
 
 
     # create an instance of the model you want
-    model = SingulationGraph(config, n_total_objects, n_manipulable_objects)
+    graph_ph = create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects)
     # create tensorboard logger
-    logger = Logger(sess, config)
+
+    print(graph_ph)
+
+    #logger = Logger(sess, config)
     # create trainer and pass all the previous components to it
-    trainer = ExampleTrainer(sess, model, data, config, logger)
+    #trainer = ExampleTrainer(sess, graph_ph, data, config, logger)
     # load model if exists
-    model.load(sess)
+    #model.load(sess)
     # here you train your model
-    trainer.train()
+    #trainer.train()
 
 
 if __name__ == '__main__':
