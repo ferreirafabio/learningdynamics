@@ -33,7 +33,13 @@ def main():
         sess.run(data.iterator.initializer)
         while True:
             try:
-                print(sess.run(next_element))
+                #img, seg, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects, n_manipulable_objects
+                #  = \
+                #    sess.run(next_element)
+
+                obj_segs = sess.run(next_element)
+                #print("experiment_length", experiment_length)
+                #print("objpos", objpos)
             except tf.errors.OutOfRangeError:
                 break
 

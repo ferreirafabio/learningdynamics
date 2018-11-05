@@ -241,16 +241,26 @@ def convert_dict_to_list(dct):
 
 
 def create_dir(output_dir, dir_name):
-  assert(output_dir)
-  output_dir = os.path.join(output_dir, dir_name)
-  if not os.path.isdir(output_dir):
-    os.mkdir(output_dir)
-    print('Created custom directory:', dir_name)
+    assert(output_dir)
+    output_dir = os.path.join(output_dir, dir_name)
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+        print('Created custom directory:', dir_name)
+        return output_dir
+    print('Using existing directory:', dir_name)
     return output_dir
-  print('Using existing directory:', dir_name)
-  return output_dir
 
 
+def convert_list_of_dicts_to_list_by_concat(lst):
+    """ concatenate all entries of the dicts into an ndarray and append them into a total list """
+    total_list = []
+    for dct in lst:
+        sub_list = []
+        for v in list(dct.values()):
+            sub_list.append(v)
+        sub_list = np.concatenate(sub_list)
+        total_list.append(sub_list)
+    return total_list
 
 
 if __name__ == '__main__':
