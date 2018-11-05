@@ -1,9 +1,6 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-from itertools import combinations
-import sonnet as snt
-import tensorflow as tf
 from itertools import product
 from graph_nets import utils_tf, utils_np
 
@@ -48,7 +45,6 @@ def create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects):
 def get_graph_tuple(graph_nx):
     if type(graph_nx) is not list:
         graph_nx = [graph_nx]
-
     return utils_np.networkxs_to_graphs_tuple(graph_nx)
 
 def get_graph_dict(graph_tuple):
@@ -68,3 +64,6 @@ def create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects
     graph_tuple = get_graph_tuple(graph_nx)
     graph_dict = get_graph_dict(graph_tuple)
     return get_graph_ph(graph_dict)
+
+def create_n_singulation_graphs(n, config, n_total_objects, n_manipulable_objects):
+    return [create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects) for _ in range(n)]
