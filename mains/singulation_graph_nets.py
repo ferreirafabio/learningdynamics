@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from data_loader.data_generator import DataGenerator
-from models.singulation_graph import create_singulation_graph_nx, create_graph_and_get_graph_ph
+from models.singulation_graph import create_singulation_graph_nx, create_graph_and_get_graph_ph, create_n_singulation_graphs
 from trainers.example_trainer import ExampleTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
@@ -27,16 +27,31 @@ def main():
     # create your data generator
     data = DataGenerator(config)
 
+    next_element = data.iterator.get_next()
+
+    for _ in range(100):
+        sess.run(data.iterator.initializer)
+        while True:
+            try:
+                print(sess.run(next_element))
+            except tf.errors.OutOfRangeError:
+                break
+
+    # todo: get these attributes from tfrecords
     n_manipulable_objects = 3
     n_total_objects = 5
-
+    experiment_length = 20
 
     # create an instance of the model you want
+    base_graphs = create_n_singulation_graphs(experiment_length, config, n_total_objects, n_manipulable_objects)
+
+
     graph_ph = create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects)
-    # create tensorboard logger
+
 
     print(graph_ph)
 
+    # create tensorboard logger
     #logger = Logger(sess, config)
     # create trainer and pass all the previous components to it
     #trainer = ExampleTrainer(sess, graph_ph, data, config, logger)

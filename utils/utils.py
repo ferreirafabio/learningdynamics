@@ -206,7 +206,7 @@ def load_images_of_experiment(experiment, data_type):
     for experiment_step in experiment:
         image_data_paths.append([path for path in experiment_step for i in data_type if i in path])
 
-    images_dict = load_data_from_list_of_paths(image_data_paths, get_path=False)
+    images_dict = load_data_from_list_of_paths(image_data_paths)
 
 
     return convert_dict_to_list(images_dict)

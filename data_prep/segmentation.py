@@ -26,11 +26,11 @@ def get_segments_from_experiment_step(images):
     rgb = None
 
     for element in images:
-        assert type(element) is np.ndarray
-        if element.ndim == 3:
-            rgb = element.astype(np.uint8)
-        else:
-            seg = element.astype(np.uint8)
+        if type(element) == np.ndarray:
+            if element.ndim == 3:
+                rgb = element.astype(np.uint8)
+            else:
+                seg = element.astype(np.uint8)
 
     n_segments = get_number_of_segment(seg)
     masks = get_segments_indices(seg)
@@ -45,10 +45,6 @@ def get_segments_from_experiment_step(images):
         full_seg_masked = (seg == masks[i]).astype(np.uint8)
         full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.uint8)
 
-        # todo: remove
-        #seg_rgb_data[str(i) + "_object_" + "full_seg"] = full_seg_masked
-        #eg_rgb_data[str(i) + "_object_" + "full_rgb"] = full_rgb_masked
-
         full_seg_masked_expanded = np.expand_dims(full_seg_masked, axis=2)
         full_seg_rgb_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked), axis=2)
 
@@ -59,10 +55,6 @@ def get_segments_from_experiment_step(images):
         crop = crop_by_mask(full_seg_masked).astype(np.uint8)
         rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.uint8)
 
-        # todo: remove
-        #seg_rgb_data[str(i) + "_object_" + "crop_seg"] = crop
-        #seg_rgb_data[str(i) + "_object_" + "crop_rgb"] = rgb_crop
-
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
         crop_seg_rgb_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop), axis=2)
 
@@ -70,9 +62,10 @@ def get_segments_from_experiment_step(images):
         seg_rgb_data[str(i) + "_object_" + "crop_seg_rgb" ] = crop_seg_rgb_masked
 
     # todo: remove
-    #for v in seg_rgb_data.values():
-    #    plt.imshow(v)
-    #    plt.show()
+    for v in seg_rgb_data.values():
+        if type(v) == np.ndarray:
+            plt.imshow(v, cmap="Greys")
+            plt.show()
 
     return seg_rgb_data
 
