@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_list_of_dicts_to_list_by_concat
 from data_prep.segmentation import get_segments_from_experiment_step
 from data_prep.segmentation import get_number_of_segment
 from sklearn.model_selection import train_test_split
@@ -38,7 +38,6 @@ def add_to_dict(dct, data, i, key):
     dct[i] = lst
     return dct
 
-
 def check_if_skip(experiment):
     check_lst = []
     for step in experiment.values():
@@ -57,17 +56,21 @@ def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpo
 
     for j, trajectory_step in enumerate(experiment.values()):
         segments = get_segments_from_experiment_step([trajectory_step['img'], trajectory_step['seg']])
-        if not seg_only_for_initialization or not stop_object_segments:
-            for k in range(segments['n_segments']):
-                objects_segments = add_to_dict(dct=objects_segments, data=segments, i=k, key=str(k) + identifier)
-                stop_object_segments = True
 
-        # img, seg, gripperpos and objvel is object-unspecific
+        keys = ["{}{}".format(i, identifier) for i in range(segments['n_segments'])]
+        temp_list = []
+        if not seg_only_for_initialization or not stop_object_segments:
+            for k in segments.keys():
+                if k in keys:
+                    temp_list.append(segments[k])
+            stop_object_segments = True
+            objects_segments.append(np.stack(temp_list))
+
         seg.append(trajectory_step['seg'])
         img.append(trajectory_step['img'])
         gripperpos.append(trajectory_step['gripperpos'])
-        objpos.append(trajectory_step['objpos'].tolist())
-        objvel.append(trajectory_step['objvel'].tolist())
+        objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
+        objvel.append(np.stack(list(trajectory_step['objvel'].tolist().values())))
 
     return objects_segments, gripperpos, objpos, objvel, img, seg
 
@@ -111,7 +114,7 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                     if not experiment:
                         continue
 
-                    objects_segments = {}
+                    objects_segments = []
                     gripperpos = []
                     objpos = []
                     objvel = []
@@ -127,45 +130,38 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                     n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
                     experiment_id = int(experiment[0]['experiment_id'])
 
+                    # all data objects are transformed s.t. for each data a list consisting of 'experiment_length' ndarrays returned,
+                    # if data is multi-dimensional (e.g. segments for each object per times-step), ndarrays are stacked along first
+                    # dimension
                     objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
                                                                 experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
                                                                 identifier, seg_only_for_initialization=seg_only_for_initialization)
 
-                    # can't store a list of lists as tfrecords, therefore concatenate all object lists (which each contain an entire
-                    # trajectory (experiment length) and store trajectory length to reconstruct initial per-object list
-                    # final list has length number_objects * experiment_length OR 1(if seg only used for init), object 0 has elements
-                    # 0..exp_length etc.
-                    objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
-                    objects_segments = [_bytes_feature(lst.tostring()) for objct in objects_segments for lst in objct]
+
+                    #objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
                     #objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct]
 
-                    # maintain shape of (n, 3) with n=experiment length but convert 3d entries into bytes for serialization
-                    # convert back with np.frombuffer
-                    gripperpos = [array for array in gripperpos]
-
-                    # objvel and objpos get reshaped into a long list of z = n_manipulable_objects * experiment_length,
-                    # e.g. for 3 objects: obj1_t, obj2_t, obj3_t, obj1_t+1, ..., obj3_z
-                    # to access 2nd object in timestep 20, index is 20*n_manipulable_objects+1
-                    objvel = [objct.tobytes() for trajectory_step_objvel in objvel for objct in trajectory_step_objvel.values()]
-                    objpos = [objct.tobytes() for trajectory_step_objpos in objpos for objct in trajectory_step_objpos.values()]
-
-                    #feature['gripperpos'] = _bytes_feature(gripperpos)
-                    #feature['objpos'] = _bytes_feature(objpos)
-                    #feature['objvel'] = _bytes_feature(objvel)
 
                     imgs =[_bytes_feature(i.tostring()) for i in img]
                     segs = [_bytes_feature(i.tostring()) for i in seg]
                     gripperpositions = [_bytes_feature(i.tostring()) for i in gripperpos]
 
-                    #obj_dict = {}
-                    #for i, obj_feature in enumerate(objects_segments):
-                    #    obj_dict['obj' + str(i)] = tf.train.FeatureList(feature=obj_feature)
+                    # concatenate all object positions/velocities into an ndarray per experiment step
+                    #objpos = convert_list_of_dicts_to_list_by_concat(objpos)
+                    objpos = [_bytes_feature(i.tostring()) for i in objpos]
+
+                    #objvel = convert_list_of_dicts_to_list_by_concat(objvel)
+                    objvel = [_bytes_feature(i.tostring()) for i in objvel]
+
+                    objects_segments = [_bytes_feature(i.tostring()) for i in objects_segments]
 
                     feature_list = {
                         'img': tf.train.FeatureList(feature=imgs),
                         'seg' : tf.train.FeatureList(feature=segs),
-                        'gripperpos': tf.train.FeatureList(feature=gripperpositions)
-
+                        'gripperpos': tf.train.FeatureList(feature=gripperpositions),
+                        'objpos': tf.train.FeatureList(feature=objpos),
+                        'objvel': tf.train.FeatureList(feature=objvel),
+                        'object_segments': tf.train.FeatureList(feature=objects_segments)
                     }
                     # merge both dicts
                     #feature_list = {**feature_list, **obj_dict}
@@ -186,7 +182,7 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
 
 if __name__ == '__main__':
     create_tfrecords_from_dir("../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=10,
-                              seg_only_for_initialization=True)
+                              seg_only_for_initialization=False)
 
     #filenames = ["../data/destination/train1_of_8.tfrecords", "../data/destination/train2_of_8.tfrecords"]
     #dataset = tf.data.TFRecordDataset(filenames)

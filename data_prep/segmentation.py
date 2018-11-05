@@ -62,10 +62,10 @@ def get_segments_from_experiment_step(images):
         seg_rgb_data[str(i) + "_object_" + "crop_seg_rgb" ] = crop_seg_rgb_masked
 
     # todo: remove
-    for v in seg_rgb_data.values():
-        if type(v) == np.ndarray:
-            plt.imshow(v, cmap="Greys")
-            plt.show()
+    #for v in seg_rgb_data.values():
+    #    if type(v) == np.ndarray:
+    #        plt.imshow(v, cmap="Greys")
+    #        plt.show()
 
     return seg_rgb_data
 
