@@ -262,6 +262,12 @@ def convert_list_of_dicts_to_list_by_concat(lst):
         total_list.append(sub_list)
     return total_list
 
+def convert_float_image_to_int16(float_image):
+    dt = float_image.dtype
+    float_image = float_image.astype(dt) / float_image.max()
+    float_image = 255 * float_image
+    return float_image.astype(np.int16)
+
 
 if __name__ == '__main__':
     source_path = "../data/source"

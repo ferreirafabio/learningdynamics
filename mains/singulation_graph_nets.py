@@ -33,20 +33,12 @@ def main():
         sess.run(data.iterator.initializer)
         while True:
             try:
-                #img, seg, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects, n_manipulable_objects
-                #  = \
-                #    sess.run(next_element)
-
-                obj_segs = sess.run(next_element)
+                img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects, \
+                n_manipulable_objects = sess.run(next_element)
                 #print("experiment_length", experiment_length)
-                #print("objpos", objpos)
+                print("depth", depth)
             except tf.errors.OutOfRangeError:
                 break
-
-    # todo: get these attributes from tfrecords
-    n_manipulable_objects = 3
-    n_total_objects = 5
-    experiment_length = 20
 
     # create an instance of the model you want
     base_graphs = create_n_singulation_graphs(experiment_length, config, n_total_objects, n_manipulable_objects)

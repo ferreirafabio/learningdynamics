@@ -1,10 +1,13 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_list_of_dicts_to_list_by_concat
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_float_image_to_int16
 from data_prep.segmentation import get_segments_from_experiment_step
 from data_prep.segmentation import get_number_of_segment
 from sklearn.model_selection import train_test_split
+from utils.config import process_config
+from utils.utils import get_args
+
 
 
 
@@ -49,13 +52,25 @@ def check_if_skip(experiment):
     return True
 
 
-def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpos, objvel, img, seg, identifier,
-                                 seg_only_for_initialization=True):
+def add_experiment_data_to_lists(experiment, identifier, seg_only_for_initialization, depth_data_provided):
 
     stop_object_segments = False
 
+    objects_segments = []
+    gripperpos = []
+    objpos = []
+    objvel = []
+    depth = []
+    img = []
+    seg = []
+
     for j, trajectory_step in enumerate(experiment.values()):
-        segments = get_segments_from_experiment_step([trajectory_step['img'], trajectory_step['seg']])
+        image_data = {
+            'img': trajectory_step['img'],
+            'seg': trajectory_step['seg'],
+            'depth': trajectory_step['xyz']
+        }
+        segments = get_segments_from_experiment_step(image_data, depth_data_provided=depth_data_provided)
 
         keys = ["{}{}".format(i, identifier) for i in range(segments['n_segments'])]
         temp_list = []
@@ -65,19 +80,23 @@ def add_experiment_data_to_lists(experiment, objects_segments, gripperpos, objpo
                     temp_list.append(segments[k])
             stop_object_segments = True
             objects_segments.append(np.stack(temp_list))
+        if depth_data_provided:
+            depth.append(convert_float_image_to_int16(trajectory_step['xyz']))
 
-        seg.append(trajectory_step['seg'])
-        img.append(trajectory_step['img'])
+        seg.append(trajectory_step['seg'].astype(np.int16))
+        img.append(trajectory_step['img'].astype(np.int16))
         gripperpos.append(trajectory_step['gripperpos'])
         objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
         objvel.append(np.stack(list(trajectory_step['objvel'].tolist().values())))
 
+    if depth_data_provided:
+        return objects_segments, gripperpos, objpos, objvel, img, seg, depth
     return objects_segments, gripperpos, objpos, objvel, img, seg
 
 
 
-def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_object_experiments=True,
-                              n_sequences_per_batch = 10, test_size=0.2, seg_only_for_initialization=True):
+def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_number_object_experiments=True,
+                              n_sequences_per_batch = 10, test_size=0.2):
     """
 
     :param source_path:
@@ -85,6 +104,9 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
     :param name:
     :return:
     """
+    seg_only_for_initialization = config['seg_only_for_initialization']
+    depth_data_provided = config["depth_data_provided"]
+
     file_paths = get_all_experiment_file_paths_from_dir(source_path)
     train_paths, test_paths = train_test_split(file_paths, test_size=test_size)
     filenames_split_train = list(chunks(train_paths, n_sequences_per_batch))
@@ -105,21 +127,17 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
             print('Writing', filename)
 
             options = None #tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
-            feature = {}
             identifier = "_object_full_seg_rgb"
+            depth = None
+            if depth_data_provided:
+                identifier = "_object_full_seg_rgb_depth"
+
 
             with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
                 for experiment in loaded_batch.values():
 
                     if not experiment:
                         continue
-
-                    objects_segments = []
-                    gripperpos = []
-                    objpos = []
-                    objvel = []
-                    img = []
-                    seg = []
 
                     if discard_varying_number_object_experiments:
                         skip = check_if_skip(experiment)
@@ -133,13 +151,16 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                     # all data objects are transformed s.t. for each data a list consisting of 'experiment_length' ndarrays returned,
                     # if data is multi-dimensional (e.g. segments for each object per times-step), ndarrays are stacked along first
                     # dimension
-                    objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(
-                                                                experiment, objects_segments, gripperpos, objpos, objvel, img, seg,
-                                                                identifier, seg_only_for_initialization=seg_only_for_initialization)
+                    if depth_data_provided:
+                        objects_segments, gripperpos, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
+                                                                seg_only_for_initialization=seg_only_for_initialization,
+                                                                depth_data_provided= depth_data_provided)
+                        depth = [_bytes_feature(i.tostring()) for i in depth]
+                    else:
+                        objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
+                                                                seg_only_for_initialization=seg_only_for_initialization,
+                                                                depth_data_provided= depth_data_provided)
 
-
-                    #objects_segments = [list(objects_segments[i]) for i in objects_segments.keys()]
-                    #objects_segments = [lst.tobytes() for objct in objects_segments for lst in objct]
 
 
                     imgs =[_bytes_feature(i.tostring()) for i in img]
@@ -147,10 +168,8 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                     gripperpositions = [_bytes_feature(i.tostring()) for i in gripperpos]
 
                     # concatenate all object positions/velocities into an ndarray per experiment step
-                    #objpos = convert_list_of_dicts_to_list_by_concat(objpos)
                     objpos = [_bytes_feature(i.tostring()) for i in objpos]
 
-                    #objvel = convert_list_of_dicts_to_list_by_concat(objvel)
                     objvel = [_bytes_feature(i.tostring()) for i in objvel]
 
                     objects_segments = [_bytes_feature(i.tostring()) for i in objects_segments]
@@ -163,8 +182,9 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                         'objvel': tf.train.FeatureList(feature=objvel),
                         'object_segments': tf.train.FeatureList(feature=objects_segments)
                     }
-                    # merge both dicts
-                    #feature_list = {**feature_list, **obj_dict}
+
+                    if depth_data_provided:
+                        feature_list['depth'] = tf.train.FeatureList(feature=depth)
 
                     feature_lists = tf.train.FeatureLists(feature_list=feature_list)
 
@@ -177,13 +197,7 @@ def create_tfrecords_from_dir(source_path, dest_path, discard_varying_number_obj
                     writer.write(example.SerializeToString())
 
 
-
-
-
 if __name__ == '__main__':
-    create_tfrecords_from_dir("../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=10,
-                              seg_only_for_initialization=False)
-
-    #filenames = ["../data/destination/train1_of_8.tfrecords", "../data/destination/train2_of_8.tfrecords"]
-    #dataset = tf.data.TFRecordDataset(filenames)
-    #dataset = dataset.map(_parse_function)
+    args = get_args()
+    config = process_config(args.config)
+    create_tfrecords_from_dir(config, "../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=10)
