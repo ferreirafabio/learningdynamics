@@ -10,5 +10,6 @@
   "global_output_size": 6,
   "tfrecords_dir": "../data/destination",
   "seg_only_for_initialization": true,
-  "depth_data_provided": true
+  "depth_data_provided": true,
+  "n_epochs": 100
 }

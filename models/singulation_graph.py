@@ -5,14 +5,14 @@ from itertools import product
 from graph_nets import utils_tf, utils_np
 
 
-def create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects):
+def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
 
     n_nodes_attr = config["n_nodes_attr"]
     #self.n_edges_attr = self.config["n_edges_attr"]
     #self.n_globals_attr = self.config["n_globals_attr"]
     #self.global_output_size = self.config["global_output_size"]
 
-    graph_nx = nx.MultiDiGraph()
+    graph_nx = nx.DiGraph()
 
     """ adding features to nodes """
     # 120*160*4(seg+rgb)
@@ -42,6 +42,28 @@ def create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects):
     return graph_nx
 
 
+def graph_to_input_target(graph, features):
+    """Returns 2 graphs with input and target feature vectors for training.
+
+    Args:
+      graph: An `nx.DiGraph` instance.
+
+    Returns:
+      The input `nx.DiGraph` instance.
+      The target `nx.DiGraph` instance.
+
+    Raises:
+      ValueError: unknown node type
+    """
+    input_graph = graph.copy()
+    target_graph = graph.copy()
+
+    for node_index, node_feature in graph.nodes(data=True):
+        # todo
+        input_graph.add_node(node_index, features="a")
+        target_graph.add_node(node_index, features="a")
+
+
 def get_graph_tuple(graph_nx):
     if type(graph_nx) is not list:
         graph_nx = [graph_nx]
@@ -59,11 +81,23 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     nx.draw(graph_nx, labels=labels, node_size=1000, font_size=15)
     plt.show()
 
+
+
 def create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects):
-    graph_nx = create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects)
+    graph_nx = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
     graph_tuple = get_graph_tuple(graph_nx)
     graph_dict = get_graph_dict(graph_tuple)
     return get_graph_ph(graph_dict)
 
-def create_n_singulation_graphs(n, config, n_total_objects, n_manipulable_objects):
-    return [create_singulation_graph_nx(config, n_total_objects, n_manipulable_objects) for _ in range(n)]
+def create_placeholders(config, features, n_graphs, n_total_objects, n_manipulable_objects):
+    input_graphs = []
+    target_graphs = []
+    graph = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
+    for _ in range(n_graphs):
+        input_graph, target_graph = graph_to_input_target(graph, features)
+        input_graphs.append(input_graph)
+        target_graphs.append(target_graph)
+
+    input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
+    target_ph = utils_tf.placeholders_from_networkxs(target_graphs, force_dynamic_num_graphs=True)
+    return input_ph, target_ph
