@@ -9,5 +9,6 @@
   "n_globals_attr": 6,
   "global_output_size": 6,
   "tfrecords_dir": "../data/destination",
-  "seg_only_for_initialization": false
+  "seg_only_for_initialization": true,
+  "depth_data_provided": true
 }

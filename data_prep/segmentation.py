@@ -1,70 +1,94 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir
+from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir, convert_float_image_to_int16
 
 
-def get_segments_from_experiment_step(images):
+def get_segments_from_experiment_step(images, depth_data_provided=False):
     """
-    Extracts the given segments and the rgb crops at these positions from a given experiment step.
+    Extracts the given segments and the rgb crops at these positions from a given experiment step. If depth image data is provided,
+    these extractions are also applied for the depth images. In this case, the full_seg_rgb and i_object_full_seg_rgb get 3
+    additional channels.
     Args:
-        images: a list containing two ndarrays of dimensions WxHxC and WxH while W=width, H=height, C=channels
+        images: a dict containing ndarrays of dimensions WxHxC or WxH while W=width, H=height, C=channels
     Returns:
         a dictionary with Nx2+2 ndarrays while N is the number of segments. The number of segments is doubled since the segments are
         included as segments in the full image as well as a crop. 2 additional arrays are included for the original and the full
-        segmentation image. Except the original and the full segmentation arrays, every array consists of 4 channels (seg, R, B, G).
+        segmentation image. If depth data is provided, 3 additional arrays are included. The original and the full segmentation
+        arrays consist of 4 channels (seg, R, B, G) or 7 channels (if depth data provided)
 
         Example return keys:
-            'full_seg' (3 channel ndarray)
+            'full_seg' (1 channel ndarray)
             'full_rgb' (3 channel ndarray)
-            '0_object_full_seg_rgb' (4 channel ndarray)
-            '0_object_crop_seg_rgb' (4 channel ndarray)
-            '1_...' (4 channel ndarray)
+            'full_depth' (3 channel ndarray)
+            '0_object_full_seg_rgb' (4 channel ndarray) (if depth: 7 channel)
+            '0_object_crop_seg_rgb' (4 channel ndarray) see above
+            '1_...' (4 channel ndarray) see above
     """
-    assert type(images) == list, "parameter images is not a list, expecting a list"
+    assert type(images) == dict, "parameter images is not a dict, expecting a dict"
 
-    seg = None
-    rgb = None
-
-    for element in images:
-        if type(element) == np.ndarray:
-            if element.ndim == 3:
-                rgb = element.astype(np.uint8)
-            else:
-                seg = element.astype(np.uint8)
+    seg = images['seg']
+    rgb = images['img']
+    depth = None
+    full_depth_masked = None
 
     n_segments = get_number_of_segment(seg)
     masks = get_segments_indices(seg)
     seg_rgb_data = {
         "n_segments": n_segments,
-        "full_seg": seg,
-        "full_rgb": rgb
+        "full_seg": images['seg'],
+        "full_rgb": images['img']
     }
+
+    if depth_data_provided:
+        assert 'depth' in images.keys(), "no depth data given but flag 'depth_data_provided' is set to True"
+        seg_rgb_data['full_depth'] = images['depth']
+        depth = images['depth']
+        if depth.dtype == np.float32:
+            depth = convert_float_image_to_int16(images['depth']) # depth image requires int16 rescaling
 
     for i in range(n_segments):
         # get full images
-        full_seg_masked = (seg == masks[i]).astype(np.uint8)
-        full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.uint8)
+        full_seg_masked = (seg == masks[i]).astype(np.int16)
+        full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.int16)
+
+        if depth_data_provided:
+            full_depth_masked = get_segment_by_mask(depth, full_seg_masked).astype(np.int16)
+
 
         full_seg_masked_expanded = np.expand_dims(full_seg_masked, axis=2)
-        full_seg_rgb_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked), axis=2)
+        identifier = "full_seg_rgb"
+        if depth_data_provided:
+            full_seg_rgb_depth_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked, full_depth_masked), axis=2)
+            identifier = "full_seg_rgb_depth"
+        else:
+            full_seg_rgb_depth_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked), axis=2)
 
         # channel 0: seg, channel 1..3: rgb
-        seg_rgb_data[str(i) + "_object_" + "full_seg_rgb"] = full_seg_rgb_masked
+        seg_rgb_data[str(i) + "_object_" + identifier] = full_seg_rgb_depth_masked
 
-        # get crops
-        crop = crop_by_mask(full_seg_masked).astype(np.uint8)
-        rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.uint8)
+        """ get crops """
+        crop = crop_by_mask(full_seg_masked).astype(np.int16)
+        rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.int16)
+
+        depth_crop = None
+        identifier = "crop_seg_rgb"
+        if depth_data_provided:
+            depth_crop = get_segment_by_mask(depth, mask=full_seg_masked, crop=True).astype(np.int16)
 
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
-        crop_seg_rgb_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop), axis=2)
+        if depth_data_provided:
+            crop_seg_rgb_depth_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop, depth_crop), axis=2)
+            identifier = "crop_seg_rgb_depth"
+        else:
+            crop_seg_rgb_depth_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop), axis=2)
 
         # channel 0: seg, channel 1..3: rgb
-        seg_rgb_data[str(i) + "_object_" + "crop_seg_rgb" ] = crop_seg_rgb_masked
+        seg_rgb_data[str(i) + "_object_" + identifier] = crop_seg_rgb_depth_masked
 
-    # todo: remove
-    #for v in seg_rgb_data.values():
+    # # todo: remove
+    # for v in seg_rgb_data.values():
     #    if type(v) == np.ndarray:
-    #        plt.imshow(v, cmap="Greys")
+    #        plt.imshow(v)
     #        plt.show()
 
     return seg_rgb_data
