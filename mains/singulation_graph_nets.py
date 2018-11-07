@@ -38,19 +38,12 @@ def main():
         while True:
             try:
                 features_dict = sess.run(next_element)
-
-                # global_list = []
-                # for v in features_dict.values():
-                #     lst = []
-                #     for i in range (v.shape[0]):
-                #         lst.append(v[i])
-                #     global_list.append(lst)
-
                 batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
-
-                # todo: train/test cycles
                 input_graphs, target_graphs = create_placeholders(config=config, batch_data=batch_list, train_batch_size=train_batch_size)
 
+                # instantiate model
+                model = models.EncodeProcessDecode()
+                # todo: train/test cycles
 
 
                 #ase_graphs = create_placeholders(int(experiment_length), config, int(n_total_objects), int(n_manipulable_objects))

@@ -1,6 +1,7 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import scipy.constants as constants
 from itertools import product
 from graph_nets import utils_tf, utils_np
 
@@ -44,49 +45,13 @@ def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
         graph_nx.add_edge(*edge, features=np.ndarray(shape=(3,), dtype=np.float32))
 
     """ adding global features """
-    # 120*160*3(rgb)+1(timestep)+1(gravity)
-    graph_nx.graph["features"] = np.ndarray(shape=(57602,), dtype=np.float32)
+    # 120*160*3(rgb)+120*160(seg)+120*160*3(depth)+1(timestep)+1(gravity)
+    graph_nx.graph["features"] = np.ndarray(shape=(134402,), dtype=np.float32)
 
     return graph_nx
 
 
-def graph_to_input_and_target(graph, features):
-    """Returns 2 graphs with input and target feature vectors for training.
-
-    Args:
-      graph: An `nx.DiGraph` instance.
-
-    Returns:
-      The input `nx.DiGraph` instance.
-      The target `nx.DiGraph` instance.
-
-    Raises:
-      ValueError: unknown node type
-    """
-    input_graph = graph.copy()
-    target_graph = graph.copy()
-    node_fields_container = ('object_segments', )
-    node_fields_gripper = ('object_segments', 'objpos')
-    node_fields_manipulable = ('object_segments', 'objpos', 'objvel')
-    edge_fields = ('objpos', )
-    global_fields = ('img', 'depth', 'seg')
-
-    def create_feature(attr, features):
-        if attr['type_name'] == 'container':
-            return np.hstack([np.array(attr[field], dtype=np.int16) for field in node_fields_container])
-        elif attr['type_name'] == 'gripper':
-            return np.hstack([np.array(attr[field], dtype=np.float32) for field in node_fields_gripper])
-        elif "manipulable" in attr['type_name']:
-            obj_id = str(attr['type_name'].split("_")[2])
-            return np.hstack([np.array(attr[field], dtype=np.float32) for field in node_fields_manipulable])
-
-    for node_index, node_feature in graph.nodes(data=True):
-        # todo
-        input_graph.add_node(node_index, features=create_feature(node_feature, features))
-        target_graph.add_node(node_index, features="a")
-
-
-def graph_to_input_and_targets(graph, features):
+def graph_to_input_and_targets_single_experiment(graph, features):
     """Returns 2 graphs with input and target feature vectors for training.
 
     Args:
@@ -117,27 +82,30 @@ def graph_to_input_and_targets(graph, features):
             obj_id = int(attr['type_name'].split("_")[2])
             obj_seg = features['object_segments'][obj_id].flatten()
             pos = features['objpos'][step][obj_id].flatten()
-            vel = features['objvel'][step][obj_id].flatten()
+            vel = features['objvel'][step][obj_id].flatten() # todo: normalize by fps 1/30
             return np.concatenate((obj_seg, vel, pos))
 
-    def create_edge_feature(receiver, sender, edge_feature, features, target_graph_i):
+    def create_edge_feature(receiver, sender, target_graph_i):
         node_feature_rcv = target_graph_i.nodes(data=True)[receiver]
         node_feature_snd = target_graph_i.nodes(data=True)[sender]
         pos1 = node_feature_rcv['features'][-3:]
         pos2 = node_feature_snd['features'][-3:]
-        # todo: verify validaty of values
+        return np.absolute(pos1-pos2)
 
     for step in range(experiment_length):
         for node_index, node_feature in graph.nodes(data=True):
             target_graphs[step].add_node(node_index, features=create_node_feature(node_feature, features, step))
 
+        """ add globals (image, segmentation, depth, gravity, time_step) """
+        target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
+                                                          features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
+                                                            constants.g)))
+
     """ compute distances between every manipulable object (and gripper)"""
     for step in range(experiment_length):
         for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
-            target_graphs[step].add_edge(sender, receiver, features=create_edge_feature(receiver, sender, edge_feature, features,
-                                                                                        target_graphs[step]))
+            target_graphs[step].add_edge(sender, receiver, features=create_edge_feature(receiver, sender, target_graphs[step]))
 
-    #todo: global (gravity, time step and image)
     input_graph = target_graphs[0].copy()
     return input_graph, target_graphs
 
@@ -169,8 +137,8 @@ def create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects
 
 def create_singulation_graphs(config, batch_data, train_batch_size):
 
-    input_graphs = []
-    target_graphs = []
+    input_graphs_all_experiments = []
+    target_graphs_all_experiments = []
     graphs = []
 
     for i in range(train_batch_size):
@@ -178,16 +146,15 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
         n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
         graph = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
-        input_graph, target_graph = graph_to_input_and_targets(graph, batch_data[i])
-        input_graphs.append(input_graph)
-        target_graphs.append(target_graph)
+        input_graph, target_graphs = graph_to_input_and_targets_single_experiment(graph, batch_data[i])
+        input_graphs_all_experiments.append(input_graph)
+        target_graphs_all_experiments.append(target_graphs)
         graphs.append(graph)
 
-    return input_graphs, target_graphs, graphs
+    return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
 def create_placeholders(config, batch_data, train_batch_size):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size)
-
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
-    target_ph = utils_tf.placeholders_from_networkxs(target_graphs, force_dynamic_num_graphs=True)
+    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
     return input_ph, target_ph
