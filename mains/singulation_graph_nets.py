@@ -6,7 +6,7 @@ from trainers.example_trainer import ExampleTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
-from utils.utils import get_args
+from utils.utils import get_args, convert_dict_to_list_subdicts
 from graph_nets.demos import models
 from graph_nets import utils_tf, utils_np
 
@@ -25,6 +25,7 @@ def main():
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])
     n_epochs = config["n_epochs"]
+    train_batch_size = config["train_batch_size"]
 
     # create tensorflow session
     sess = tf.Session()
@@ -36,18 +37,19 @@ def main():
         sess.run(data.iterator.initializer)
         while True:
             try:
-                img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects, \
-                n_manipulable_objects = sess.run(next_element)
-                #print("experiment_length", experiment_length)
-                #print("depth", depth)
+                features_dict = sess.run(next_element)
 
-                features = []
-                # todo: set up features array
+                # global_list = []
+                # for v in features_dict.values():
+                #     lst = []
+                #     for i in range (v.shape[0]):
+                #         lst.append(v[i])
+                #     global_list.append(lst)
+
+                batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
+
                 # todo: train/test cycles
-
-                input_graphs, target_graphs = create_placeholders(config=config, features=features, n_graphs=int(experiment_length),
-                                                                  n_total_objects=int(n_total_objects),
-                                                                  n_manipulable_objects=int(n_manipulable_objects))
+                input_graphs, target_graphs = create_placeholders(config=config, batch_data=batch_list, train_batch_size=train_batch_size)
 
 
 

@@ -239,6 +239,15 @@ def convert_dict_to_list(dct):
             lst.append(element)
     return lst
 
+def convert_dict_to_list_subdicts(dct, length):
+    list_of_subdicts = []
+    for i in range(length):
+        batch_item_dict = {}
+        for k, v in dct.items():
+            batch_item_dict[k] = v[i]
+        list_of_subdicts.append(batch_item_dict)
+    return list_of_subdicts
+
 
 def create_dir(output_dir, dir_name):
     assert(output_dir)

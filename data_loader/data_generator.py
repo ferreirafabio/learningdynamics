@@ -9,26 +9,45 @@ class DataGenerator:
         self.seg_only_for_initialization = self.config["seg_only_for_initialization"]
         self.depth_data_provided = config["depth_data_provided"]
         path = self.config["tfrecords_dir"]
+        train_batch_size = self.config["train_batch_size"]
+        test_batch_size = self.config["test_batch_size"]
+
 
         if train:
             filenames = gfile.Glob(os.path.join(path, "train*"))
+            batch_size = train_batch_size
         else:
             filenames = gfile.Glob(os.path.join(path, "valid*"))
+            batch_size = test_batch_size
 
         self.dataset = tf.data.TFRecordDataset(filenames)
         self.dataset = self.dataset.map(self._parse_function)
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
         # n_manipulable_objects
+        padded_shapes = {
+                        'img': (None, 120, 160, 3),
+                        'seg': (None, 120, 160),
+                        'gripperpos': (None, 3),
+                        'objpos': (None, None, 3),
+                        'objvel': (None, None, 3),
+                        'object_segments': (None, 120, 160, 4),
+                        'experiment_length': (),
+                        'experiment_id': (),
+                        'n_total_objects': (),
+                        'n_manipulable_objects': ()
+        }
 
         if self.depth_data_provided:
-            padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 120, 160, 3), (None, 3), (None, None, 3), (None, None, 3),
-                                                                    (None, 120, 160, 7), (), (), (), () )
-        else:
-            padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 3), (None, None, 3), (None, None, 3),
-                                                                     (None, None, 120, 160, 4), (), (), (), ())
+            padded_shapes['depth'] = (None, 120, 160, 3)
+            padded_shapes['object_segments'] = (None, 120, 160, 7)
 
-        self.dataset = self.dataset.padded_batch(1, padded_shapes=padded_shapes)
+            #padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 120, 160, 3), (None, 3), (None, None, 3), (None, None, 3),
+            #                                                        (None, 120, 160, 7), (), (), (), () )
+            #padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 3), (None, None, 3), (None, None, 3),
+            #                                                         (None, None, 120, 160, 4), (), (), (), ())
+
+        self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes)
         self.iterator = self.dataset.make_initializable_iterator()
 
 
@@ -56,6 +75,7 @@ class DataGenerator:
         context, sequence = tf.parse_single_sequence_example(example_proto, context_features=context_features,
                                                              sequence_features=sequence_features)
 
+        return_dict = {}
         experiment_length = context['experiment_length']
         n_manipulable_objects = context['n_manipulable_objects']
         experiment_id = context['experiment_id']
@@ -95,10 +115,22 @@ class DataGenerator:
             raise NotImplementedError # error: "Unimplemented: CopyElementToLargerSlice Unhandled rank: 5"
             #object_segments = tf.reshape(object_segments, tf.stack([experiment_length, n_total_objects, 120, 160, 4]))
 
-        if self.depth_data_provided:
-            return img, seg, depth, gripperpos, objpos, objvel, object_segments, experiment_length, experiment_id, n_total_objects, \
-                        n_manipulable_objects
+        return_dict = {
+            'img': img,
+            'seg': seg,
+            'gripperpos': gripperpos,
+            'objpos': objpos,
+            'objvel': objvel,
+            'object_segments': object_segments,
+            'experiment_length': experiment_length,
+            'experiment_id': experiment_id,
+            'n_total_objects': n_total_objects,
+            'n_manipulable_objects': n_manipulable_objects
+        }
 
-        return img, seg, gripperpos, objpos, objvel, object_segments, experiment_length, experiment_id, n_total_objects, \
-               n_manipulable_objects
+
+        if self.depth_data_provided:
+            return_dict['depth'] = depth
+            return return_dict
+        return return_dict
 
