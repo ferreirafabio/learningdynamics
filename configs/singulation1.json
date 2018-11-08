@@ -2,16 +2,16 @@
   "exp_name": "singulation1",
   "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
-  "n_nodes_attr": 10,
-  "n_edges_attr": 6,
-  "n_globals_attr": 6,
-  "global_output_size": 6,
+  "node_output_size": 134406,
+  "edge_output_size": 3,
+  "global_output_size": 134402,
   "tfrecords_dir": "../data/destination",
   "seg_only_for_initialization": true,
   "depth_data_provided": true,
   "n_epochs": 100,
-  "train_batch_size": 32,
+  "train_batch_size": 2,
   "test_batch_size": 32,
   "n_layers": 10,
-  "n_neurons": 64
+  "n_neurons": 64,
+  "message_passing_steps": 1
 }

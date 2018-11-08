@@ -1,7 +1,8 @@
 import os
+import math
 import tensorflow as tf
 from tensorflow.python.platform import gfile
-
+from utils.utils import get_number_of_total_samples
 
 class DataGenerator:
     def __init__(self, config, train=True):
@@ -12,7 +13,6 @@ class DataGenerator:
         train_batch_size = self.config["train_batch_size"]
         test_batch_size = self.config["test_batch_size"]
 
-
         if train:
             filenames = gfile.Glob(os.path.join(path, "train*"))
             batch_size = train_batch_size
@@ -20,8 +20,12 @@ class DataGenerator:
             filenames = gfile.Glob(os.path.join(path, "valid*"))
             batch_size = test_batch_size
 
+        self.batch_size = batch_size
+        self.number_total_samples = get_number_of_total_samples(filenames)
+        self.iterations_per_epoch = math.ceil(self.number_total_samples / self.batch_size)
         self.dataset = tf.data.TFRecordDataset(filenames)
         self.dataset = self.dataset.map(self._parse_function)
+        self.dataset = self.dataset.shuffle(buffer_size=500)
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
         # n_manipulable_objects

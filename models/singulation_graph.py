@@ -7,25 +7,17 @@ from graph_nets import utils_tf, utils_np
 
 
 def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
-
-    #n_nodes_attr = config["n_nodes_attr"]
-    #self.n_edges_attr = self.config["n_edges_attr"]
-    #self.n_globals_attr = self.config["n_globals_attr"]
-    #self.global_output_size = self.config["global_output_size"]
-
     graph_nx = nx.MultiDiGraph()
 
     """ adding features to nodes """
     # 120*160*4(seg+rgb)
     graph_nx.add_node(0, type_name='container')
-    graph_nx.add_node(0, object_segments = np.ndarray(shape=(134400,), dtype=np.int16))
-    #graph_nx.add_node(0, features=np.ndarray(shape=(76806,), dtype=np.float32))
+    graph_nx.add_node(0, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
 
     # 120*160*4(seg+rgb)+3(pos)
     graph_nx.add_node(1, type_name='gripper')
     graph_nx.add_node(1, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
     graph_nx.add_node(1, gripperpos=np.ndarray(shape=(3,), dtype=np.float32))
-    #graph_nx.add_node(1, features=np.ndarray(shape=(76806,), dtype=np.float32))
 
 
     for i in range(n_manipulable_objects):
@@ -37,7 +29,6 @@ def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
         graph_nx.add_node(i, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
         graph_nx.add_node(i, objpos=np.ndarray(shape=(3,), dtype=np.float32))
         graph_nx.add_node(i, objvel=np.ndarray(shape=(3,), dtype=np.float32))
-        #graph_nx.add_node(i, features=np.ndarray(shape=(76806,), dtype=np.float32))
 
     """ adding edges and features, the container does not have edges due to missing objpos """
     edge_tuples = [(a,b) for a, b in product(range(1, n_total_objects), range(1, n_total_objects)) if a != b]
@@ -70,13 +61,21 @@ def graph_to_input_and_targets_single_experiment(graph, features):
     def create_node_feature(attr, features, step):
         if attr['type_name'] == 'container':
             """ container only has object segmentations """
-            return features['object_segments'][0].flatten()
+            # pad up to fixed size since sonnet can only handle fixed-sized features
+            res = np.zeros((134406, ))
+            feature = features['object_segments'][0].flatten()
+            res[:feature.shape[0]] = feature
+            return res
 
         elif attr['type_name'] == 'gripper':
             """ gripper only has obj segs and gripper pos """
             obj_seg = features['object_segments'][1].flatten()
             pos = features['gripperpos'][step].flatten()
-            return np.concatenate((obj_seg, pos))
+            # pad up to fixed size since sonnet can only handle fixed-sized features
+            res = np.zeros((134406, ))
+            concat_feature = np.concatenate((obj_seg, pos))
+            res[:concat_feature.shape[0]] = concat_feature
+            return res
 
         elif "manipulable" in attr['type_name']:
             obj_id = int(attr['type_name'].split("_")[2])
@@ -84,6 +83,7 @@ def graph_to_input_and_targets_single_experiment(graph, features):
             pos = features['objpos'][step][obj_id].flatten()
             vel = features['objvel'][step][obj_id].flatten() # todo: normalize by fps 1/30
             return np.concatenate((obj_seg, vel, pos))
+
 
     def create_edge_feature(receiver, sender, target_graph_i):
         node_feature_rcv = target_graph_i.nodes(data=True)[receiver]
@@ -128,15 +128,14 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     plt.show()
 
 
-
 def create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects):
     graph_nx = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
     graph_tuple = get_graph_tuple(graph_nx)
     graph_dict = get_graph_dict(graph_tuple)
     return get_graph_ph(graph_dict)
 
-def create_singulation_graphs(config, batch_data, train_batch_size):
 
+def create_singulation_graphs(config, batch_data, train_batch_size):
     input_graphs_all_experiments = []
     target_graphs_all_experiments = []
     graphs = []
@@ -153,8 +152,18 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
 
     return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
-def create_placeholders(config, batch_data, train_batch_size):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size)
-    input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
-    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
-    return input_ph, target_ph
+
+def create_placeholders(config, batch_data, batch_size):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
+    input_phs = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
+    target_phs = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
+
+    return input_phs, target_phs, input_graphs, target_graphs
+
+
+def create_feed_dict(config, batch_data, input_ph, target_ph, batch_size):
+    inputs, targets, _ = create_singulation_graphs(config, batch_data, batch_size)
+    input_graphs = utils_np.networkxs_to_graphs_tuple(inputs)
+    target_graphs = utils_np.networkxs_to_graphs_tuple(targets)
+    feed_dict = {input_ph: input_graphs, target_ph: target_graphs}
+    return feed_dict
