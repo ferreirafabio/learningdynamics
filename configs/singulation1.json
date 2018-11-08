@@ -12,6 +12,5 @@
   "train_batch_size": 2,
   "test_batch_size": 32,
   "n_layers": 10,
-  "n_neurons": 64,
-  "message_passing_steps": 1
+  "n_neurons": 64
 }
