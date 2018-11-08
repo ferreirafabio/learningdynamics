@@ -1,14 +1,14 @@
 import tensorflow as tf
 
 from data_loader.data_generator import DataGenerator
-from models.singulation_graph import generate_singulation_graph, create_graph_and_get_graph_ph, create_placeholders, get_graph_tuple
+from models.singulation_graph import create_placeholders, create_feed_dict
 from trainers.example_trainer import ExampleTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
 from utils.utils import get_args, convert_dict_to_list_subdicts
-from graph_nets.demos import models
-from graph_nets import utils_tf, utils_np
+from models.loss_functions import create_loss_ops
+from models.singulation_models import EncodeProcessDecode
 
 
 def main():
@@ -24,39 +24,63 @@ def main():
 
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])
-    n_epochs = config["n_epochs"]
-    train_batch_size = config["train_batch_size"]
+    n_epochs = config.n_epochs
+    train_batch_size = config.train_batch_size
+    global_output_size = config.global_output_size
+    edge_output_size = config.edge_output_size
+    node_output_size = config.node_output_size
+    message_passing_steps = config.message_passing_steps
+    learning_rate = config.learning_rate
 
     # create tensorflow session
     sess = tf.Session()
     # create your data generator
-    data = DataGenerator(config)
-    next_element = data.iterator.get_next()
+    train_data = DataGenerator(config, train=True)
+    next_element = train_data.iterator.get_next()
+
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+
+    # create an instance of the model you want
+    model = EncodeProcessDecode(node_output_size=node_output_size, edge_output_size=edge_output_size,
+                                       global_output_size=global_output_size)
+
+    # create tensorboard logger
+    logger = Logger(sess, config)
 
     for _ in range(n_epochs):
-        sess.run(data.iterator.initializer)
-        while True:
-            try:
-                features_dict = sess.run(next_element)
-                batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
-                input_graphs, target_graphs = create_placeholders(config=config, batch_data=batch_list, train_batch_size=train_batch_size)
-
-                # instantiate model
-                model = models.EncodeProcessDecode()
-                # todo: train/test cycles
+        sess.run(train_data.iterator.initializer)
+        for i in range(train_data.iterations_per_epoch):
+            features_dict = sess.run(next_element)
+            batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
+            input_phs, target_phs, input_graphs, target_graphs = create_placeholders(config=config, batch_data=batch_list, batch_size=train_batch_size)
 
 
-                #ase_graphs = create_placeholders(int(experiment_length), config, int(n_total_objects), int(n_manipulable_objects))
+            for j in range(train_batch_size):
+                input_ph = input_phs[j]
+                target_ph = target_phs[j]
+                input_graph = input_graphs[j]
+                target_graph = target_graphs[j]
 
-                #graph_ph = create_graph_and_get_graph_ph(config, int(n_total_objects), int(n_manipulable_objects))
-                #graph_nx = generate_singulation_graph(config, int(n_total_objects), int(n_manipulable_objects))
+                exp_length = batch_list[j]['experiment_length']
+                output_ops_train = model(input_ph, exp_length)
+                loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
+                loss_op_tr = sum(loss_ops_tr) / exp_length
+                step_op = optimizer.minimize(loss_op_tr)
 
-                #graph_tuple = get_graph_tuple(graph_nx)
-                #feed_dict = utils_tf.get_feed_dict(graph_ph, graph_tuple)
+                # try:
+                #     sess.close()
+                # except NameError:
+                #     pass
+                #
+                # sess = tf.Session()
 
+                sess.run(tf.global_variables_initializer())
+                feed_dict = {input_ph: input_graph, target_ph: target_graph}
+                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr}, feed_dict=feed_dict)
+                print(train_values['loss'])
 
-            except tf.errors.OutOfRangeError:
-                break
+            # todo: train/test cycles
+
 
 
 

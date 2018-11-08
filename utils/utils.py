@@ -5,6 +5,7 @@ import collections
 import numpy as np
 import moviepy.editor as mpy
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 
 def get_args():
@@ -276,6 +277,13 @@ def convert_float_image_to_int16(float_image):
     float_image = float_image.astype(dt) / float_image.max()
     float_image = 255 * float_image
     return float_image.astype(np.int16)
+
+def get_number_of_total_samples(tf_records_filenames):
+    c = 0
+    for fn in tf_records_filenames:
+        for _ in tf.python_io.tf_record_iterator(fn):
+            c += 1
+    return c
 
 
 if __name__ == '__main__':

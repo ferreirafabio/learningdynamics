@@ -21,6 +21,8 @@ from __future__ import print_function
 from graph_nets import modules
 from graph_nets import utils_tf
 import sonnet as snt
+import tensorflow as tf
+from models.loss_functions import create_loss_ops
 
 NUM_LAYERS = 10  # Hard-code number of layers in the edge/node/global models.
 LATENT_SIZE = 64  # Hard-code latent layer sizes for demos.
@@ -117,6 +119,8 @@ class EncodeProcessDecode(snt.AbstractModule):
     with self._enter_variable_scope():
       self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
 
+
+
   def _build(self, input_op, num_processing_steps):
     latent = self._encoder(input_op)
     latent0 = latent
@@ -126,4 +130,6 @@ class EncodeProcessDecode(snt.AbstractModule):
       latent = self._core(core_input)
       decoded_op = self._decoder(latent)
       output_ops.append(self._output_transform(decoded_op))
+
+
     return output_ops
