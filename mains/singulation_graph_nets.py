@@ -60,6 +60,7 @@ def main():
                 target_ph = target_phs[j]
                 input_graph = input_graphs[j]
                 target_graph = target_graphs[j]
+                feed_dict = create_feed_dict(config, input_ph, target_ph, input_graph, target_graph)
 
                 exp_length = batch_list[j]['experiment_length']
                 output_ops_train = model(input_ph, exp_length)
@@ -75,7 +76,6 @@ def main():
                 # sess = tf.Session()
 
                 sess.run(tf.global_variables_initializer())
-                feed_dict = {input_ph: input_graph, target_ph: target_graph}
                 train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr}, feed_dict=feed_dict)
                 print(train_values['loss'])
 
