@@ -161,9 +161,8 @@ def create_placeholders(config, batch_data, batch_size):
     return input_phs, target_phs, input_graphs, target_graphs
 
 
-def create_feed_dict(config, batch_data, input_ph, target_ph, batch_size):
-    inputs, targets, _ = create_singulation_graphs(config, batch_data, batch_size)
-    input_graphs = utils_np.networkxs_to_graphs_tuple(inputs)
-    target_graphs = utils_np.networkxs_to_graphs_tuple(targets)
-    feed_dict = {input_ph: input_graphs, target_ph: target_graphs}
-    return feed_dict
+def create_feed_dict(config, input_ph, target_ph, input_graphs, target_graphs):
+    input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs])
+    target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
+
+    return {input_ph: input_tuple, target_ph: target_tuple}
