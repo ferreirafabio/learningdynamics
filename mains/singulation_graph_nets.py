@@ -29,7 +29,7 @@ def main():
     global_output_size = config.global_output_size
     edge_output_size = config.edge_output_size
     node_output_size = config.node_output_size
-    message_passing_steps = config.message_passing_steps
+
     learning_rate = config.learning_rate
 
     # create tensorflow session
@@ -63,9 +63,11 @@ def main():
                 feed_dict = create_feed_dict(config, input_ph, target_ph, input_graph, target_graph)
 
                 exp_length = batch_list[j]['experiment_length']
+                print("exp_length", exp_length)
                 output_ops_train = model(input_ph, exp_length)
                 loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
                 loss_op_tr = sum(loss_ops_tr) / exp_length
+
                 step_op = optimizer.minimize(loss_op_tr)
 
                 # try:
