@@ -7,20 +7,16 @@ from graph_nets import utils_tf, utils_np
 
 
 def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
-    graph_nx = nx.MultiDiGraph()
+    graph_nx = nx.DiGraph()
 
     """ adding features to nodes """
     # 120*160*4(seg+rgb)
     graph_nx.add_node(0, type_name='container')
-    graph_nx.add_node(0, features=np.zeros(shape=(134406,), dtype=np.float32))
-    #graph_nx.add_node(0, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
+    graph_nx.add_node(0, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     # 120*160*4(seg+rgb)+3(pos)
     graph_nx.add_node(1, type_name='gripper')
-    graph_nx.add_node(1, features=np.zeros(shape=(134406,), dtype=np.float32))
-    #graph_nx.add_node(1, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
-    #graph_nx.add_node(1, gripperpos=np.ndarray(shape=(3,), dtype=np.float32))
-
+    graph_nx.add_node(1, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     for i in range(n_manipulable_objects):
         ''' no multiple features -> flatten and concatenate everything '''
@@ -28,19 +24,16 @@ def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
         object_str = str(i)
         i = i + 2 # number of non-manipulable objects: 2
         graph_nx.add_node(i, type_name='manipulable_object_' + object_str)
-        graph_nx.add_node(i, features=np.zeros(shape=(134406,), dtype=np.float32))
-        #graph_nx.add_node(i, object_segments=np.ndarray(shape=(134400,), dtype=np.int16))
-        #graph_nx.add_node(i, objpos=np.ndarray(shape=(3,), dtype=np.float32))
-        #graph_nx.add_node(i, objvel=np.ndarray(shape=(3,), dtype=np.float32))
+        graph_nx.add_node(i, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     """ adding edges and features, the container does not have edges due to missing objpos """
     edge_tuples = [(a,b) for a, b in product(range(1, n_total_objects), range(1, n_total_objects)) if a != b]
     for edge in edge_tuples:
-        graph_nx.add_edge(*edge, features=np.ndarray(shape=(3,), dtype=np.float32))
+        graph_nx.add_edge(*edge, features=np.zeros(shape=(config.edge_output_size,), dtype=np.float32))
 
     """ adding global features """
     # 120*160*3(rgb)+120*160(seg)+120*160*3(depth)+1(timestep)+1(gravity)
-    graph_nx.graph["features"] = np.zeros(shape=(134402,), dtype=np.float32)
+    graph_nx.graph["features"] = np.zeros(shape=(config.global_output_size,), dtype=np.float32)
 
     return graph_nx
 
@@ -60,7 +53,7 @@ def graph_to_input_and_targets_single_experiment(graph, features):
     """
     experiment_length = features['experiment_length']
     target_graphs = [graph.copy() for _ in range(experiment_length)]
-    input_graphs = [graph.copy() for _ in range(experiment_length)]
+
 
     def create_node_feature(attr, features, step):
         if attr['type_name'] == 'container':
@@ -77,8 +70,8 @@ def graph_to_input_and_targets_single_experiment(graph, features):
             pos = features['gripperpos'][step].flatten()
             # pad up to fixed size since sonnet can only handle fixed-sized features
             res = attr['features']
-            concat_feature = np.concatenate((obj_seg, pos))
-            res[:concat_feature.shape[0]] = concat_feature
+            res[:obj_seg.shape[0]] = obj_seg
+            res[-3:] = pos
             return res
 
         elif "manipulable" in attr['type_name']:
@@ -92,9 +85,10 @@ def graph_to_input_and_targets_single_experiment(graph, features):
     def create_edge_feature(receiver, sender, target_graph_i):
         node_feature_rcv = target_graph_i.nodes(data=True)[receiver]
         node_feature_snd = target_graph_i.nodes(data=True)[sender]
+        """ the position is always located as the last three elements of the flattened feature vector """
         pos1 = node_feature_rcv['features'][-3:]
         pos2 = node_feature_snd['features'][-3:]
-        return np.absolute(pos1-pos2)
+        return pos1-pos2
 
     for step in range(experiment_length):
         for node_index, node_feature in graph.nodes(data=True):
@@ -110,10 +104,9 @@ def graph_to_input_and_targets_single_experiment(graph, features):
         for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
             target_graphs[step].add_edge(sender, receiver, features=create_edge_feature(receiver, sender, target_graphs[step]))
 
-    input_graphs[0] = target_graphs[0].copy()
+    input_graph = target_graphs[0].copy()
 
-
-    return input_graphs, target_graphs
+    return input_graph, target_graphs
 
 
 def get_graph_tuple(graph_nx):
@@ -121,8 +114,10 @@ def get_graph_tuple(graph_nx):
         graph_nx = [graph_nx]
     return utils_np.networkxs_to_graphs_tuple(graph_nx)
 
+
 def get_graph_dict(graph_tuple):
     return utils_np.graphs_tuple_to_data_dicts(graph_tuple)
+
 
 def get_graph_ph(graph_dicts):
     return utils_tf.placeholders_from_data_dicts(graph_dicts)
@@ -161,20 +156,14 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
 
 def create_placeholders(config, batch_data, batch_size):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
-    input_phs = [utils_tf.placeholders_from_networkxs(ig, force_dynamic_num_graphs=True) for ig in input_graphs]
+    input_phs = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
     target_phs = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
 
     return input_phs, target_phs, input_graphs, target_graphs
 
 
-def create_feed_dict(config, input_ph, target_ph, input_graphs, target_graphs):
-    input_tuple = utils_np.networkxs_to_graphs_tuple(input_graphs)
-    target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
-
-    return {input_ph: input_tuple, target_ph: target_tuple}
-
-def create_feed_dict2(config, input_ph, target_ph, input_graphs, target_graphs):
-    input_tuple = utils_np.networkxs_to_graphs_tuple(input_graphs)
+def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):
+    input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs])
     target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
 
     return {input_ph: input_tuple, target_ph: target_tuple}
