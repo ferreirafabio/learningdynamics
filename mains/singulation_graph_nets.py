@@ -67,18 +67,15 @@ def main():
                 exp_length = batch_list[j]['experiment_length']
                 print("exp_length", exp_length)
                 output_ops_train = model(input_ph, exp_length)
-                loss_ops_tr, a, b = create_loss_ops(target_ph, output_ops_train)
+                loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
                 loss_op_tr = sum(loss_ops_tr) / exp_length
                 step_op = optimizer.minimize(loss_op_tr)
 
                 sess.run(tf.global_variables_initializer())
-                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr, "outputs": output_ops_train, 'a':a},
+                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr, "outputs": output_ops_train},
                                         feed_dict=feed_dict)
 
-                print(train_values['loss'])
-
-
-
+                print("train loss", train_values['loss'])
 
 
 
