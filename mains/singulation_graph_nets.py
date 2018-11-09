@@ -37,12 +37,13 @@ def main():
     # create your data generator
     train_data = DataGenerator(config, train=True)
     valid_data = DataGenerator(config, train=False)
+
     next_element = train_data.iterator.get_next()
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
 
     # create an instance of the model you want
-    model = EncodeProcessDecode(node_output_size=node_output_size, edge_output_size=edge_output_size,
+    model = EncodeProcessDecode(config, node_output_size=node_output_size, edge_output_size=edge_output_size,
                                        global_output_size=global_output_size)
 
     # create tensorboard logger
@@ -53,29 +54,29 @@ def main():
         for i in range(train_data.iterations_per_epoch):
             features_dict = sess.run(next_element)
             batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
-            input_phs, target_phs, input_graphs, target_graphs = create_placeholders(config=config, batch_data=batch_list, batch_size=train_batch_size)
+            input_phs, target_phs, input_graphs_all_exp, target_graphs_all_exp = create_placeholders(config=config, batch_data=batch_list, batch_size=train_batch_size)
 
 
             for j in range(train_batch_size):
                 input_ph = input_phs[j]
                 target_ph = target_phs[j]
-                input_graph = input_graphs[j]
-                target_graph = target_graphs[j]
-                feed_dict = create_feed_dict(config, input_ph, target_ph, input_graph, target_graph)
-                
+                input_graph = input_graphs_all_exp[j]
+                target_graphs = target_graphs_all_exp[j]
+                feed_dict = create_feed_dict(input_ph, target_ph, input_graph, target_graphs)
 
                 exp_length = batch_list[j]['experiment_length']
                 print("exp_length", exp_length)
                 output_ops_train = model(input_ph, exp_length)
-                loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
+                loss_ops_tr, a, b = create_loss_ops(target_ph, output_ops_train)
                 loss_op_tr = sum(loss_ops_tr) / exp_length
                 step_op = optimizer.minimize(loss_op_tr)
 
                 sess.run(tf.global_variables_initializer())
-                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr}, feed_dict=feed_dict)
+                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr, "outputs": output_ops_train, 'a':a},
+                                        feed_dict=feed_dict)
+
                 print(train_values['loss'])
 
-            # todo: train/test cycles
 
 
 

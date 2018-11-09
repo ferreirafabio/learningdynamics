@@ -95,6 +95,7 @@ class EncodeProcessDecode(snt.AbstractModule):
   """
 
   def __init__(self,
+               config,
                edge_output_size=None,
                node_output_size=None,
                global_output_size=None,
