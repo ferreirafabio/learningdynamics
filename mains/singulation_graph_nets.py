@@ -36,6 +36,7 @@ def main():
     sess = tf.Session()
     # create your data generator
     train_data = DataGenerator(config, train=True)
+    valid_data = DataGenerator(config, train=False)
     next_element = train_data.iterator.get_next()
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
@@ -61,21 +62,14 @@ def main():
                 input_graph = input_graphs[j]
                 target_graph = target_graphs[j]
                 feed_dict = create_feed_dict(config, input_ph, target_ph, input_graph, target_graph)
+                
 
                 exp_length = batch_list[j]['experiment_length']
                 print("exp_length", exp_length)
                 output_ops_train = model(input_ph, exp_length)
                 loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
                 loss_op_tr = sum(loss_ops_tr) / exp_length
-
                 step_op = optimizer.minimize(loss_op_tr)
-
-                # try:
-                #     sess.close()
-                # except NameError:
-                #     pass
-                #
-                # sess = tf.Session()
 
                 sess.run(tf.global_variables_initializer())
                 train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr}, feed_dict=feed_dict)
