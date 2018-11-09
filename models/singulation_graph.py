@@ -172,3 +172,10 @@ def create_feed_dict(config, input_ph, target_ph, input_graphs, target_graphs):
     target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
 
     return {input_ph: input_tuple, target_ph: target_tuple}
+
+def create_feed_dict2(config, input_ph, target_ph, input_graphs, target_graphs):
+    input_tuple = utils_np.networkxs_to_graphs_tuple(input_graphs)
+    target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
+
+    return {input_ph: input_tuple, target_ph: target_tuple}
+
