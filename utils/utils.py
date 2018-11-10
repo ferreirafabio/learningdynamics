@@ -278,10 +278,10 @@ def convert_float_image_to_int16(float_image):
     float_image = 255 * float_image
     return float_image.astype(np.int16)
 
-def get_number_of_total_samples(tf_records_filenames):
+def get_number_of_total_samples(tf_records_filenames, options=None):
     c = 0
     for fn in tf_records_filenames:
-        for _ in tf.python_io.tf_record_iterator(fn):
+        for _ in tf.python_io.tf_record_iterator(fn, options=options):
             c += 1
     return c
 

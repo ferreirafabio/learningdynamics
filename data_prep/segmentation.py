@@ -77,13 +77,13 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
 
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
         if depth_data_provided:
-            crop_seg_rgb_depth_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop, depth_crop), axis=2)
+            crop_rgb_seg_depth_masked = np.concatenate((rgb_crop, crop_seg_masked_expanded, depth_crop), axis=2)
             identifier = "crop_seg_rgb_depth"
         else:
-            crop_seg_rgb_depth_masked = np.concatenate((crop_seg_masked_expanded, rgb_crop), axis=2)
+            crop_rgb_seg_depth_masked = np.concatenate((rgb_crop, crop_seg_masked_expanded), axis=2)
 
         # channel 0: seg, channel 1..3: rgb
-        seg_rgb_data[str(i) + "_object_" + identifier] = crop_seg_rgb_depth_masked
+        seg_rgb_data[str(i) + "_object_" + identifier] = crop_rgb_seg_depth_masked
 
     # # todo: remove
     # for v in seg_rgb_data.values():

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from data_loader.data_generator import DataGenerator
-from models.singulation_graph import create_placeholders, create_feed_dict
+from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from trainers.example_trainer import ExampleTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
@@ -52,10 +52,11 @@ def main():
     for _ in range(n_epochs):
         sess.run(train_data.iterator.initializer)
         for i in range(train_data.iterations_per_epoch):
-            features_dict = sess.run(next_element)
-            batch_list = convert_dict_to_list_subdicts(features_dict, train_batch_size)
-            input_phs, target_phs, input_graphs_all_exp, target_graphs_all_exp = create_placeholders(config=config, batch_data=batch_list, batch_size=train_batch_size)
+            features = sess.run(next_element)
+            features = convert_dict_to_list_subdicts(features, train_batch_size)
+            input_phs, target_phs, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=config, batch_data=features, batch_size=train_batch_size)
 
+            # todo: implement process_batch()
 
             for j in range(train_batch_size):
                 input_ph = input_phs[j]
@@ -64,15 +65,15 @@ def main():
                 target_graphs = target_graphs_all_exp[j]
                 feed_dict = create_feed_dict(input_ph, target_ph, input_graph, target_graphs)
 
-                exp_length = batch_list[j]['experiment_length']
+                exp_length = features[j]['experiment_length']
                 print("exp_length", exp_length)
                 output_ops_train = model(input_ph, exp_length)
-                loss_ops_tr = create_loss_ops(target_ph, output_ops_train)
+                loss_ops_tr, a = create_loss_ops(config, target_ph, output_ops_train)
                 loss_op_tr = sum(loss_ops_tr) / exp_length
                 step_op = optimizer.minimize(loss_op_tr)
 
                 sess.run(tf.global_variables_initializer())
-                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr, "outputs": output_ops_train},
+                train_values = sess.run({"step": step_op, "target": target_ph, "loss": loss_op_tr, "outputs": output_ops_train, 'a': a},
                                         feed_dict=feed_dict)
 
                 print("train loss", train_values['loss'])
