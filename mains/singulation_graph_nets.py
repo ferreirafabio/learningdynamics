@@ -49,6 +49,9 @@ def main():
     # create tensorboard logger
     logger = Logger(sess, config)
 
+    # create trainer and pass all the previous components to it
+    trainer = ExampleTrainer(sess, model, train_data, config, logger)
+
     for _ in range(n_epochs):
         sess.run(train_data.iterator.initializer)
         for i in range(train_data.iterations_per_epoch):
@@ -80,10 +83,7 @@ def main():
 
 
 
-    # create tensorboard logger
-    #logger = Logger(sess, config)
-    # create trainer and pass all the previous components to it
-    #trainer = ExampleTrainer(sess, graph_ph, data, config, logger)
+
     # load model if exists
     #model.load(sess)
     # here you train your model

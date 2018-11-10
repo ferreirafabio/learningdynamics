@@ -121,7 +121,6 @@ class EncodeProcessDecode(snt.AbstractModule):
       self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
 
 
-
   def _build(self, input_op, num_processing_steps):
     latent = self._encoder(input_op)
     latent0 = latent
@@ -134,3 +133,9 @@ class EncodeProcessDecode(snt.AbstractModule):
 
 
     return output_ops
+
+  def init_saver(self):
+      # here you initialize the tensorflow saver that will be used in saving the checkpoints.
+      self.saver = tf.train.Saver(max_to_keep=self.config.max_to_keep)
+
+

@@ -88,11 +88,9 @@ class DataGenerator:
         if self.depth_data_provided:
             sequence_features['depth'] = tf.FixedLenSequenceFeature([], dtype=tf.string)
 
-
         context, sequence = tf.parse_single_sequence_example(example_proto, context_features=context_features,
                                                              sequence_features=sequence_features)
 
-        return_dict = {}
         experiment_length = context['experiment_length']
         n_manipulable_objects = context['n_manipulable_objects']
         experiment_id = context['experiment_id']
@@ -118,8 +116,6 @@ class DataGenerator:
             else:
                 shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 4])
 
-
-
         gripperpos = tf.decode_raw(sequence['gripperpos'], out_type=tf.float64)
         gripperpos = tf.reshape(gripperpos, tf.stack([experiment_length, 3]))
 
@@ -135,7 +131,6 @@ class DataGenerator:
 
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
-
         return_dict = {
             'img': img,
             'seg': seg,
@@ -148,7 +143,6 @@ class DataGenerator:
             'n_total_objects': n_total_objects,
             'n_manipulable_objects': n_manipulable_objects
         }
-
 
         if self.depth_data_provided:
             return_dict['depth'] = depth
