@@ -15,5 +15,6 @@
   "train_batch_size": 2,
   "test_batch_size": 32,
   "n_layers": 10,
-  "n_neurons": 64
+  "n_neurons": 64,
+  "max_to_keep": 50
 }
