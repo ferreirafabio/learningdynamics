@@ -34,7 +34,7 @@ class DataGenerator:
         self.iterations_per_epoch = math.ceil(self.number_total_samples / self.batch_size)
         self.dataset = tf.data.TFRecordDataset(filenames, compression_type=compression_type)
         self.dataset = self.dataset.map(self._parse_function)
-        self.dataset = self.dataset.shuffle(buffer_size=500)
+        self.dataset = self.dataset.shuffle(buffer_size=100)
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
         # n_manipulable_objects
