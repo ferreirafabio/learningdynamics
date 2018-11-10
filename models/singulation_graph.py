@@ -9,34 +9,33 @@ from graph_nets import utils_tf, utils_np
 def generate_singulation_graph(config, n_manipulable_objects):
     gripper_as_global = config.gripper_as_global
 
-    if gripper_as_global:
-        nonman_objects = 1
-    else:
-        nonman_objects = 2
-
     graph_nx = nx.DiGraph()
+
+    if not gripper_as_global:
+        offset = 1
+    else:
+        offset = 0
 
     """ adding features to nodes """
     # 120*160*4(seg+rgb)
-    graph_nx.add_node(0, type_name='container')
-    graph_nx.add_node(0, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
+    #graph_nx.add_node(0, type_name='container')
+    #graph_nx.add_node(0, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     if not gripper_as_global:
         """ if gripper should be a global attribute, include its data in global features """
         # 120*160*4(seg+rgb)+3(pos)
-        graph_nx.add_node(1, type_name='gripper')
-        graph_nx.add_node(1, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
+        graph_nx.add_node(0, type_name='gripper')
+        graph_nx.add_node(0, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
-    for i in range(n_manipulable_objects):
+    for i in range(offset, n_manipulable_objects):
         ''' no multiple features -> flatten and concatenate everything '''
         # 120*160*4(seg+rgb)+3(pos)+3(vel)
         object_str = str(i)
-        i = i + nonman_objects  # number of non-manipulable objects
         graph_nx.add_node(i, type_name='manipulable_object_' + object_str)
         graph_nx.add_node(i, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     """ adding edges and features, the container does not have edges due to missing objpos """
-    edge_tuples = [(a,b) for a, b in product(range(1, graph_nx.number_of_nodes()), range(1, graph_nx.number_of_nodes())) if a != b]
+    edge_tuples = [(a,b) for a, b in product(range(0, graph_nx.number_of_nodes()), range(0, graph_nx.number_of_nodes())) if a != b]
 
     for edge in edge_tuples:
         graph_nx.add_edge(*edge, features=np.zeros(shape=(config.edge_output_size,), dtype=np.float32))
@@ -62,8 +61,11 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
       ValueError: unknown node type
     """
     gripper_as_global = config.gripper_as_global
+    data_offset_manipulable_objects = config.data_offset_manipulable_objects
     experiment_length = features['experiment_length']
     target_graphs = [graph.copy() for _ in range(experiment_length)]
+
+
 
 
     def create_node_feature(attr, features, step, use_object_seg_data_only_for_init):
@@ -93,13 +95,14 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
 
         elif "manipulable" in attr['type_name']:
             obj_id = int(attr['type_name'].split("_")[2])
+            obj_id_segs = obj_id + data_offset_manipulable_objects
             # obj_seg will have data as following: (rgb, seg, optionally: depth)
             if use_object_seg_data_only_for_init:
                 """ in this case, the nodes will have static visual information over time """
                 obj_seg = features['object_segments'][obj_id].flatten()
             else:
                 """ in this case, the nodes will have dynamic visual information over time """
-                obj_seg = features['object_segments'][step][obj_id].flatten()
+                obj_seg = features['object_segments'][step][obj_id_segs].flatten()
             pos = features['objpos'][step][obj_id].flatten()
             vel = features['objvel'][step][obj_id].flatten() # todo: normalize by fps 1/30
             return np.concatenate((obj_seg, vel, pos))
