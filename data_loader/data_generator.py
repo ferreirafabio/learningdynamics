@@ -7,23 +7,32 @@ from utils.utils import get_number_of_total_samples
 class DataGenerator:
     def __init__(self, config, train=True):
         self.config = config
-        self.seg_only_for_initialization = self.config["seg_only_for_initialization"]
+        self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
         self.depth_data_provided = config["depth_data_provided"]
         path = self.config["tfrecords_dir"]
         train_batch_size = self.config["train_batch_size"]
         test_batch_size = self.config["test_batch_size"]
+        use_compression = self.config.use_tfrecord_compression
+        self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
 
         if train:
             filenames = gfile.Glob(os.path.join(path, "train*"))
             batch_size = train_batch_size
         else:
-            filenames = gfile.Glob(os.path.join(path, "valid*"))
+            filenames = gfile.Glob(os.path.join(path, "test*"))
             batch_size = test_batch_size
 
+        if use_compression:
+            options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+            compression_type = 'GZIP'
+        else:
+            options = None
+            compression_type = None
+
         self.batch_size = batch_size
-        self.number_total_samples = get_number_of_total_samples(filenames)
+        self.number_total_samples = get_number_of_total_samples(filenames, options=options)
         self.iterations_per_epoch = math.ceil(self.number_total_samples / self.batch_size)
-        self.dataset = tf.data.TFRecordDataset(filenames)
+        self.dataset = tf.data.TFRecordDataset(filenames, compression_type=compression_type)
         self.dataset = self.dataset.map(self._parse_function)
         self.dataset = self.dataset.shuffle(buffer_size=500)
         # Dataset.batch() works only for tensors that all have the same size
@@ -42,18 +51,22 @@ class DataGenerator:
                         'n_manipulable_objects': ()
         }
 
+        if not self.use_object_seg_data_only_for_init:
+            if self.depth_data_provided:
+                padded_shapes['object_segments'] = (None, None, 120, 160, 7)
+            else:
+                padded_shapes['object_segments'] = (None, None, 120, 160, 4)
+        else:
+            if self.depth_data_provided:
+                padded_shapes['object_segments'] = (None, 120, 160, 7)
+            else:
+                padded_shapes['object_segments'] = (None, 120, 160, 4)
+
         if self.depth_data_provided:
             padded_shapes['depth'] = (None, 120, 160, 3)
-            padded_shapes['object_segments'] = (None, 120, 160, 7)
-
-            #padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 120, 160, 3), (None, 3), (None, None, 3), (None, None, 3),
-            #                                                        (None, 120, 160, 7), (), (), (), () )
-            #padded_shapes = ((None, 120, 160, 3), (None, 120, 160), (None, 3), (None, None, 3), (None, None, 3),
-            #                                                         (None, None, 120, 160, 4), (), (), (), ())
 
         self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes)
         self.iterator = self.dataset.make_initializable_iterator()
-
 
     def _parse_function(self, example_proto):
         context_features = {
@@ -95,9 +108,17 @@ class DataGenerator:
             depth = tf.decode_raw(sequence['depth'], out_type=tf.int16)
             depth = tf.reshape(depth, tf.stack([experiment_length, 120, 160, 3]))
 
-            shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 7])
+            if not self.use_object_seg_data_only_for_init:
+                shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 7])
+            else:
+                shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 7])
         else:
-            shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 4])
+            if not self.use_object_seg_data_only_for_init:
+                shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 4])
+            else:
+                shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 4])
+
+
 
         gripperpos = tf.decode_raw(sequence['gripperpos'], out_type=tf.float64)
         gripperpos = tf.reshape(gripperpos, tf.stack([experiment_length, 3]))
@@ -112,12 +133,8 @@ class DataGenerator:
 
         object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
 
+        object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
-        if self.seg_only_for_initialization:
-           object_segments = tf.reshape(object_segments, shape_if_depth_provided)
-        else:
-            raise NotImplementedError # error: "Unimplemented: CopyElementToLargerSlice Unhandled rank: 5"
-            #object_segments = tf.reshape(object_segments, tf.stack([experiment_length, n_total_objects, 120, 160, 4]))
 
         return_dict = {
             'img': img,

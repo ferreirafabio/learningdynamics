@@ -9,8 +9,6 @@ from utils.config import process_config
 from utils.utils import get_args
 
 
-
-
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
     if not isinstance(value, list):
@@ -52,7 +50,7 @@ def check_if_skip(experiment):
     return True
 
 
-def add_experiment_data_to_lists(experiment, identifier, seg_only_for_initialization, depth_data_provided):
+def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_only_for_init, depth_data_provided):
 
     stop_object_segments = False
 
@@ -74,7 +72,7 @@ def add_experiment_data_to_lists(experiment, identifier, seg_only_for_initializa
 
         keys = ["{}{}".format(i, identifier) for i in range(segments['n_segments'])]
         temp_list = []
-        if not seg_only_for_initialization or not stop_object_segments:
+        if not use_object_seg_data_only_for_init or not stop_object_segments:
             for k in segments.keys():
                 if k in keys:
                     temp_list.append(segments[k])
@@ -104,8 +102,9 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
     :param name:
     :return:
     """
-    seg_only_for_initialization = config['seg_only_for_initialization']
-    depth_data_provided = config["depth_data_provided"]
+    use_object_seg_data_only_for_init = config.use_object_seg_data_only_for_init
+    depth_data_provided = config.depth_data_provided
+    use_compression = config.use_tfrecord_compression
 
     file_paths = get_all_experiment_file_paths_from_dir(source_path)
     train_paths, test_paths = train_test_split(file_paths, test_size=test_size)
@@ -117,6 +116,11 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
     test_ids = ["test"] * len(filenames_split_test)
     identifiers = [train_ids, test_ids]
 
+    if use_compression:
+        options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+    else:
+        options = None
+
     for i, queue in enumerate(zip(filenames, identifiers)):
         all_batches = queue[0]
         name = queue[1][i]
@@ -126,12 +130,11 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
             filename = os.path.join(dest_path, name + str(j) + '_of_' + str(len(all_batches)) + '.tfrecords')
             print('Writing', filename)
 
-            options = None #tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+
             identifier = "_object_full_seg_rgb"
             depth = None
             if depth_data_provided:
                 identifier = "_object_full_seg_rgb_depth"
-
 
             with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
                 for experiment in loaded_batch.values():
@@ -153,12 +156,12 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                     # dimension
                     if depth_data_provided:
                         objects_segments, gripperpos, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
-                                                                seg_only_for_initialization=seg_only_for_initialization,
+                                                                use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
                                                                 depth_data_provided= depth_data_provided)
                         depth = [_bytes_feature(i.tostring()) for i in depth]
                     else:
                         objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
-                                                                seg_only_for_initialization=seg_only_for_initialization,
+                                                                use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
                                                                 depth_data_provided= depth_data_provided)
 
 

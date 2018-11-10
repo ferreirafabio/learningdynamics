@@ -6,7 +6,14 @@ from itertools import product
 from graph_nets import utils_tf, utils_np
 
 
-def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
+def generate_singulation_graph(config, n_manipulable_objects):
+    gripper_as_global = config.gripper_as_global
+
+    if gripper_as_global:
+        nonman_objects = 1
+    else:
+        nonman_objects = 2
+
     graph_nx = nx.DiGraph()
 
     """ adding features to nodes """
@@ -14,20 +21,23 @@ def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
     graph_nx.add_node(0, type_name='container')
     graph_nx.add_node(0, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
-    # 120*160*4(seg+rgb)+3(pos)
-    graph_nx.add_node(1, type_name='gripper')
-    graph_nx.add_node(1, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
+    if not gripper_as_global:
+        """ if gripper should be a global attribute, include its data in global features """
+        # 120*160*4(seg+rgb)+3(pos)
+        graph_nx.add_node(1, type_name='gripper')
+        graph_nx.add_node(1, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     for i in range(n_manipulable_objects):
         ''' no multiple features -> flatten and concatenate everything '''
         # 120*160*4(seg+rgb)+3(pos)+3(vel)
         object_str = str(i)
-        i = i + 2 # number of non-manipulable objects: 2
+        i = i + nonman_objects  # number of non-manipulable objects
         graph_nx.add_node(i, type_name='manipulable_object_' + object_str)
         graph_nx.add_node(i, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
 
     """ adding edges and features, the container does not have edges due to missing objpos """
-    edge_tuples = [(a,b) for a, b in product(range(1, n_total_objects), range(1, n_total_objects)) if a != b]
+    edge_tuples = [(a,b) for a, b in product(range(1, graph_nx.number_of_nodes()), range(1, graph_nx.number_of_nodes())) if a != b]
+
     for edge in edge_tuples:
         graph_nx.add_edge(*edge, features=np.zeros(shape=(config.edge_output_size,), dtype=np.float32))
 
@@ -38,7 +48,7 @@ def generate_singulation_graph(config, n_total_objects, n_manipulable_objects):
     return graph_nx
 
 
-def graph_to_input_and_targets_single_experiment(graph, features):
+def graph_to_input_and_targets_single_experiment(config, graph, features):
     """Returns 2 graphs with input and target feature vectors for training.
 
     Args:
@@ -51,22 +61,29 @@ def graph_to_input_and_targets_single_experiment(graph, features):
     Raises:
       ValueError: unknown node type
     """
+    gripper_as_global = config.gripper_as_global
     experiment_length = features['experiment_length']
     target_graphs = [graph.copy() for _ in range(experiment_length)]
 
 
-    def create_node_feature(attr, features, step):
+    def create_node_feature(attr, features, step, use_object_seg_data_only_for_init):
         if attr['type_name'] == 'container':
             """ container only has object segmentations """
             # pad up to fixed size since sonnet can only handle fixed-sized features
             res = attr['features']
-            feature = features['object_segments'][0].flatten()
+            if use_object_seg_data_only_for_init:
+                feature = features['object_segments'][0].flatten()
+            else:
+                feature = features['object_segments'][step][0].flatten()
             res[:feature.shape[0]] = feature
             return res
 
         elif attr['type_name'] == 'gripper':
             """ gripper only has obj segs and gripper pos """
-            obj_seg = features['object_segments'][1].flatten()
+            if use_object_seg_data_only_for_init:
+                obj_seg = features['object_segments'][1].flatten()
+            else:
+                obj_seg = features['object_segments'][step][1].flatten()
             pos = features['gripperpos'][step].flatten()
             # pad up to fixed size since sonnet can only handle fixed-sized features
             res = attr['features']
@@ -76,7 +93,13 @@ def graph_to_input_and_targets_single_experiment(graph, features):
 
         elif "manipulable" in attr['type_name']:
             obj_id = int(attr['type_name'].split("_")[2])
-            obj_seg = features['object_segments'][obj_id].flatten()
+            # obj_seg will have data as following: (rgb, seg, optionally: depth)
+            if use_object_seg_data_only_for_init:
+                """ in this case, the nodes will have static visual information over time """
+                obj_seg = features['object_segments'][obj_id].flatten()
+            else:
+                """ in this case, the nodes will have dynamic visual information over time """
+                obj_seg = features['object_segments'][step][obj_id].flatten()
             pos = features['objpos'][step][obj_id].flatten()
             vel = features['objvel'][step][obj_id].flatten() # todo: normalize by fps 1/30
             return np.concatenate((obj_seg, vel, pos))
@@ -92,12 +115,18 @@ def graph_to_input_and_targets_single_experiment(graph, features):
 
     for step in range(experiment_length):
         for node_index, node_feature in graph.nodes(data=True):
-            target_graphs[step].add_node(node_index, features=create_node_feature(node_feature, features, step))
+            target_graphs[step].add_node(node_index, features=create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init))
 
-        """ add globals (image, segmentation, depth, gravity, time_step) """
-        target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
-                                                          features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
-                                                            constants.g)))
+        """ if gripper_as_global = True, graphs will have one node less
+         add globals (image, segmentation, depth, gravity, time_step) """
+        if gripper_as_global:
+            target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
+                                                              features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
+                                                                constants.g), features['gripperpos'][step].flatten()))
+        else:
+            target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
+                                                              features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
+                                                                constants.g)))
 
     """ compute distances between every manipulable object (and gripper)"""
     for step in range(experiment_length):
@@ -129,8 +158,8 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     plt.show()
 
 
-def create_graph_and_get_graph_ph(config, n_total_objects, n_manipulable_objects):
-    graph_nx = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
+def create_graph_and_get_graph_ph(config, n_manipulable_objects):
+    graph_nx = generate_singulation_graph(config, n_manipulable_objects)
     graph_tuple = get_graph_tuple(graph_nx)
     graph_dict = get_graph_dict(graph_tuple)
     return get_graph_ph(graph_dict)
@@ -142,11 +171,10 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
     graphs = []
 
     for i in range(train_batch_size):
-        n_total_objects = batch_data[i]['n_total_objects']
         n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
-        graph = generate_singulation_graph(config, n_total_objects, n_manipulable_objects)
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(graph, batch_data[i])
+        graph = generate_singulation_graph(config, n_manipulable_objects)
+        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i])
         input_graphs_all_experiments.append(input_graphs)
         target_graphs_all_experiments.append(target_graphs)
         graphs.append(graph)
@@ -154,7 +182,7 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
     return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
 
-def create_placeholders(config, batch_data, batch_size):
+def create_graphs_and_placeholders(config, batch_data, batch_size):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
     input_phs = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
     target_phs = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
