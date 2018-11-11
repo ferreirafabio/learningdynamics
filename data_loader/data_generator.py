@@ -5,7 +5,7 @@ from tensorflow.python.platform import gfile
 from utils.utils import get_number_of_total_samples
 
 class DataGenerator:
-    def __init__(self, config, train=True):
+    def __init__(self, config, sess, train=True):
         self.config = config
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
         self.depth_data_provided = config["depth_data_provided"]
@@ -35,6 +35,7 @@ class DataGenerator:
         self.dataset = tf.data.TFRecordDataset(filenames, compression_type=compression_type)
         self.dataset = self.dataset.map(self._parse_function)
         self.dataset = self.dataset.shuffle(buffer_size=100)
+
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
         # n_manipulable_objects
@@ -67,6 +68,8 @@ class DataGenerator:
 
         self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes)
         self.iterator = self.dataset.make_initializable_iterator()
+        sess.run(self.iterator.initializer)
+
 
     def _parse_function(self, example_proto):
         context_features = {
@@ -148,4 +151,7 @@ class DataGenerator:
             return_dict['depth'] = depth
             return return_dict
         return return_dict
+
+    def get_next_batch(self):
+        return self.iterator.get_next()
 
