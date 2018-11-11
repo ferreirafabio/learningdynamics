@@ -22,8 +22,6 @@ from graph_nets import modules
 from graph_nets import utils_tf
 import sonnet as snt
 import tensorflow as tf
-from models.loss_functions import create_loss_ops
-
 
 
 
@@ -79,9 +77,7 @@ class EncodeProcessDecode(snt.AbstractModule):
     """
     n_layers = None
     n_neurons = None
-    def __init__(self,
-                   config,
-                   name="EncodeProcessDecode"):
+    def __init__(self, config, name="EncodeProcessDecode"):
         super(EncodeProcessDecode, self).__init__(name=name)
         EncodeProcessDecode.n_layers = config.n_layers
         EncodeProcessDecode.n_neurons = config.n_neurons
@@ -90,19 +86,18 @@ class EncodeProcessDecode(snt.AbstractModule):
         self.init_global_step()
         # init the epoch counter
         self.init_cur_epoch()
-        self.init_saver()
 
         self._encoder = MLPGraphIndependent()
         self._core = MLPGraphNetwork()
         self._decoder = MLPGraphIndependent()
 
+        self.init_saver()
+
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
         self.global_output_size = config.global_output_size
 
-
-        with tf.name_scope('loss'):
-            self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
+        self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
         # Transforms the outputs into the appropriate shapes.
         if self.edge_output_size is None:
@@ -119,6 +114,7 @@ class EncodeProcessDecode(snt.AbstractModule):
           global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
         with self._enter_variable_scope():
           self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
+
 
     def _build(self, input_op, num_processing_steps):
         latent = self._encoder(input_op)
@@ -145,14 +141,18 @@ class EncodeProcessDecode(snt.AbstractModule):
         """ if object seg data is only used for init, the ground truth features in the rest of the sequence are static except position 
         --> in this case compute loss only over the position since image prediction is infeasible """
         if self.config.use_object_seg_data_only_for_init:
-            loss_ops = [# compute loss of the nodes only over velocity and position and not over ground truth static images
-                tf.losses.mean_squared_error(output_op.nodes, node_splits[i][:, -6:]) + tf.losses.mean_squared_error(output_op.edges,
-                                                                                                                     edge_splits[i]) for
-                i, output_op in enumerate(output_ops)]
+            loss_ops = [
+                # compute loss of the nodes only over velocity and position and not over ground truth static images
+                tf.losses.mean_squared_error(output_op.nodes, node_splits[i][:, -6:]) +
+                tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+                    for i, output_op in enumerate(output_ops)
+            ]
         else:
-            loss_ops = [tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) +
-                        tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
-                            for i, output_op in enumerate(output_ops)]
+            loss_ops = [
+                tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) +
+                tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+                    for i, output_op in enumerate(output_ops)
+            ]
 
         # todo: might use weighted MSE loss here
         # todo: perhaps include global attributes into loss function

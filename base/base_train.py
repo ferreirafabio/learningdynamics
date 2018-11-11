@@ -8,8 +8,9 @@ class BaseTrain:
         self.config = config
         self.sess = sess
         self.data = data
-        self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-        self.sess.run(self.init)
+        #self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        #self.sess.run(self.init)
+
 
     def train(self):
         for cur_epoch in range(self.model.cur_epoch_tensor.eval(self.sess), self.config.n_epochs + 1, 1):

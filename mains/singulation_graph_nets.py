@@ -25,11 +25,16 @@ def main():
 
     # create tensorflow session
     sess = tf.Session()
+
+
     # create your data generator
-    train_data = DataGenerator(config, train=True)
-    valid_data = DataGenerator(config, train=False)
+    train_data = DataGenerator(config, sess, train=True)
+    #valid_data = DataGenerator(config, sesstrain=False)
 
     model = EncodeProcessDecode(config)
+
+    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    sess.run(init)
 
     # create tensorboard logger
     logger = Logger(sess, config)

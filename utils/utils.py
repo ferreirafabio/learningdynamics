@@ -7,6 +7,7 @@ import moviepy.editor as mpy
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+from graph_nets import utils_tf
 
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
@@ -285,6 +286,9 @@ def get_number_of_total_samples(tf_records_filenames, options=None):
             c += 1
     return c
 
+def make_all_runnable_in_session(*args):
+  """Lets an iterable of TF graphs be output from a session as NP graphs."""
+  return [utils_tf.make_runnable_in_session(a) for a in args]
 
 if __name__ == '__main__':
     source_path = "../data/source"
