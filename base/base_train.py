@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import sonnet as snt
 
 class BaseTrain:
     def __init__(self, sess, model, data, config, logger):
@@ -8,8 +8,9 @@ class BaseTrain:
         self.config = config
         self.sess = sess
         self.data = data
-        #self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-        #self.sess.run(self.init)
+        self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        self.sess.run(self.init)
+
 
 
     def train(self):
