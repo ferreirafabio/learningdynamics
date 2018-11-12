@@ -82,6 +82,7 @@ class EncodeProcessDecode(snt.AbstractModule):
         EncodeProcessDecode.n_layers = config.n_layers
         EncodeProcessDecode.n_neurons = config.n_neurons
         self.config = config
+
         # init the global step
         self.init_global_step()
         # init the epoch counter
@@ -90,8 +91,6 @@ class EncodeProcessDecode(snt.AbstractModule):
         self._encoder = MLPGraphIndependent()
         self._core = MLPGraphNetwork()
         self._decoder = MLPGraphIndependent()
-
-        self.init_saver()
 
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
@@ -115,49 +114,103 @@ class EncodeProcessDecode(snt.AbstractModule):
         with self._enter_variable_scope():
           self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
 
+        #self.input_ph = tf.placeholder(tf.float32, [])
+        self.exp_length = tf.placeholder(tf.int32, shape=(), name='exp_length')
+        self.target_ph_nodes = tf.placeholder(tf.float32, [None, self.node_output_size])
+        self.target_ph_edges = tf.placeholder(tf.float32, [None, self.edge_output_size])
+
+        self.output_op_nodes = tf.placeholder(tf.float32, [None, self.node_output_size])
+        self.output_op_edges = tf.placeholder(tf.float32, [None, self.edge_output_size])
+        self.output_ops_train = tf.placeholder(tf.float32, [None, self.edge_output_size])
+
+
+        self.loss_op_tr = self.create_loss_ops()
+        self.step_op = self.optimizer.minimize(self.loss_op_tr, global_step=self.global_step_tensor)
+
+
+        #self.init_saver()
+
+
 
     def _build(self, input_op, num_processing_steps):
         latent = self._encoder(input_op)
         latent0 = latent
         output_ops = []
         for _ in range(num_processing_steps):
-          core_input = utils_tf.concat([latent0, latent], axis=1)
-          latent = self._core(core_input)
-          decoded_op = self._decoder(latent)
-          output_ops.append(self._output_transform(decoded_op))
+            core_input = utils_tf.concat([latent0, latent], axis=1)
+            latent = self._core(core_input)
+            decoded_op = self._decoder(latent)
+            output_ops.append(self._output_transform(decoded_op))
 
-        return output_ops
+        self.output_ops_train = output_ops
 
-    def create_loss_ops(self, target_op, output_ops):
+
+    #def create_loss_ops(self, target_op, output_ops):
+    def create_loss_ops(self):
         """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
         is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
         --> same applies for edges """
-        mult = tf.constant([len(output_ops)])
-        n_nodes = [tf.shape(output_ops[0].nodes)[0]]
-        n_edges = [tf.shape(output_ops[0].edges)[0]]
-        node_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-        edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
-        """ if object seg data is only used for init, the ground truth features in the rest of the sequence are static except position 
-        --> in this case compute loss only over the position since image prediction is infeasible """
-        if self.config.use_object_seg_data_only_for_init:
-            loss_ops = [
-                # compute loss of the nodes only over velocity and position and not over ground truth static images
-                tf.losses.mean_squared_error(output_op.nodes, node_splits[i][:, -6:]) +
-                tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
-                    for i, output_op in enumerate(output_ops)
-            ]
-        else:
-            loss_ops = [
-                tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) +
-                tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
-                    for i, output_op in enumerate(output_ops)
-            ]
+
+        #mult = tf.Variable(tf.size(output_ops))
+        #mult = tf.Variable(self.exp_length)
+
+        #mult = [tf.shape(self.output_op_nodes)[1]]
+        #n_nodes = [tf.shape(self.output_op_nodes)[0]]
+        #n_edges = [tf.shape(output_ops[0].edges)[0]]
+        #n_nodes = tf.constant([3])
+        #n_nodes = tf.shape(self.output_op_nodes)[0]
+        #n_edges = tf.constant([6])
+        #n_nodes = [tf.shape(output_ops[0].nodes)[0]]
+        #n_edges = [tf.shape(output_ops[0].edges)[0]]
+
+        mult = tf.Variable(tf.size(self.output_ops_train))
+        n_nodes = [tf.shape(self.output_ops[0].nodes)[0]]
+        node_splits = tf.split(self.target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+
+        #node_splits = tf.split(self.target_ph_nodes, num_or_size_splits=tf.shape(self.output_ops_train[0].nodes), axis=0)
+        #target_unstacked = tf.split(self.output_ops_train.nodes, num_or_size_splits=tf.shape(n_nodes, mult), axis=0)
+
+
+        index = tf.constant(0)
+        l = tf.Variable([])
+
+        def condition(index, summation):
+            return tf.less(index, tf.subtract(tf.shape(node_splits)[0], 1))
+
+        def body(index, l):
+            target_i = tf.gather(node_splits, index)
+            #output_i = tf.gather(output_ops, index)
+            output_i = self.output_ops_train[index].nodes
+            l = tf.concat([l, [tf.losses.mean_squared_error(target_i, output_i)]], 0)
+            return tf.add(index, 1), l
+
+        return tf.reduce_mean(tf.while_loop(condition, body, loop_vars=[index, l],
+                                            shape_invariants=[index.get_shape(), tf.TensorShape([None])])[1])
+
+
+
+
+
+
+        # if self.config.use_object_seg_data_only_for_init:
+        #     loss_ops = [
+        #         # compute loss of the nodes only over velocity and position and not over ground truth static images
+        #         tf.losses.mean_squared_error(output_op.nodes, node_splits[i][:, -6:]) +
+        #         tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+        #             for i, output_op in enumerate(output_ops)
+        #     ]
+        # else:
+        #     loss_ops = [
+        #         tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) +
+        #         tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+        #             for i, output_op in enumerate(output_ops)
+        #     ]
 
         # todo: might use weighted MSE loss here
         # todo: perhaps include global attributes into loss function
 
-        return loss_ops
+        #return tf.reduce_mean(loss_op)
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
