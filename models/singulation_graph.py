@@ -187,10 +187,17 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
 
 def create_graphs_and_placeholders(config, batch_data, batch_size):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
-    input_phs = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
-    target_phs = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
+    input_ph = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
+    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
 
-    return input_phs, target_phs, input_graphs, target_graphs
+    return input_ph, target_ph, input_graphs, target_graphs
+
+def create_placeholders(config, batch_data):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, 1)
+
+    input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
+    target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
+    return input_ph, target_ph
 
 
 def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):

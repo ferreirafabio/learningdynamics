@@ -99,6 +99,16 @@ class EncodeProcessDecode(snt.AbstractModule):
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
+        self.loss_op_train = None
+        self.loss_op_test = None
+
+        self.loss_ops_train = None
+        self.loss_ops_test = None
+
+        self.step_op = None
+
+        self.exp_length = tf.placeholder(tf.int32, shape=(), name='exp_length')
+
         # Transforms the outputs into the appropriate shapes.
         if self.edge_output_size is None:
           edge_fn = None
@@ -121,20 +131,44 @@ class EncodeProcessDecode(snt.AbstractModule):
         latent0 = latent
         output_ops = []
         for _ in range(num_processing_steps):
-          core_input = utils_tf.concat([latent0, latent], axis=1)
-          latent = self._core(core_input)
-          decoded_op = self._decoder(latent)
-          output_ops.append(self._output_transform(decoded_op))
+            core_input = utils_tf.concat([latent0, latent], axis=1)
+            latent = self._core(core_input)
+            decoded_op = self._decoder(latent)
+            output_ops.append(self._output_transform(decoded_op))
 
-        return output_ops
+        self.output_ops_train = output_ops
+
+
+    def _build2(self, input_op, num_processing_steps):
+        latent = self._encoder(input_op)
+        latent0 = latent
+        index = tf.constant(0)
+        output_ops = tf.Variable([])
+
+        def condition(index, output_ops, latent):
+            return tf.less(index, num_processing_steps)
+
+        def body(index, output_ops, latent):
+            core_input = utils_tf.concat([latent0, latent], axis=1) # todo: change to 1
+            latent = self._core(core_input)
+            decoded_op = self._decoder(latent)
+            d = tf.cast(self._output_transform(decoded_op), tf.float32)
+            output_ops = utils_tf.concat([output_ops, d], 0)
+
+            return tf.add(index, 1), output_ops, latent
+
+        return tf.while_loop(condition, body, loop_vars=[index, output_ops, latent])
+
 
     def create_loss_ops(self, target_op, output_ops):
         """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
         is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
         --> same applies for edges """
+        print(len(output_ops))
         mult = tf.constant([len(output_ops)])
         n_nodes = [tf.shape(output_ops[0].nodes)[0]]
         n_edges = [tf.shape(output_ops[0].edges)[0]]
+
         node_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
         edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
@@ -151,13 +185,14 @@ class EncodeProcessDecode(snt.AbstractModule):
             loss_ops = [
                 tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) +
                 tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
-                    for i, output_op in enumerate(output_ops)
+                for i, output_op in enumerate(output_ops)
             ]
-
+            print(len(loss_ops))
         # todo: might use weighted MSE loss here
         # todo: perhaps include global attributes into loss function
 
-        return loss_ops
+        return tf.reduce_mean(loss_ops)
+
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
