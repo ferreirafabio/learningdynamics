@@ -1,7 +1,11 @@
 import tensorflow as tf
+<<<<<<< HEAD
 from models.singulation_graph import create_placeholders
 from utils.utils import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
+=======
+import sonnet as snt
+>>>>>>> 2bae3dd2db0ce5ae7ccf838d389bf13be7d29f2c
 
 class BaseTrain:
     def __init__(self, sess, model, data, config, logger):
@@ -14,7 +18,7 @@ class BaseTrain:
         self.initialize_train_model()
 
         # todo test model
-        self.initialize_train_model()
+        self.initialize_test_model()
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         self.sess.run(self.init)
