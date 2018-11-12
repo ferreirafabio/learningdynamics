@@ -1,11 +1,8 @@
 import tensorflow as tf
-<<<<<<< HEAD
 from models.singulation_graph import create_placeholders
 from utils.utils import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
-=======
-import sonnet as snt
->>>>>>> 2bae3dd2db0ce5ae7ccf838d389bf13be7d29f2c
+
 
 class BaseTrain:
     def __init__(self, sess, model, data, config, logger):
