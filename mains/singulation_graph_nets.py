@@ -39,7 +39,7 @@ def main():
     trainer = SingulationTrainer(sess, model, train_data, valid_data, config, logger)
 
     # load model if exists
-    #model.load(sess)
+    model.load(sess)
 
     trainer.train()
 
