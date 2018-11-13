@@ -8,10 +8,10 @@ class DataGenerator:
     def __init__(self, config, sess, train=True):
         self.config = config
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
-        self.depth_data_provided = config["depth_data_provided"]
-        path = self.config["tfrecords_dir"]
-        train_batch_size = self.config["train_batch_size"]
-        test_batch_size = self.config["test_batch_size"]
+        self.depth_data_provided = config.depth_data_provided
+        path = self.config.tfrecords_dir
+        train_batch_size = self.config.train_batch_size
+        test_batch_size = self.config.test_batch_size
         use_compression = self.config.use_tfrecord_compression
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
 
@@ -34,7 +34,11 @@ class DataGenerator:
         self.iterations_per_epoch = math.ceil(self.number_total_samples / self.batch_size)
         self.dataset = tf.data.TFRecordDataset(filenames, compression_type=compression_type)
         self.dataset = self.dataset.map(self._parse_function)
-        self.dataset = self.dataset.shuffle(buffer_size=50)
+        self.dataset = self.dataset.repeat(self.config.n_epochs)
+        self.dataset = self.dataset.shuffle(30)
+
+
+
 
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
@@ -66,7 +70,7 @@ class DataGenerator:
         if self.depth_data_provided:
             padded_shapes['depth'] = (None, 120, 160, 3)
 
-        self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes)
+        self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes, drop_remainder=True)
         self.iterator = self.dataset.make_initializable_iterator()
         sess.run(self.iterator.initializer)
 

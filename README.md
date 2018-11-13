@@ -61,7 +61,7 @@ Folder structure
 - #### **Your trainer**
      Here's what you should implement in your trainer.
     1. Create your trainer class and inherit the base_trainer class.
-    2. override these two functions "train_step", "train_epoch" where you implement the training process of each step and each epoch.
+    2. override these two functions "do_step", "train_epoch" where you implement the training process of each step and each epoch.
 ### Data Loader
 This class is responsible for all data handling and processing and provide an easy interface that can be used by the trainer.
 ### Logger

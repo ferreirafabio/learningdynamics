@@ -28,7 +28,7 @@ def main():
 
     # create your data generator
     train_data = DataGenerator(config, sess, train=True)
-    #valid_data = DataGenerator(config, sesstrain=False)
+    valid_data = DataGenerator(config, sess, train=False)
 
     model = EncodeProcessDecode(config)
 
@@ -36,7 +36,7 @@ def main():
     logger = Logger(sess, config)
 
     # create trainer and pass all the previous components to it
-    trainer = SingulationTrainer(sess, model, train_data, config, logger)
+    trainer = SingulationTrainer(sess, model, train_data, valid_data, config, logger)
 
     # load model if exists
     #model.load(sess)
