@@ -290,6 +290,25 @@ def make_all_runnable_in_session(*args):
   """Lets an iterable of TF graphs be output from a session as NP graphs."""
   return [utils_tf.make_runnable_in_session(a) for a in args]
 
+
+def get_all_images_from_gn_output(outputs, depth=True, manipulable_object=True):
+    images_rgb = []
+    images_seg = []
+    images_depth = []
+    if depth:
+        img_shape = (120, 160, 7)
+    else:
+        img_shape = (120, 160, 4)
+    for gt in outputs:
+        for object_i in gt[0]:
+            image_all = object_i[:-6].reshape(img_shape)
+            images_rgb.append(image_all[:,:,:3])
+            images_seg.append(image_all[:, :, 3])
+            if depth:
+                images_depth.append(image_all[:,:,-3:])
+
+    return images_rgb, images_seg, images_depth
+
 if __name__ == '__main__':
     source_path = "../data/source"
     exp_number = 5

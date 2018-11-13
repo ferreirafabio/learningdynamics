@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, make_all_runnable_in_session
+from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 
 
@@ -31,14 +31,13 @@ class SingulationTrainer(BaseTrain):
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.train_batch_size)
-
         for j in range(self.config.train_batch_size):
-            loss = self.do_step(input_graphs_all_exp[j], target_graphs_all_exp[j], features[j])
+            loss, _ = self.do_step(input_graphs_all_exp[j], target_graphs_all_exp[j], features[j])
             if loss is not None:
                 losses.append(loss)
 
-        batch_loss = np.mean(losses)
         cur_it = self.model.global_step_tensor.eval(self.sess)
+        batch_loss = np.mean(losses)
         print('step: ', cur_it, ' loss(batch): ', batch_loss)
         summaries_dict = {'loss': batch_loss}
         self.logger.summarize(cur_it, summaries_dict=summaries_dict)
@@ -49,7 +48,7 @@ class SingulationTrainer(BaseTrain):
         exp_length = feature['experiment_length']
 
         if exp_length != 30:  # todo: remove
-            return
+            return None, None
 
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
@@ -63,7 +62,7 @@ class SingulationTrainer(BaseTrain):
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test}, feed_dict=feed_dict)
 
-        return data['loss']
+        return data['loss'], data['outputs']
 
     def test_batch(self):
         losses = []
@@ -73,16 +72,27 @@ class SingulationTrainer(BaseTrain):
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.test_batch_size)
+        summaries_dict_rgb = {}
+        summaries_dict_seg = {}
+        summaries_dict_depth = {}
 
+        cur_it = self.model.global_step_tensor.eval(self.sess)
         for j in range(self.config.test_batch_size):
-            loss = self.do_step(input_graphs_all_exp[j], target_graphs_all_exp[j], features[j], train=False)
+            loss, outputs = self.do_step(input_graphs_all_exp[j], target_graphs_all_exp[j], features[j], train=False)
             if loss is not None:
                 losses.append(loss)
+            if outputs is not None:
+                images_rgb, images_seg, images_depth = get_all_images_from_gn_output(outputs)
+                summaries_dict_rgb = {'output_image_rgb_{}'.format(i): rgb for i, rgb in enumerate(images_rgb)}
+                summaries_dict_seg = {'output_image_seg_{}'.format(i): rgb for i, rgb in enumerate(images_seg)}
+                summaries_dict_depth = {'output_image_depth_{}'.format(i): rgb for i, rgb in enumerate(images_depth)}
+
 
         batch_loss = np.mean(losses)
-        cur_it = self.model.global_step_tensor.eval(self.sess)
         print('step: ', cur_it, ' loss(batch): ', batch_loss)
         summaries_dict = {'loss': batch_loss}
+        summaries_dict = {**summaries_dict_rgb, **summaries_dict_seg, **summaries_dict_depth, **summaries_dict}
         self.logger.summarize(cur_it, summaries_dict=summaries_dict)
-
         return batch_loss, cur_it
+
+
