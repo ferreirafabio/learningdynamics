@@ -5,12 +5,13 @@ from utils.utils import make_all_runnable_in_session
 
 
 class BaseTrain:
-    def __init__(self, sess, model, data, config, logger):
+    def __init__(self, sess, model, train_data, test_data, config, logger):
         self.model = model
         self.logger = logger
         self.config = config
         self.sess = sess
-        self.data = data
+        self.train_data = train_data
+        self.test_data = test_data
 
         self.initialize_train_model()
 
@@ -23,8 +24,11 @@ class BaseTrain:
 
     def train(self):
         for cur_epoch in range(self.model.cur_epoch_tensor.eval(self.sess), self.config.n_epochs + 1, 1):
+            #try:
             self.train_epoch()
             self.sess.run(self.model.increment_cur_epoch_tensor)
+            #except:
+            #    continue
 
     def train_epoch(self):
         """
@@ -34,7 +38,7 @@ class BaseTrain:
         """
         raise NotImplementedError
 
-    def train_step(self):
+    def do_step(self, input_graphs_all_exp, target_graphs_all_exp, features):
         """
         implement the logic of the train step
         - run the tensorflow session
@@ -42,9 +46,8 @@ class BaseTrain:
         """
         raise NotImplementedError
 
-
     def initialize_train_model(self):
-        next_element = self.data.get_next_batch()
+        next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
@@ -54,17 +57,16 @@ class BaseTrain:
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
 
-        self.model.output_ops_train = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_train = self.model(self.model.input_ph, 30) # todo
         loss_ops_train = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
 
-
     def initialize_test_model(self):
-        assert self.model.input_ph is not None
-        assert self.model.target_ph is not None
+        assert self.model.input_ph is not None, "initialize model for training first"
+        assert self.model.target_ph is not None, "initialize model for training first"
 
-        self.model.output_ops_test = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_test = self.model(self.model.input_ph, 30) # todo
         loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.global_step_tensor)

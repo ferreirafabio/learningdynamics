@@ -136,7 +136,7 @@ class EncodeProcessDecode(snt.AbstractModule):
             decoded_op = self._decoder(latent)
             output_ops.append(self._output_transform(decoded_op))
 
-        self.output_ops_train = output_ops
+        return output_ops
 
 
     def _build2(self, input_op, num_processing_steps):
@@ -164,7 +164,7 @@ class EncodeProcessDecode(snt.AbstractModule):
         """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
         is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
         --> same applies for edges """
-        print(len(output_ops))
+        #print(len(output_ops))
         mult = tf.constant([len(output_ops)])
         n_nodes = [tf.shape(output_ops[0].nodes)[0]]
         n_edges = [tf.shape(output_ops[0].edges)[0]]
@@ -187,7 +187,7 @@ class EncodeProcessDecode(snt.AbstractModule):
                 tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
                 for i, output_op in enumerate(output_ops)
             ]
-            print(len(loss_ops))
+        #    print(len(loss_ops))
         # todo: might use weighted MSE loss here
         # todo: perhaps include global attributes into loss function
 

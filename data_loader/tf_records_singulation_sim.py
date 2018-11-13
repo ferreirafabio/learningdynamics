@@ -111,10 +111,10 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
     filenames_split_train = list(chunks(train_paths, n_sequences_per_batch))
     filenames_split_test = list(chunks(test_paths, n_sequences_per_batch))
 
-    filenames = [filenames_split_train, filenames_split_test]
+    filenames = filenames_split_train + filenames_split_test
     train_ids = ["train"] * len(filenames_split_train)
     test_ids = ["test"] * len(filenames_split_test)
-    identifiers = [train_ids, test_ids]
+    identifiers = np.concatenate([train_ids, test_ids])
 
     if use_compression:
         options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
@@ -123,84 +123,84 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 
     for i, queue in enumerate(zip(filenames, identifiers)):
         all_batches = queue[0]
-        name = queue[1][i]
-        for j, batch in enumerate(all_batches, 1):
-            loaded_batch = load_all_experiments_from_dir(batch)
+        name = queue[1]
 
-            filename = os.path.join(dest_path, name + str(j) + '_of_' + str(len(all_batches)) + '.tfrecords')
-            print('Writing', filename)
+        loaded_batch = load_all_experiments_from_dir(all_batches)
+
+        filename = os.path.join(dest_path, name + str(i+1) + '_of_' + str(len(filenames)) + '.tfrecords')
+        print('Writing', filename)
 
 
-            identifier = "_object_full_seg_rgb"
-            depth = None
-            if depth_data_provided:
-                identifier = "_object_full_seg_rgb_depth"
+        identifier = "_object_full_seg_rgb"
+        depth = None
+        if depth_data_provided:
+            identifier = "_object_full_seg_rgb_depth"
 
-            with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
-                for experiment in loaded_batch.values():
+        with tf.python_io.TFRecordWriter(path=filename, options=options) as writer:
+            for experiment in loaded_batch.values():
 
-                    if not experiment:
+                if not experiment:
+                    continue
+
+                if discard_varying_number_object_experiments:
+                    skip = check_if_skip(experiment)
+                    if skip:
                         continue
 
-                    if discard_varying_number_object_experiments:
-                        skip = check_if_skip(experiment)
-                        if skip:
-                            continue
+                number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
+                n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
+                experiment_id = int(experiment[0]['experiment_id'])
 
-                    number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
-                    n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
-                    experiment_id = int(experiment[0]['experiment_id'])
-
-                    # all data objects are transformed s.t. for each data a list consisting of 'experiment_length' ndarrays returned,
-                    # if data is multi-dimensional (e.g. segments for each object per times-step), ndarrays are stacked along first
-                    # dimension
-                    if depth_data_provided:
-                        objects_segments, gripperpos, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
-                                                                use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
-                                                                depth_data_provided= depth_data_provided)
-                        depth = [_bytes_feature(i.tostring()) for i in depth]
-                    else:
-                        objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
-                                                                use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
-                                                                depth_data_provided= depth_data_provided)
+                # all data objects are transformed s.t. for each data a list consisting of 'experiment_length' ndarrays returned,
+                # if data is multi-dimensional (e.g. segments for each object per times-step), ndarrays are stacked along first
+                # dimension
+                if depth_data_provided:
+                    objects_segments, gripperpos, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
+                                                            use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
+                                                            depth_data_provided= depth_data_provided)
+                    depth = [_bytes_feature(i.tostring()) for i in depth]
+                else:
+                    objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
+                                                            use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
+                                                            depth_data_provided= depth_data_provided)
 
 
 
-                    imgs =[_bytes_feature(i.tostring()) for i in img]
-                    segs = [_bytes_feature(i.tostring()) for i in seg]
-                    gripperpositions = [_bytes_feature(i.tostring()) for i in gripperpos]
+                imgs =[_bytes_feature(i.tostring()) for i in img]
+                segs = [_bytes_feature(i.tostring()) for i in seg]
+                gripperpositions = [_bytes_feature(i.tostring()) for i in gripperpos]
 
-                    # concatenate all object positions/velocities into an ndarray per experiment step
-                    objpos = [_bytes_feature(i.tostring()) for i in objpos]
+                # concatenate all object positions/velocities into an ndarray per experiment step
+                objpos = [_bytes_feature(i.tostring()) for i in objpos]
 
-                    objvel = [_bytes_feature(i.tostring()) for i in objvel]
+                objvel = [_bytes_feature(i.tostring()) for i in objvel]
 
-                    objects_segments = [_bytes_feature(i.tostring()) for i in objects_segments]
+                objects_segments = [_bytes_feature(i.tostring()) for i in objects_segments]
 
-                    feature_list = {
-                        'img': tf.train.FeatureList(feature=imgs),
-                        'seg' : tf.train.FeatureList(feature=segs),
-                        'gripperpos': tf.train.FeatureList(feature=gripperpositions),
-                        'objpos': tf.train.FeatureList(feature=objpos),
-                        'objvel': tf.train.FeatureList(feature=objvel),
-                        'object_segments': tf.train.FeatureList(feature=objects_segments)
-                    }
+                feature_list = {
+                    'img': tf.train.FeatureList(feature=imgs),
+                    'seg' : tf.train.FeatureList(feature=segs),
+                    'gripperpos': tf.train.FeatureList(feature=gripperpositions),
+                    'objpos': tf.train.FeatureList(feature=objpos),
+                    'objvel': tf.train.FeatureList(feature=objvel),
+                    'object_segments': tf.train.FeatureList(feature=objects_segments)
+                }
 
-                    if depth_data_provided:
-                        feature_list['depth'] = tf.train.FeatureList(feature=depth)
+                if depth_data_provided:
+                    feature_list['depth'] = tf.train.FeatureList(feature=depth)
 
-                    feature_lists = tf.train.FeatureLists(feature_list=feature_list)
+                feature_lists = tf.train.FeatureLists(feature_list=feature_list)
 
-                    example = tf.train.SequenceExample(feature_lists=feature_lists)
-                    example.context.feature['experiment_length'].int64_list.value.append(len(experiment.keys()))
-                    example.context.feature['experiment_id'].int64_list.value.append(experiment_id)
-                    example.context.feature['n_total_objects'].int64_list.value.append(number_of_total_objects)
-                    example.context.feature['n_manipulable_objects'].int64_list.value.append(n_manipulable_objects)
+                example = tf.train.SequenceExample(feature_lists=feature_lists)
+                example.context.feature['experiment_length'].int64_list.value.append(len(experiment.keys()))
+                example.context.feature['experiment_id'].int64_list.value.append(experiment_id)
+                example.context.feature['n_total_objects'].int64_list.value.append(number_of_total_objects)
+                example.context.feature['n_manipulable_objects'].int64_list.value.append(n_manipulable_objects)
 
-                    writer.write(example.SerializeToString())
+                writer.write(example.SerializeToString())
 
 
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=10)
+    create_tfrecords_from_dir(config, "../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=30)
