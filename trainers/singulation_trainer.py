@@ -14,7 +14,6 @@ class SingulationTrainer(BaseTrain):
         while True:
            try:
                 _, cur_it = self.train_batch(prefix)
-
                 if cur_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
                 if cur_it % self.config.test_interval == 1:
@@ -27,8 +26,8 @@ class SingulationTrainer(BaseTrain):
     def do_step(self, input_graph, target_graphs, feature, train=True):
         exp_length = feature['experiment_length']
 
-        if exp_length != 1:
-            return None, None
+        #if exp_length != 2:
+        #    return None, None
 
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
@@ -36,12 +35,10 @@ class SingulationTrainer(BaseTrain):
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                 "outputs": self.model.output_ops_train}, feed_dict=feed_dict)
 
-            # print("exp length", exp_length)
-            # print("loss", data['loss'])
         else:
-
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test}, feed_dict=feed_dict)
+
         return data['loss'], data['outputs']
 
     def train_batch(self, prefix):
@@ -81,7 +78,6 @@ class SingulationTrainer(BaseTrain):
         target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
         predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
 
-
         cur_it = self.model.global_step_tensor.eval(self.sess)
         for i in range(self.config.test_batch_size):
             loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
@@ -93,37 +89,37 @@ class SingulationTrainer(BaseTrain):
                 output_for_summary = (outputs, i)
 
         if output_for_summary is not None:
-            ''' returns 3 lists, each having n lists of data lists while n = number of objects '''
+            ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
+
             images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], self.config.depth_data_provided)
             features_index = output_for_summary[1]
 
-            ''' get the predicted images '''
-            predicted_summaries_dict_rgb = {prefix + '_predicted_img_rgb_exp_id_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), i): np.stack(t, axis=0) for t in images_rgb for i, obj in enumerate(t)}
-
             predicted_summaries_dict_seg = {prefix + '_predicted_img_seg_exp_id_{}_object_{}'.format(
-                    int(features[features_index]['experiment_id']), i): np.stack(t, axis=0) for t in images_seg for i, obj in enumerate(t)}
+                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_seg)}
 
             predicted_summaries_dict_depth = {prefix + '_predicted_img_depth_exp_id_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), i): np.stack(t, axis=0) for t in images_depth for i, obj in enumerate(t)}
+                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_depth)}
+
+            predicted_summaries_dict_rgb = {prefix + '_predicted_img_rgb_exp_id_{}_object_{}'.format(
+                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_rgb)}
 
 
             ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
-
             n_manipulable_objects = features[features_index]['n_manipulable_objects']
-            # shape [exp_length, n_objects, w, h, c] --> shape [n_objects, exp_length, w, h, c] --> split in n_objects lists
+            # shape [exp_length, n_objects, w, h, c] --> shape [n_objects, exp_length, w, h, c] --> split in n_objects lists -->
+            # [n_split, n_objects, exp_length, ...]
             lists_obj_segs = np.split(np.swapaxes(features[features_index]['object_segments'], 0, 1)[-n_manipulable_objects:], n_manipulable_objects)
-            lists_obj_segs = np.squeeze(lists_obj_segs)
 
             target_summaries_dict_rgb = {prefix + '_target_img_rgb_exp_id_{}_object_{}'.format(
-                features[features_index]['experiment_id'], i): np.squeeze(lst[...,:3], axis=0) for i, lst in enumerate(lists_obj_segs)}
+                features[features_index]['experiment_id'], i): np.squeeze(lst[..., :3], axis=0) for i, lst in enumerate(lists_obj_segs)}
 
             target_summaries_dict_seg = {prefix + '_target_img_seg_exp_id_{}_object_{}'.format(
-                features[features_index]['experiment_id'], i): np.squeeze(lst[..., 4], axis=0) for i, lst in enumerate(lists_obj_segs)}
+                features[features_index]['experiment_id'], i): np.squeeze(np.expand_dims(lst[...,3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
 
             target_summaries_dict_depth = {prefix + '_target_img_depth_exp_id_{}_object_{}'.format(
                 features[features_index]['experiment_id'], i): np.squeeze(lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
 
+            # todo: show global image
 
         if losses:
             batch_loss = np.mean(losses)
@@ -135,7 +131,7 @@ class SingulationTrainer(BaseTrain):
                 **summaries_dict,
                 **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
             }
-            print(summaries_dict)
+
             self.logger.summarize(cur_it, summaries_dict=summaries_dict, summarizer="test")
 
         else:
