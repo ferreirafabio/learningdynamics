@@ -18,6 +18,6 @@
   "n_layers": 8,
   "n_neurons": 128,
   "max_to_keep": 50,
-  "test_interval": 10,
-  "model_save_interval": 1
+  "test_interval": 2,
+  "model_save_step_interval": 100
 }
