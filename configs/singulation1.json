@@ -20,6 +20,6 @@
   "n_layers_edges": 4,
   "n_neurons_edges": 32,
   "max_to_keep": 50,
-  "test_interval": 5,
-  "model_save_step_interval": 10
+  "test_interval": 50,
+  "model_save_step_interval": 100
 }
