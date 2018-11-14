@@ -105,8 +105,6 @@ class EncodeProcessDecode(snt.AbstractModule):
         self.loss_ops_train = None
         self.loss_ops_test = None
 
-        self.step_op = None
-
         self.exp_length = tf.placeholder(tf.int32, shape=(), name='exp_length')
 
         # Transforms the outputs into the appropriate shapes.
