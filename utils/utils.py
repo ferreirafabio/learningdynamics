@@ -301,21 +301,50 @@ def get_all_images_from_gn_output(outputs, depth=True):
     else:
         img_shape = (120, 160, 4)
 
-    for data_t in outputs:
+    for n in range(n_objects):
         rgb = []
         seg = []
-        depth = []
-        for n in range(n_objects):
+        depth_lst = []
+        for data_t in outputs:
             image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without pos+vel
             rgb.append(image[:, :, :3])
-            seg.append(image[:, :, 3])
+            seg.append(np.expand_dims(image[:, :, 3], axis=2))
             if depth:
-                depth.append(image[:, :, -3:])
-        images_rgb.append(rgb)
-        images_seg.append(seg)
+                depth_lst.append(image[:, :, -3:])
+        images_rgb.append(np.stack(rgb))
+        images_seg.append(np.stack(seg))
         if depth:
-            images_depth.append(depth)
+            images_depth.append(np.stack(depth_lst))
+    # todo: possibly expand_dims before stacking since (exp_length, w, h, c) might become (w,h,c) if exp_length = 1
     return images_rgb, images_seg, images_depth
+
+
+# def get_all_images_from_gn_output2(outputs, depth=True):
+#     images_rgb = []
+#     images_seg = []
+#     images_depth = []
+#     n_objects = np.shape(outputs[0][0])[0]
+#     if depth:
+#         img_shape = (120, 160, 7)
+#     else:
+#         img_shape = (120, 160, 4)
+#     for n in range(n_objects):
+#     for data_t in outputs:
+#         rgb = []
+#         seg = []
+#         depth = []
+#
+#             image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without pos+vel
+#             rgb.append(image[:, :, :3])
+#             seg.append(np.expand_dims(image[:, :, 3], axis=2))
+#             if depth:
+#                 depth.append(image[:, :, -3:])
+#         images_rgb.append(rgb)
+#         images_seg.append(seg)
+#         if depth:
+#             images_depth.append(depth)
+#     return images_rgb, images_seg, images_depth
+
 
 
 if __name__ == '__main__':

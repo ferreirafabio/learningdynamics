@@ -3,7 +3,7 @@
   "data_offset_manipulable_objects": 2,
   "gripper_as_global": false,
   "num_iter_per_epoch": 10,
-  "learning_rate": 0.001,
+  "learning_rate": 0.0001,
   "node_output_size": 134406,
   "edge_output_size": 3,
   "global_output_size": 134402,
@@ -12,8 +12,8 @@
   "use_object_seg_data_only_for_init": false,
   "depth_data_provided": true,
   "n_epochs": 100,
-  "train_batch_size": 2,
-  "test_batch_size": 32,
+  "train_batch_size": 20,
+  "test_batch_size": 5,
   "n_layers": 10,
   "n_neurons": 64
 }
