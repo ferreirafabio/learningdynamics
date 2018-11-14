@@ -76,17 +76,22 @@ class SingulationTrainer(BaseTrain):
         summaries_dict_seg = {}
         summaries_dict_depth = {}
 
+        target_summaries_dict_rgb = {}
+
         cur_it = self.model.global_step_tensor.eval(self.sess)
-        for j in range(self.config.test_batch_size):
-            loss, outputs = self.do_step(input_graphs_all_exp[j], target_graphs_all_exp[j], features[j], train=False)
+        for i in range(self.config.test_batch_size):
+            loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
             if loss is not None:
                 losses.append(loss)
             if outputs is not None:
+                # returns 3 lists, each having n lists of data lists while n = number of objects
                 images_rgb, images_seg, images_depth = get_all_images_from_gn_output(outputs)
-                summaries_dict_rgb = {'output_image_rgb_{}'.format(i): rgb for i, rgb in enumerate(images_rgb)}
-                summaries_dict_seg = {'output_image_seg_{}'.format(i): rgb for i, rgb in enumerate(images_seg)}
-                summaries_dict_depth = {'output_image_depth_{}'.format(i): rgb for i, rgb in enumerate(images_depth)}
+                summaries_dict_rgb = {'output_object_{}_img_rgb_{}'.format(j, k): rgb for j, rgb_list in enumerate(images_rgb) for k, rgb in enumerate(rgb_list)}
+                summaries_dict_depth = {'output_object_{}_img_depth_{}'.format(j, k): depth for j, depth_list in enumerate(images_depth) for k, depth in enumerate(depth_list)}
+                summaries_dict_seg = {'output_object_{}_img_seg_{}'.format(j, k): seg for j, seg_list in enumerate(images_seg) for k, seg in enumerate(seg_list)}
+                
 
+                #target_summaries_dict_rgb = {'target_image_seg_object_{}'.format(i): rgb for i, rgb in enumerate(features[j]['img'])}
 
         batch_loss = np.mean(losses)
         print('step: ', cur_it, ' loss(batch): ', batch_loss)

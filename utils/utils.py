@@ -291,23 +291,31 @@ def make_all_runnable_in_session(*args):
   return [utils_tf.make_runnable_in_session(a) for a in args]
 
 
-def get_all_images_from_gn_output(outputs, depth=True, manipulable_object=True):
+def get_all_images_from_gn_output(outputs, depth=True):
     images_rgb = []
     images_seg = []
     images_depth = []
+    n_objects = np.shape(outputs[0][0])[0]
     if depth:
         img_shape = (120, 160, 7)
     else:
         img_shape = (120, 160, 4)
-    for gt in outputs:
-        for object_i in gt[0]:
-            image_all = object_i[:-6].reshape(img_shape)
-            images_rgb.append(image_all[:,:,:3])
-            images_seg.append(image_all[:, :, 3])
-            if depth:
-                images_depth.append(image_all[:,:,-3:])
 
-    return images_rgb, images_seg, images_depth
+    for data_t in outputs:
+        rgb = []
+        seg = []
+        depth = []
+        for n in range(n_objects):
+            image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without pos+vel
+            rgb.append(image[:, :, :3])
+            seg.append(image[:, :, 3])
+            if depth:
+                depth.append(image[:, :, -3:])
+        images_rgb.append(rgb)
+        images_seg.append(seg)
+        if depth:
+            images_depth.append(depth)
+
 
 if __name__ == '__main__':
     source_path = "../data/source"

@@ -131,7 +131,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
                                                               features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
                                                                 constants.g)))
 
-    """ compute distances between every manipulable object (and gripper)"""
+    """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
     for step in range(experiment_length):
         for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
             target_graphs[step].add_edge(sender, receiver, features=create_edge_feature(receiver, sender, target_graphs[step]))
