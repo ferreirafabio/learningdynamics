@@ -57,7 +57,7 @@ class BaseTrain:
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
 
-        self.model.output_ops_train = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_train = self.model(self.model.input_ph, 1) # todo
         loss_ops_train = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
@@ -66,7 +66,7 @@ class BaseTrain:
         assert self.model.input_ph is not None, "initialize model for training first"
         assert self.model.target_ph is not None, "initialize model for training first"
 
-        self.model.output_ops_test = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_test = self.model(self.model.input_ph, 1) # todo
         loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.global_step_tensor)
