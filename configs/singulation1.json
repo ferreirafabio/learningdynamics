@@ -19,5 +19,5 @@
   "n_neurons": 128,
   "max_to_keep": 50,
   "test_interval": 10,
-  "model_save_interval": 200
+  "model_save_interval": 1
 }

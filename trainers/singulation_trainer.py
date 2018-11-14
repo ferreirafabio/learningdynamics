@@ -14,9 +14,9 @@ class SingulationTrainer(BaseTrain):
            try:
                 _, cur_it = self.train_batch()
 
-                if cur_it % self.config.model_save_interval == 0:
+                if cur_it % self.config.model_save_interval == 1:
                     self.model.save(self.sess)
-                if cur_it % self.config.test_interval == 0:
+                if cur_it % self.config.test_interval == 1:
                     print("Executing test batch")
                     self.test_batch()
 
@@ -37,10 +37,13 @@ class SingulationTrainer(BaseTrain):
                 losses.append(loss)
 
         cur_it = self.model.global_step_tensor.eval(self.sess)
-        batch_loss = np.mean(losses)
-        print('step: ', cur_it, ' loss(batch): ', batch_loss)
-        summaries_dict = {'loss': batch_loss}
-        self.logger.summarize(cur_it, summaries_dict=summaries_dict)
+        if not losses:
+            batch_loss = np.mean(losses)
+            print('step: ', cur_it, ' loss(batch): ', batch_loss)
+            summaries_dict = {'loss': batch_loss}
+            self.logger.summarize(cur_it, summaries_dict=summaries_dict)
+        else:
+            batch_loss = 0
 
         return batch_loss, cur_it
 
@@ -53,13 +56,14 @@ class SingulationTrainer(BaseTrain):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
         if train:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_train,
                 "outputs": self.model.output_ops_train}, feed_dict=feed_dict)
 
             # print("exp length", exp_length)
             # print("loss", data['loss'])
         else:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
+            # "step": self.model.step_op,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test}, feed_dict=feed_dict)
 
         return data['loss'], data['outputs']
@@ -117,6 +121,9 @@ class SingulationTrainer(BaseTrain):
         }
 
         self.logger.summarize(cur_it, summaries_dict=summaries_dict)
+
+        if not losses:
+            batch_loss = 0
         return batch_loss, cur_it
 
 
