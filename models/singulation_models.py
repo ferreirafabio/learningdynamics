@@ -93,6 +93,8 @@ class EncodeProcessDecode(snt.AbstractModule):
 
         self.init_saver()
 
+        self.step_op = None
+
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
         self.global_output_size = config.global_output_size
