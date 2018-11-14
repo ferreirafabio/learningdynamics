@@ -47,7 +47,7 @@ class SingulationTrainer(BaseTrain):
     def do_step(self, input_graph, target_graphs, feature, train=True):
         exp_length = feature['experiment_length']
 
-        if exp_length != 30:  # todo: remove
+        if exp_length != 10:
             return None, None
 
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
@@ -72,31 +72,50 @@ class SingulationTrainer(BaseTrain):
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.test_batch_size)
-        summaries_dict_rgb = {}
-        summaries_dict_seg = {}
-        summaries_dict_depth = {}
-
-        target_summaries_dict_rgb = {}
+        summaries_dict_rgb, summaries_dict_seg, summaries_dict_depth = {}, {}, {}
+        target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
+        output_for_summary = None
 
         cur_it = self.model.global_step_tensor.eval(self.sess)
         for i in range(self.config.test_batch_size):
             loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
             if loss is not None:
                 losses.append(loss)
+            ''' get the last not None output '''
             if outputs is not None:
-                # returns 3 lists, each having n lists of data lists while n = number of objects
-                images_rgb, images_seg, images_depth = get_all_images_from_gn_output(outputs)
-                summaries_dict_rgb = {'output_object_{}_img_rgb_{}'.format(j, k): rgb for j, rgb_list in enumerate(images_rgb) for k, rgb in enumerate(rgb_list)}
-                summaries_dict_depth = {'output_object_{}_img_depth_{}'.format(j, k): depth for j, depth_list in enumerate(images_depth) for k, depth in enumerate(depth_list)}
-                summaries_dict_seg = {'output_object_{}_img_seg_{}'.format(j, k): seg for j, seg_list in enumerate(images_seg) for k, seg in enumerate(seg_list)}
-                
+                output_for_summary = (outputs, i)
 
-                #target_summaries_dict_rgb = {'target_image_seg_object_{}'.format(i): rgb for i, rgb in enumerate(features[j]['img'])}
+        if output_for_summary is not None:
+            ''' returns 3 lists, each having n lists of data lists while n = number of objects '''
+            images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0])
+            features_index = output_for_summary[1]
+
+            ''' get the predicted images '''
+            summaries_dict_rgb = {'output_img_rgb_{}_object_{}'.format(j, k): rgb for j, rgb_list in enumerate(images_rgb) for k, rgb in enumerate(rgb_list)}
+            summaries_dict_depth = {'output_img_depth_{}_object_{}'.format(j, k): depth for j, depth_list in enumerate(images_depth) for k, depth in enumerate(depth_list)}
+            summaries_dict_seg = {'output_img_seg_{}_object_{}'.format(j, k): seg for j, seg_list in enumerate(images_seg) for k, seg in enumerate(seg_list)}
+
+            ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
+            target_summaries_dict_rgb = {'target_img_rgb_{}_object_{}'.format(j, k): img[:, :, :3] for j, image_data in
+                                         enumerate(features[features_index]['object_segments']) for k, img in enumerate(image_data[-3:])}
+
+            target_summaries_dict_seg = {'target_img_seg_{}_object_{}'.format(j, k): img[:, :, 4] for j, image_data in
+                                         enumerate(features[features_index]['object_segments']) for k, img in enumerate(image_data[-3:])}
+
+            target_summaries_dict_depth = {'target_img_depth_{}_object_{}'.format(j, k): img[:, :, -3:] for j, image_data in
+                                         enumerate(features[features_index]['object_segments']) for k, img in enumerate(image_data[-3:])}
+
+
 
         batch_loss = np.mean(losses)
         print('step: ', cur_it, ' loss(batch): ', batch_loss)
         summaries_dict = {'loss': batch_loss}
-        summaries_dict = {**summaries_dict_rgb, **summaries_dict_seg, **summaries_dict_depth, **summaries_dict}
+        summaries_dict = {
+            **summaries_dict_rgb, **summaries_dict_seg, **summaries_dict_depth,
+            **summaries_dict,
+            **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
+        }
+
         self.logger.summarize(cur_it, summaries_dict=summaries_dict)
         return batch_loss, cur_it
 

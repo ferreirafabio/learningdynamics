@@ -315,6 +315,7 @@ def get_all_images_from_gn_output(outputs, depth=True):
         images_seg.append(seg)
         if depth:
             images_depth.append(depth)
+    return images_rgb, images_seg, images_depth
 
 
 if __name__ == '__main__':
