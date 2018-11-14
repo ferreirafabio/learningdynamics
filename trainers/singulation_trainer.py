@@ -77,6 +77,7 @@ class SingulationTrainer(BaseTrain):
 
         target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
         predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
+        target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
 
         cur_it = self.model.global_step_tensor.eval(self.sess)
         for i in range(self.config.test_batch_size):
@@ -119,6 +120,15 @@ class SingulationTrainer(BaseTrain):
             target_summaries_dict_depth = {prefix + '_target_img_depth_exp_id_{}_object_{}'.format(
                 features[features_index]['experiment_id'], i): np.squeeze(lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
 
+            target_summaries_dict_global_img = {prefix + '_target_global_img_exp_id_{}'.format(
+                features[features_index]['experiment_id']): features[features_index]['img']}
+
+            target_summaries_dict_global_seg = {prefix + '_target_global_seg_exp_id_{}'.format(
+                features[features_index]['experiment_id']): np.expand_dims(features[features_index]['seg'], axis=4)}
+
+            target_summaries_dict_global_depth = {prefix + '_target_global_depth_exp_id_{}'.format(
+                features[features_index]['experiment_id']): features[features_index]['depth']}
+
             # todo: show global image
 
         if losses:
@@ -130,6 +140,7 @@ class SingulationTrainer(BaseTrain):
                 **predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
                 **summaries_dict,
                 **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
+                **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth
             }
 
             self.logger.summarize(cur_it, summaries_dict=summaries_dict, summarizer="test")
