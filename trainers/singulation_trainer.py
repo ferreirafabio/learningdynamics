@@ -37,7 +37,7 @@ class SingulationTrainer(BaseTrain):
                 losses.append(loss)
 
         cur_it = self.model.global_step_tensor.eval(self.sess)
-        if not losses:
+        if losses:
             batch_loss = np.mean(losses)
             print('step: ', cur_it, ' loss(batch): ', batch_loss)
             summaries_dict = {'loss': batch_loss}
@@ -56,14 +56,14 @@ class SingulationTrainer(BaseTrain):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
         if train:
-            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_train,
+            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                 "outputs": self.model.output_ops_train}, feed_dict=feed_dict)
 
             # print("exp length", exp_length)
             # print("loss", data['loss'])
         else:
             # "step": self.model.step_op,
-            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
+            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test}, feed_dict=feed_dict)
 
         return data['loss'], data['outputs']
@@ -120,7 +120,7 @@ class SingulationTrainer(BaseTrain):
             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
         }
 
-        self.logger.summarize(cur_it, summaries_dict=summaries_dict)
+        self.logger.summarize(cur_it, summaries_dict=summaries_dict, summarizer="test")
 
         if not losses:
             batch_loss = 0
