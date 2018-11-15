@@ -1,8 +1,11 @@
 import numpy as np
 import tensorflow as tf
+import time
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
+from joblib import parallel_backend, Parallel, delayed
+
 
 
 class SingulationTrainer(BaseTrain):
@@ -49,18 +52,30 @@ class SingulationTrainer(BaseTrain):
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
-                                                                                         batch_size=self.config.train_batch_size)
-        for i in range(self.config.train_batch_size):
-            loss, _ = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
-            if loss is not None:
-                losses.append(loss)
+                                                                                           batch_size=self.config.train_batch_size)
+
+        start_time = time.time()
+        last_log_time = start_time
+
+        with parallel_backend('threading', n_jobs=-3):
+            losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
+                                                    features[i], losses) for i in range(self.config.train_batch_size))
+
+        the_time = time.time()
+        elapsed_since_last_log = the_time - last_log_time
+
+        # for i in range(self.config.train_batch_size):
+        #     loss, _ = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
+        #     if loss is not None:
+        #         losses.append(loss)
+        #
 
         self.sess.run(self.model.increment_cur_batch_tensor)
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if losses:
             batch_loss = np.mean(losses)
-            print('batch: {:06d} loss (batch): {:0.2f}'.format(cur_batch_it, batch_loss))
+            print('batch: {:06d} loss: {:0.2f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, elapsed_since_last_log))
             summaries_dict = {prefix + '_loss': batch_loss}
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
         else:
@@ -68,7 +83,8 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, cur_batch_it
 
-    def test_batch(self, prefix):
+    def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False):
+
         losses = []
         output_for_summary = None
         next_element = self.test_data.get_next_batch()
@@ -82,14 +98,22 @@ class SingulationTrainer(BaseTrain):
         predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
         target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
 
+        start_time = time.time()
+        last_log_time = start_time
+
         for i in range(self.config.test_batch_size):
             loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
-
             if loss is not None:
                 losses.append(loss)
             ''' get the last not None output '''
             if outputs is not None:
                 output_for_summary = (outputs, i)
+
+        the_time = time.time()
+        elapsed_since_last_log = the_time - last_log_time
+
+        self.sess.run(self.model.increment_cur_batch_tensor)
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if output_for_summary is not None:
             ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
@@ -97,14 +121,14 @@ class SingulationTrainer(BaseTrain):
             images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], self.config.depth_data_provided)
             features_index = output_for_summary[1]
 
-            predicted_summaries_dict_seg = {prefix + '_predicted_img_seg_exp_id_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_seg)}
+            predicted_summaries_dict_seg = {prefix + '_predicted_seg_exp_id_{}_batch_{}_object_{}'.format(
+                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_seg)}
 
-            predicted_summaries_dict_depth = {prefix + '_predicted_img_depth_exp_id_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_depth)}
+            predicted_summaries_dict_depth = {prefix + '_predicted_depth_exp_id_{}_batch_{}_object_{}'.format(
+                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_depth)}
 
-            predicted_summaries_dict_rgb = {prefix + '_predicted_img_rgb_exp_id_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), i): obj for i, obj in enumerate(images_rgb)}
+            predicted_summaries_dict_rgb = {prefix + '_predicted_rgb_exp_id_{}_batch_{}_object_{}'.format(
+                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_rgb)}
 
 
             ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
@@ -113,28 +137,31 @@ class SingulationTrainer(BaseTrain):
             # [n_split, n_objects, exp_length, ...]
             lists_obj_segs = np.split(np.swapaxes(features[features_index]['object_segments'], 0, 1)[-n_manipulable_objects:], n_manipulable_objects)
 
-            target_summaries_dict_rgb = {prefix + '_target_img_rgb_exp_id_{}_object_{}'.format(
-                features[features_index]['experiment_id'], i): np.squeeze(lst[..., :3], axis=0) for i, lst in enumerate(lists_obj_segs)}
+            target_summaries_dict_rgb = {prefix + '_target_rgb_exp_id_{}_batch_{}_object_{}'.format(
+                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(lst[..., :3], axis=0) for i, lst in enumerate(lists_obj_segs)}
 
-            target_summaries_dict_seg = {prefix + '_target_img_seg_exp_id_{}_object_{}'.format(
-                features[features_index]['experiment_id'], i): np.squeeze(np.expand_dims(lst[...,3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
+            target_summaries_dict_seg = {prefix + '_target_seg_exp_id_{}_batch_{}_object_{}'.format(
+                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(np.expand_dims(lst[...,3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
 
-            target_summaries_dict_depth = {prefix + '_target_img_depth_exp_id_{}_object_{}'.format(
-                features[features_index]['experiment_id'], i): np.squeeze(lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
+            target_summaries_dict_depth = {prefix + '_target_depth_exp_id_{}_batch_{}_object_{}'.format(
+                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
 
-            target_summaries_dict_global_img = {prefix + '_target_global_img_exp_id_{}'.format(
-                features[features_index]['experiment_id']): features[features_index]['img']}
+            target_summaries_dict_global_img = {prefix + '_target_global_img_exp_id_{}_batch_{}'.format(
+                features[features_index]['experiment_id'], cur_batch_it): features[features_index]['img']}
 
-            target_summaries_dict_global_seg = {prefix + '_target_global_seg_exp_id_{}'.format(
-                features[features_index]['experiment_id']): np.expand_dims(features[features_index]['seg'], axis=4)}
+            target_summaries_dict_global_seg = {prefix + '_target_global_seg_exp_id_{}_batch_{}'.format(
+                features[features_index]['experiment_id'], cur_batch_it): np.expand_dims(features[features_index]['seg'], axis=4)}
 
-            target_summaries_dict_global_depth = {prefix + '_target_global_depth_exp_id_{}'.format(
-                features[features_index]['experiment_id']): features[features_index]['depth']}
+            target_summaries_dict_global_depth = {prefix + '_target_global_depth_exp_id_{}_batch{}'.format(cur_batch_it,
+                features[features_index]['experiment_id'], cur_batch_it): features[features_index]['depth']}
+
+            if log_position_displacements:
+                raise NotImplementedError
 
 
         if losses:
             batch_loss = np.mean(losses)
-            print('current test loss on batch: {:0.2f}'.format(batch_loss))
+            print('current test loss on batch: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss}
             summaries_dict = {
@@ -153,3 +180,8 @@ class SingulationTrainer(BaseTrain):
         return batch_loss
 
 
+    def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses):
+        loss, _ = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
+        if loss is not None:
+            losses.append(loss)
+        return losses
