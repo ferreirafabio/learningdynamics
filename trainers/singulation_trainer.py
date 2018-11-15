@@ -13,10 +13,11 @@ class SingulationTrainer(BaseTrain):
         prefix = self.config.exp_name
         while True:
            try:
-                _, cur_it = self.train_batch(prefix)
-                if cur_it % self.config.model_save_step_interval == 1:
+                _, cur_batch_it = self.train_batch(prefix)
+
+                if cur_batch_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
-                if cur_it % self.config.test_interval == 1:
+                if cur_batch_it % self.config.test_interval == 1:
                     print("Executing test batch")
                     self.test_batch(prefix)
 
@@ -24,7 +25,7 @@ class SingulationTrainer(BaseTrain):
                break
 
     def do_step(self, input_graph, target_graphs, feature, train=True):
-        exp_length = feature['experiment_length']
+        #exp_length = feature['experiment_length']
 
         #if exp_length != 2:
         #    return None, None
@@ -54,16 +55,18 @@ class SingulationTrainer(BaseTrain):
             if loss is not None:
                 losses.append(loss)
 
-        cur_it = self.model.global_step_tensor.eval(self.sess)
+        self.sess.run(self.model.increment_cur_batch_tensor)
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
         if losses:
             batch_loss = np.mean(losses)
-            print('step {:06d} loss (batch) {:0.2f}'.format(cur_it, batch_loss))
+            print('batch: {:06d} loss (batch): {:0.2f}'.format(cur_batch_it, batch_loss))
             summaries_dict = {prefix + '_loss': batch_loss}
-            self.logger.summarize(cur_it, summaries_dict=summaries_dict, summarizer="train")
+            self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
         else:
             batch_loss = 0
 
-        return batch_loss, cur_it
+        return batch_loss, cur_batch_it
 
     def test_batch(self, prefix):
         losses = []
@@ -79,7 +82,6 @@ class SingulationTrainer(BaseTrain):
         predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
         target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
 
-        cur_it = self.model.global_step_tensor.eval(self.sess)
         for i in range(self.config.test_batch_size):
             loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
 
@@ -129,11 +131,10 @@ class SingulationTrainer(BaseTrain):
             target_summaries_dict_global_depth = {prefix + '_target_global_depth_exp_id_{}'.format(
                 features[features_index]['experiment_id']): features[features_index]['depth']}
 
-            # todo: show global image
 
         if losses:
             batch_loss = np.mean(losses)
-            print('step {:06d} loss (test batch) {:0.2f}'.format(cur_it, batch_loss))
+            print('current test loss on batch: {:0.2f}'.format(batch_loss))
 
             summaries_dict = {prefix + '_loss': batch_loss}
             summaries_dict = {
@@ -143,11 +144,12 @@ class SingulationTrainer(BaseTrain):
                 **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth
             }
 
-            self.logger.summarize(cur_it, summaries_dict=summaries_dict, summarizer="test")
+            cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+            self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
         else:
             batch_loss = 0
 
-        return batch_loss, cur_it
+        return batch_loss
 
 
