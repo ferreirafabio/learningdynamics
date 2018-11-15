@@ -90,6 +90,8 @@ class EncodeProcessDecode(snt.AbstractModule):
         self.init_global_step()
         # init the epoch counter
         self.init_cur_epoch()
+        # init the batch counter
+        self.init_batch_step()
 
         self._encoder = MLPGraphIndependent()
         self._core = MLPGraphNetwork()
@@ -223,6 +225,12 @@ class EncodeProcessDecode(snt.AbstractModule):
         # DON'T forget to add the global step tensor to the tensorflow trainer
         with tf.variable_scope('global_step'):
             self.global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
+
+    def init_batch_step(self):
+        # DON'T forget to add the global step tensor to the tensorflow trainer
+        with tf.variable_scope('global_step'):
+            self.cur_batch_tensor = tf.Variable(0, trainable=False, name='cur_batch')
+            self.increment_cur_batch_tensor = tf.assign(self.cur_batch_tensor, self.cur_batch_tensor + 1)
 
     def init_saver(self):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_to_keep)
