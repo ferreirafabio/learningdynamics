@@ -319,31 +319,18 @@ def get_all_images_from_gn_output(outputs, depth=True):
     return images_rgb, images_seg, images_depth
 
 
-# def get_all_images_from_gn_output2(outputs, depth=True):
-#     images_rgb = []
-#     images_seg = []
-#     images_depth = []
-#     n_objects = np.shape(outputs[0][0])[0]
-#     if depth:
-#         img_shape = (120, 160, 7)
-#     else:
-#         img_shape = (120, 160, 4)
-#     for n in range(n_objects):
-#     for data_t in outputs:
-#         rgb = []
-#         seg = []
-#         depth = []
-#
-#             image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without pos+vel
-#             rgb.append(image[:, :, :3])
-#             seg.append(np.expand_dims(image[:, :, 3], axis=2))
-#             if depth:
-#                 depth.append(image[:, :, -3:])
-#         images_rgb.append(rgb)
-#         images_seg.append(seg)
-#         if depth:
-#             images_depth.append(depth)
-#     return images_rgb, images_seg, images_depth
+def get_pos_ndarray_from_output(output_for_summary):
+    """ returns a position vector from a single step output, example shape: (exp_length,n_objects,3) for 3 = x,y,z dimension"""
+    n_objects = np.shape(output_for_summary[0][0][0])[0]
+    pos_lst = []
+    for data_t in output_for_summary[0]:
+        pos_t = []
+        for n in range(n_objects):
+            pos_object = data_t[0][n][-3:]
+            pos_t.append(pos_object)
+        pos_lst.append(np.stack(pos_t))
+
+    return pos_lst
 
 
 

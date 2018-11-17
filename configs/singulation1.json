@@ -1,5 +1,6 @@
 {
-  "exp_name": "singulation1",
+  "exp_name": "singulation2_nodes_cnn",
+  "parallel_batch_processing": false,
   "data_offset_manipulable_objects": 2,
   "gripper_as_global": true,
   "num_iter_per_epoch": 10,
@@ -15,12 +16,15 @@
   "train_batch_size": 20,
   "test_batch_size": 5,
   "dataset_buffer_size": 80,
-  "n_layers": 8,
-  "n_neurons": 128,
-  "n_layers_edges": 4,
+  "n_layers": 5,
+  "n_neurons": 256,
   "n_neurons_edges": 32,
+  "n_layers_edges": 3,
   "max_to_keep": 5,
-  "test_interval": 100,
+  "test_interval": 3,
   "model_save_step_interval": 150,
-  "n_images_shown_in_tensorboard": 10
+  "n_images_shown_in_tensorboard": 10,
+  "use_cnn": true,
+  "n_convnet1D_filters_per_layer": 10,
+  "convnet1D_kernel_size": 10
 }

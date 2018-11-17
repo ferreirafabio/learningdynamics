@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import time
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output
+from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -57,18 +57,18 @@ class SingulationTrainer(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
-        with parallel_backend('threading', n_jobs=-3):
-            losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
-                                                    features[i], losses) for i in range(self.config.train_batch_size))
+        if self.config.parallel_batch_processing:
+            with parallel_backend('threading', n_jobs=-3):
+                losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
+                                                        features[i], losses) for i in range(self.config.train_batch_size))
+        else:
+            for i in range(self.config.train_batch_size):
+                loss, _ = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
+                if loss is not None:
+                    losses.append(loss)
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
-
-        # for i in range(self.config.train_batch_size):
-        #     loss, _ = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
-        #     if loss is not None:
-        #         losses.append(loss)
-        #
 
         self.sess.run(self.model.increment_cur_batch_tensor)
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -105,7 +105,7 @@ class SingulationTrainer(BaseTrain):
             loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
             if loss is not None:
                 losses.append(loss)
-            ''' get the last not None output '''
+            ''' get the last not-None output '''
             if outputs is not None:
                 output_for_summary = (outputs, i)
 
@@ -156,6 +156,9 @@ class SingulationTrainer(BaseTrain):
                 features[features_index]['experiment_id'], cur_batch_it): features[features_index]['depth']}
 
             if log_position_displacements:
+                pos_array_predicted = get_pos_ndarray_from_output(output_for_summary)
+                pos_array_target = features[features_index]['objpos']
+                # todo: check whether both arrays come from the same input-target-pair
                 raise NotImplementedError
 
 
