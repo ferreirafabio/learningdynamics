@@ -24,20 +24,50 @@ import sonnet as snt
 import tensorflow as tf
 
 
-
 class MLPGraphIndependent(snt.AbstractModule):
     """GraphIndependent with MLP edge, node, and global models."""
 
     def __init__(self, name="MLPGraphIndependent"):
         super(MLPGraphIndependent, self).__init__(name=name)
         with self._enter_variable_scope():
-          self._network = modules.GraphIndependent(
-              edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=EncodeProcessDecode.make_mlp_model,
-              global_model_fn=EncodeProcessDecode.make_mlp_model)
+            self._network = modules.GraphIndependent(
+                edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
+                node_model_fn=EncodeProcessDecode.make_mlp_model,
+                global_model_fn=EncodeProcessDecode.make_mlp_model)
 
     def _build(self, inputs):
         return self._network(inputs)
+
+
+class CNNEncoderGraphIndependent(snt.AbstractModule):
+    """GraphNetwork with CNN node and MLP edge / global models."""
+
+    def __init__(self, name="CNNEncoderGraphIndependent"):
+        super(CNNEncoderGraphIndependent, self).__init__(name=name)
+
+        with self._enter_variable_scope():
+            self._network = modules.GraphIndependent(
+              edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
+              node_model_fn=EncodeProcessDecode.make_cnn_model,
+              global_model_fn=EncodeProcessDecode.make_mlp_model)
+
+    def _build(self, inputs, **kwargs):
+        return self._network(inputs, **kwargs)
+
+class CNNDecoderGraphIndependent(snt.AbstractModule):
+    """Graph decoder network with Transpose CNN node and MLP edge / global models."""
+
+    def __init__(self, name="CNNDecoderGraphIndependent"):
+        super(CNNDecoderGraphIndependent, self).__init__(name=name)
+
+        with self._enter_variable_scope():
+            self._network = modules.GraphIndependent(
+                edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
+                node_model_fn=EncodeProcessDecode.make_transpose_cnn_model,
+                global_model_fn = EncodeProcessDecode.make_mlp_model)
+
+    def _build(self, inputs, **kwargs):
+        return self._network(inputs, **kwargs)
 
 
 class MLPGraphNetwork(snt.AbstractModule):
@@ -46,7 +76,8 @@ class MLPGraphNetwork(snt.AbstractModule):
     def __init__(self, name="MLPGraphNetwork"):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
-          self._network = modules.GraphNetwork(EncodeProcessDecode.make_mlp_model_edges, EncodeProcessDecode.make_mlp_model,
+          self._network = modules.GraphNetwork(EncodeProcessDecode.make_mlp_model_edges,
+                                               EncodeProcessDecode.make_mlp_model,
                                                EncodeProcessDecode.make_mlp_model)
 
     def _build(self, inputs):
@@ -75,15 +106,15 @@ class EncodeProcessDecode(snt.AbstractModule):
             |         |---->|      |     |         |
             *---------*     *------*     *---------*
     """
-    n_layers = None
-    n_neurons = None
     def __init__(self, config, name="EncodeProcessDecode"):
         super(EncodeProcessDecode, self).__init__(name=name)
         EncodeProcessDecode.n_layers = config.n_layers
         EncodeProcessDecode.n_neurons = config.n_neurons
-
-        EncodeProcessDecode.n_layers_edges = config.n_layers_edges
         EncodeProcessDecode.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode.n_convnet1D_filters_per_layer = config.n_convnet1D_filters_per_layer
+        EncodeProcessDecode.convnet1D_kernel_size = config.convnet1D_kernel_size
+
 
         self.config = config
         # init the global step
@@ -93,13 +124,20 @@ class EncodeProcessDecode(snt.AbstractModule):
         # init the batch counter
         self.init_batch_step()
 
-        self._encoder = MLPGraphIndependent()
+        self.use_cnn = self.config.use_cnn
+
+        if self.use_cnn:
+            self._encoder = CNNEncoderGraphIndependent()
+            self._decoder = CNNDecoderGraphIndependent()
+        else:
+            self._encoder = MLPGraphIndependent()
+            self._decoder = MLPGraphIndependent()
+
         self._core = MLPGraphNetwork()
-        self._decoder = MLPGraphIndependent()
 
         self.init_saver()
 
-        self.step_op = None
+        self.init_ops()
 
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
@@ -107,29 +145,12 @@ class EncodeProcessDecode(snt.AbstractModule):
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
-        self.loss_op_train = None
-        self.loss_op_test = None
+        #self.exp_length = tf.placeholder(tf.int32, shape=(), name='exp_length')
+        #self.is_training = tf.placeholder(tf.bool, shape=())
 
-        self.loss_ops_train = None
-        self.loss_ops_test = None
+        self.init_transform()
 
-        self.exp_length = tf.placeholder(tf.int32, shape=(), name='exp_length')
 
-        # Transforms the outputs into the appropriate shapes.
-        if self.edge_output_size is None:
-          edge_fn = None
-        else:
-          edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
-        if self.node_output_size is None:
-          node_fn = None
-        else:
-          node_fn = lambda: snt.Linear(self.node_output_size, name="node_output")
-        if self.global_output_size is None:
-          global_fn = None
-        else:
-          global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
-        with self._enter_variable_scope():
-          self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
 
 
     def _build(self, input_op, num_processing_steps):
@@ -170,7 +191,6 @@ class EncodeProcessDecode(snt.AbstractModule):
         """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
         is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
         --> same applies for edges """
-        #print(len(output_ops))
         mult = tf.constant([len(output_ops)])
         n_nodes = [tf.shape(output_ops[0].nodes)[0]]
         n_edges = [tf.shape(output_ops[0].edges)[0]]
@@ -235,6 +255,34 @@ class EncodeProcessDecode(snt.AbstractModule):
     def init_saver(self):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_to_keep)
 
+    def init_ops(self):
+        self.step_op = None
+        self.loss_op_train = None
+        self.loss_op_test = None
+
+        self.loss_ops_train = None
+        self.loss_ops_test = None
+
+    def init_transform(self):
+        # Transforms the outputs into the appropriate shapes.
+        if self.edge_output_size is None:
+          edge_fn = None
+        else:
+          edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
+        if self.node_output_size is None:
+          node_fn = None
+        else:
+          node_fn = lambda: snt.Linear(self.node_output_size, name="node_output")
+        if self.global_output_size is None:
+          global_fn = None
+        else:
+          global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
+        with self._enter_variable_scope():
+          self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
+
+    def is_encoder(self, boolean_value):
+        return boolean_value
+
     @staticmethod
     def make_mlp_model():
         """Instantiates a new MLP, followed by LayerNorm.
@@ -263,15 +311,72 @@ class EncodeProcessDecode(snt.AbstractModule):
 
 
     @staticmethod
-    # since edges are very low-dim, use different number of neurons and layers
     def make_cnn_model():
-        """Instantiates a new MLP, followed by LayerNorm.
+        def convnet1d(inputs):
+            # input shape is (batch_size, feature_length) but CNN operates on depth channels --> (batch_size, feature_length, 1)
+            inputs = tf.expand_dims(inputs, axis=2)
 
-        The parameters of each new MLP are not shared with others generated by
-        this function.
+            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
 
-        Returns:
-          A Sonnet module which contains the MLP and LayerNorm.
-        """
-        return snt.Sequential([snt.nets.ConvNet2D([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True), snt.LayerNorm()])
+            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
 
+
+            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
+
+
+
+            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True) # todo: deal with train/test time
+            outputs = tf.nn.relu(outputs)
+
+
+            outputs = snt.BatchFlatten()(outputs)
+            #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
+            outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+
+            return outputs
+
+        return convnet1d
+
+    @staticmethod
+    def make_transpose_cnn_model():
+        def transpose_convnet1d(inputs):
+            inputs = tf.expand_dims(inputs, axis=2)
+
+            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
+
+            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
+
+            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.nn.relu(outputs)
+
+            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=True) #todo: deal with train/test time
+            outputs = tf.nn.relu(outputs)
+
+            outputs = snt.BatchFlatten()(outputs)
+            #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
+            outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+
+            return outputs
+
+        return transpose_convnet1d

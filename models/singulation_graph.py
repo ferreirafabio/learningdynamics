@@ -65,9 +65,6 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
     experiment_length = features['experiment_length']
     target_graphs = [graph.copy() for _ in range(experiment_length)]
 
-
-
-
     def create_node_feature(attr, features, step, use_object_seg_data_only_for_init):
         if attr['type_name'] == 'container':
             """ container only has object segmentations """
@@ -102,9 +99,9 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
                 obj_seg = features['object_segments'][obj_id].flatten()
             else:
                 """ in this case, the nodes will have dynamic visual information over time """
-                obj_seg = features['object_segments'][step][obj_id_segs].flatten()
-            pos = features['objpos'][step][obj_id].flatten()
-            vel = features['objvel'][step][obj_id].flatten() # todo: normalize by fps 1/30
+                obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
+            pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
+            vel = features['objvel'][step][obj_id].flatten().astype(np.float32) # todo: normalize by fps 1/30
             return np.concatenate((obj_seg, vel, pos))
 
 
@@ -114,27 +111,40 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
         """ the position is always located as the last three elements of the flattened feature vector """
         pos1 = node_feature_rcv['features'][-3:]
         pos2 = node_feature_snd['features'][-3:]
-        return pos1-pos2
+        #pos1 = node_feature_rcv['pos']
+        #pos2 = node_feature_snd['pos']
+        return (pos1-pos2).astype(np.float32)
 
     for step in range(experiment_length):
         for node_index, node_feature in graph.nodes(data=True):
-            target_graphs[step].add_node(node_index, features=create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init))
+            #node_feature, pos = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
+            node_feature = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
+            target_graphs[step].add_node(node_index, features=node_feature)
+            #target_graphs[step].add_node(node_index, pos=pos)
 
         """ if gripper_as_global = True, graphs will have one node less
          add globals (image, segmentation, depth, gravity, time_step) """
         if gripper_as_global:
             target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
                                                               features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
-                                                                constants.g), features['gripperpos'][step].flatten()))
+                                                                constants.g), features['gripperpos'][step].flatten())).astype(np.float32)
         else:
             target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
                                                               features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
-                                                                constants.g)))
+                                                                constants.g))).astype(np.float32)
 
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
     for step in range(experiment_length):
         for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
-            target_graphs[step].add_edge(sender, receiver, features=create_edge_feature(receiver, sender, target_graphs[step]))
+            edge_feature = create_edge_feature(receiver, sender, target_graphs[step])
+            target_graphs[step].add_edge(sender, receiver, features=edge_feature)
+
+    """ if a conv1d cnn is used for the nodes, an additional channel dimension is required """
+    # if config.use_cnn:
+    #     for step in range(experiment_length):
+    #         for node_index, node_feature in graph.nodes(data=True):
+    #             target_graphs[step].node[node_index]['features'] = np.expand_dims(node_feature['features'], axis=1).astype(np.float32)
+
 
     input_graph = target_graphs[0].copy()
 
