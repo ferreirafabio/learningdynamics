@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from graph_nets import modules
 from graph_nets import utils_tf
+from base.base_model import BaseModel
 import sonnet as snt
 import tensorflow as tf
 
@@ -84,7 +85,7 @@ class MLPGraphNetwork(snt.AbstractModule):
         return self._network(inputs)
 
 
-class EncodeProcessDecode(snt.AbstractModule):
+class EncodeProcessDecode(snt.AbstractModule, BaseModel):
     """Full encode-process-decode model.
 
     The model we explore includes three components:
@@ -147,8 +148,6 @@ class EncodeProcessDecode(snt.AbstractModule):
         #self.is_training = tf.placeholder(tf.bool, shape=())
 
         self.init_transform()
-
-        self.init_saver()
 
 
 
@@ -253,7 +252,7 @@ class EncodeProcessDecode(snt.AbstractModule):
             self.increment_cur_batch_tensor = tf.assign(self.cur_batch_tensor, self.cur_batch_tensor + 1)
 
     def init_saver(self):
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=self.config.max_checkpoints_to_keep)
 
     def init_ops(self):
         self.step_op = None
