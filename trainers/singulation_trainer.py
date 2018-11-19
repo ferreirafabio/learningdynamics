@@ -80,7 +80,7 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:06f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
+            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
             summaries_dict = {prefix + '_loss': batch_loss}
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
         else:
@@ -173,7 +173,7 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('current test loss on batch: {:0.2f} pos_vel loss: {:06f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
+            print('current test loss on batch: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss}
             summaries_dict = {
