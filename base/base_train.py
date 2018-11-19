@@ -18,7 +18,7 @@ class BaseTrain:
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         self.sess.run(self.init)
-
+        print("model initialized")
 
     def train(self):
         for cur_epoch in range(self.model.cur_epoch_tensor.eval(self.sess), self.config.n_epochs + 1, 1):
@@ -53,7 +53,7 @@ class BaseTrain:
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
 
-        self.model.output_ops_train = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts) # todo
         loss_ops_train = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
@@ -62,7 +62,7 @@ class BaseTrain:
         assert self.model.input_ph is not None, "initialize model for training first"
         assert self.model.target_ph is not None, "initialize model for training first"
 
-        self.model.output_ops_test = self.model(self.model.input_ph, 10) # todo
+        self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts) # todo
         loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.global_step_tensor)
