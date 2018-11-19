@@ -50,7 +50,7 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
               node_model_fn=EncodeProcessDecode.make_cnn_model,
-              global_model_fn=EncodeProcessDecode.make_mlp_model)
+              global_model_fn=EncodeProcessDecode.make_cnn_model)
 
     def _build(self, inputs, **kwargs):
         return self._network(inputs, **kwargs)
@@ -65,7 +65,7 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
                 node_model_fn=EncodeProcessDecode.make_transpose_cnn_model,
-                global_model_fn = EncodeProcessDecode.make_mlp_model)
+                global_model_fn = EncodeProcessDecode.make_transpose_cnn_model)
 
     def _build(self, inputs, **kwargs):
         return self._network(inputs, **kwargs)
@@ -125,7 +125,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         # init the batch counter
         self.init_batch_step()
 
-        self.use_cnn = self.config.use_cnn
+        self.use_cnn = self.config.node_and_global_as_cnn
 
         if self.use_cnn:
             self._encoder = CNNEncoderGraphIndependent()
@@ -202,7 +202,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         if self.config.use_object_seg_data_only_for_init:
             loss_ops = [
                 # compute loss of the nodes only over velocity and position and not over ground truth static images
-                tf.losses.mean_squared_error(output_op.nodes, node_splits[i][:, -6:]) +
+                tf.losses.mean_squared_error(output_op.nodes[:, -6:], node_splits[i][:, -6:]) +
                 tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
                     for i, output_op in enumerate(output_ops)
             ]
@@ -212,11 +212,16 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
                 tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
                 for i, output_op in enumerate(output_ops)
             ]
-        #    print(len(loss_ops))
+
+        pos_vel_loss_ops = [
+            tf.losses.mean_squared_error(output_op.nodes[:, -6:], node_splits[i][:, -6:])
+            for i, output_op in enumerate(output_ops)
+        ]
+
         # todo: might use weighted MSE loss here
         # todo: perhaps include global attributes into loss function
 
-        return tf.reduce_mean(loss_ops)
+        return loss_ops, pos_vel_loss_ops
 
 
     # save function that saves the checkpoint in the path defined in the config file
@@ -261,6 +266,9 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
         self.loss_ops_train = None
         self.loss_ops_test = None
+
+        self.pos_vel_loss_ops_test = None
+        self.pos_vel_loss_ops_train = None
 
     def init_transform(self):
         # Transforms the outputs into the appropriate shapes.
@@ -314,31 +322,30 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         def convnet1d(inputs):
             # input shape is (batch_size, feature_length) but CNN operates on depth channels --> (batch_size, feature_length, 1)
             inputs = tf.expand_dims(inputs, axis=2)
-
+            ''' layer 1'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
-
+            ''' layer 2'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
-
+            ''' layer 3'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
-
-
+            ''' layer 4'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True) # todo: deal with train/test time
             outputs = tf.nn.relu(outputs)
 
-
+            ''' layer 5'''
             outputs = snt.BatchFlatten()(outputs)
             #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
             outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
@@ -352,26 +359,31 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         def transpose_convnet1d(inputs):
             inputs = tf.expand_dims(inputs, axis=2)
 
+            ''' layer 1'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
+            ''' layer 2'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
+            ''' layer 3'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
+            ''' layer 4'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True) #todo: deal with train/test time
             outputs = tf.nn.relu(outputs)
 
+            ''' layer 5'''
             outputs = snt.BatchFlatten()(outputs)
             #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
             outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
