@@ -115,6 +115,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_layers_edges = config.n_layers_edges
         EncodeProcessDecode.n_convnet1D_filters_per_layer = config.n_convnet1D_filters_per_layer
         EncodeProcessDecode.convnet1D_kernel_size = config.convnet1D_kernel_size
+        EncodeProcessDecode.convnet1D_stride = config.convnet1D_stride
 
 
         self.config = config
@@ -324,25 +325,31 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
             inputs = tf.expand_dims(inputs, axis=2)
             ''' layer 1'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
+            #todo: max pool?
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
+
             outputs = tf.nn.relu(outputs)
             ''' layer 2'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 3'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 4'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True) # todo: deal with train/test time
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 5'''
@@ -361,25 +368,25 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
             ''' layer 1'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(inputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 2'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 3'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True)
             outputs = tf.nn.relu(outputs)
 
             ''' layer 4'''
             outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=1)(outputs)
+                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
             outputs = snt.BatchNorm()(outputs, is_training=True) #todo: deal with train/test time
             outputs = tf.nn.relu(outputs)
 

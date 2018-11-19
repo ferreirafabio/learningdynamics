@@ -16,16 +16,17 @@
   "n_epochs": 100,
   "train_batch_size": 20,
   "test_batch_size": 5,
-  "dataset_prefetch_size": 20,
+  "dataset_prefetch_size": 80,
   "n_layers": 5,
-  "n_neurons": 300,
+  "n_neurons": 200,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_checkpoints_to_keep": 5,
-  "test_interval": 100,
-  "model_save_step_interval": 3,
+  "test_interval": 80,
+  "model_save_step_interval": 100,
   "n_images_shown_in_tensorboard": 10,
   "node_and_global_as_cnn": true,
   "n_convnet1D_filters_per_layer": 10,
-  "convnet1D_kernel_size": 10
+  "convnet1D_kernel_size": 10,
+  "convnet1D_stride": 4
 }
