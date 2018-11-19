@@ -1,4 +1,5 @@
 import os
+import multiprocessing
 import math
 import tensorflow as tf
 from tensorflow.python.platform import gfile
@@ -23,20 +24,15 @@ class DataGenerator:
             batch_size = test_batch_size
 
         if use_compression:
-            options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
             compression_type = 'GZIP'
         else:
-            options = None
             compression_type = None
 
         self.batch_size = batch_size
-        self.number_total_samples = get_number_of_total_samples(filenames, options=options)
-        self.iterations_per_epoch = math.ceil(self.number_total_samples / self.batch_size)
         self.dataset = tf.data.TFRecordDataset(filenames, compression_type=compression_type)
-        self.dataset = self.dataset.map(self._parse_function)
-        self.dataset = self.dataset.repeat(self.config.n_epochs)
-        self.dataset = self.dataset.shuffle(30)
-
+        self.dataset = self.dataset.prefetch(self.config.dataset_prefetch_size)
+        self.dataset = self.dataset.map(self._parse_function, num_parallel_calls=multiprocessing.cpu_count())
+        self.dataset = self.dataset.apply(tf.data.experimental.shuffle_and_repeat(30, self.config.n_epochs))
 
 
 
@@ -69,7 +65,6 @@ class DataGenerator:
 
         if self.depth_data_provided:
             padded_shapes['depth'] = (None, 120, 160, 3)
-
         self.dataset = self.dataset.padded_batch(batch_size, padded_shapes=padded_shapes, drop_remainder=True)
         self.iterator = self.dataset.make_initializable_iterator()
         sess.run(self.iterator.initializer)

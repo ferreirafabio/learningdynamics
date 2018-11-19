@@ -135,8 +135,6 @@ class EncodeProcessDecode(snt.AbstractModule):
 
         self._core = MLPGraphNetwork()
 
-        self.init_saver()
-
         self.init_ops()
 
         self.node_output_size = config.node_output_size
@@ -149,6 +147,8 @@ class EncodeProcessDecode(snt.AbstractModule):
         #self.is_training = tf.placeholder(tf.bool, shape=())
 
         self.init_transform()
+
+        self.init_saver()
 
 
 
@@ -223,7 +223,7 @@ class EncodeProcessDecode(snt.AbstractModule):
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
         print("Saving model...")
-        self.saver.save(sess, self.config.checkpoint_dir, self.global_step_tensor)
+        self.saver.save(sess, self.config.checkpoint_dir, self.cur_batch_tensor)
         print("Model saved")
 
     # load latest checkpoint from the experiment path defined in the config file
@@ -253,7 +253,7 @@ class EncodeProcessDecode(snt.AbstractModule):
             self.increment_cur_batch_tensor = tf.assign(self.cur_batch_tensor, self.cur_batch_tensor + 1)
 
     def init_saver(self):
-        self.saver = tf.train.Saver(max_to_keep=self.config.max_to_keep)
+        self.saver = tf.train.Saver()
 
     def init_ops(self):
         self.step_op = None
