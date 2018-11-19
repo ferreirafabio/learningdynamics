@@ -16,7 +16,7 @@ class SingulationTrainer(BaseTrain):
         prefix = self.config.exp_name
         while True:
            try:
-                _, cur_batch_it = self.train_batch(prefix)
+                _, _, cur_batch_it = self.train_batch(prefix)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
@@ -37,16 +37,19 @@ class SingulationTrainer(BaseTrain):
 
         if train:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
-                "outputs": self.model.output_ops_train}, feed_dict=feed_dict)
+                                  "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
+                                  }, feed_dict=feed_dict)
 
         else:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
-                                  "outputs": self.model.output_ops_test}, feed_dict=feed_dict)
+                                  "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
+                                  }, feed_dict=feed_dict)
 
-        return data['loss'], data['outputs']
+        return data['loss'], data['outputs'], data['pos_vel_loss']
 
     def train_batch(self, prefix):
         losses = []
+        pos_vel_losses = []
         next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
 
@@ -59,13 +62,14 @@ class SingulationTrainer(BaseTrain):
 
         if self.config.parallel_batch_processing:
             with parallel_backend('threading', n_jobs=-3):
-                losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
+                losses, pos_vel_losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
                                                         features[i], losses) for i in range(self.config.train_batch_size))
         else:
             for i in range(self.config.train_batch_size):
-                loss, _ = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
+                loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
                 if loss is not None:
                     losses.append(loss)
+                    pos_vel_losses.append(pos_vel_loss)
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
@@ -75,17 +79,20 @@ class SingulationTrainer(BaseTrain):
 
         if losses:
             batch_loss = np.mean(losses)
-            print('batch: {:06d} loss: {:0.2f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, elapsed_since_last_log))
+            pos_vel_batch_loss = np.mean(pos_vel_losses)
+            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:06f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
             summaries_dict = {prefix + '_loss': batch_loss}
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
         else:
             batch_loss = 0
+            pos_vel_batch_loss = 0
 
-        return batch_loss, cur_batch_it
+        return batch_loss, pos_vel_batch_loss, cur_batch_it
 
     def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False):
 
         losses = []
+        pos_vel_losses = []
         output_for_summary = None
         next_element = self.test_data.get_next_batch()
         features = self.sess.run(next_element)
@@ -102,9 +109,10 @@ class SingulationTrainer(BaseTrain):
         last_log_time = start_time
 
         for i in range(self.config.test_batch_size):
-            loss, outputs = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
+            loss, outputs, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i], train=False)
             if loss is not None:
                 losses.append(loss)
+                pos_vel_losses.append(pos_vel_loss)
             ''' get the last not-None output '''
             if outputs is not None:
                 output_for_summary = (outputs, i)
@@ -164,7 +172,8 @@ class SingulationTrainer(BaseTrain):
 
         if losses:
             batch_loss = np.mean(losses)
-            print('current test loss on batch: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, elapsed_since_last_log))
+            pos_vel_batch_loss = np.mean(pos_vel_losses)
+            print('current test loss on batch: {:0.2f} pos_vel loss: {:06f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss}
             summaries_dict = {
@@ -179,12 +188,14 @@ class SingulationTrainer(BaseTrain):
 
         else:
             batch_loss = 0
+            pos_vel_batch_loss = 0
 
-        return batch_loss
+        return batch_loss, pos_vel_batch_loss
 
 
-    def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses):
-        loss, _ = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
+    def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
+        loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
         if loss is not None:
             losses.append(loss)
-        return losses
+            pos_vel_losses.append(pos_vel_loss)
+        return losses, pos_vel_loss
