@@ -3,7 +3,7 @@ import tensorflow as tf
 import time
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output
-from utils.tensorflow import create_pred_summary_dict
+from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -16,10 +16,11 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
-        run_metadata = tf.RunMetadata()  # todo: remove
+
         options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  # todo: remove
         while True:
            try:
+                run_metadata = tf.RunMetadata()  # todo: remove
                 _, _, cur_batch_it = self.train_batch(prefix, run_metadata, options)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
@@ -105,7 +106,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False):
+    def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False, export_images=False):
 
         losses = []
         pos_vel_losses = []
@@ -140,11 +141,10 @@ class SingulationTrainer(BaseTrain):
 
         if output_for_summary is not None:
             ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
-
             images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], self.config.depth_data_provided)
             features_index = output_for_summary[1]
 
-            predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_pred_summary_dict(
+            predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
                 images_seg,
                 images_depth,
                 images_rgb,
@@ -154,31 +154,17 @@ class SingulationTrainer(BaseTrain):
                 cur_batch_it=cur_batch_it
             )
 
+            target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
+            target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
+                prefix=prefix,
+                features=features,
+                features_index=features_index,
+                cur_batch_it=cur_batch_it
+            )
+
+            #if export_images:
 
 
-            ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
-            n_manipulable_objects = features[features_index]['n_manipulable_objects']
-            # shape [exp_length, n_objects, w, h, c] --> shape [n_objects, exp_length, w, h, c] --> split in n_objects lists -->
-            # [n_split, n_objects, exp_length, ...]
-            lists_obj_segs = np.split(np.swapaxes(features[features_index]['object_segments'], 0, 1)[-n_manipulable_objects:], n_manipulable_objects)
-
-            target_summaries_dict_rgb = {prefix + '_target_rgb_exp_id_{}_batch_{}_object_{}'.format(
-                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(lst[..., :3], axis=0) for i, lst in enumerate(lists_obj_segs)}
-
-            target_summaries_dict_seg = {prefix + '_target_seg_exp_id_{}_batch_{}_object_{}'.format(
-                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(np.expand_dims(lst[...,3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
-
-            target_summaries_dict_depth = {prefix + '_target_depth_exp_id_{}_batch_{}_object_{}'.format(
-                features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
-
-            target_summaries_dict_global_img = {prefix + '_target_global_img_exp_id_{}_batch_{}'.format(
-                features[features_index]['experiment_id'], cur_batch_it): features[features_index]['img']}
-
-            target_summaries_dict_global_seg = {prefix + '_target_global_seg_exp_id_{}_batch_{}'.format(
-                features[features_index]['experiment_id'], cur_batch_it): np.expand_dims(features[features_index]['seg'], axis=4)}
-
-            target_summaries_dict_global_depth = {prefix + '_target_global_depth_exp_id_{}_batch{}'.format(cur_batch_it,
-                features[features_index]['experiment_id'], cur_batch_it): features[features_index]['depth']}
 
             if log_position_displacements:
                 pos_array_predicted = get_pos_ndarray_from_output(output_for_summary)
