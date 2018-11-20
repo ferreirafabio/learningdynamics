@@ -159,7 +159,7 @@ def get_all_experiment_image_data_from_dir(source_path, data_type="rgb"):
     return image_data
 
 
-def get_experiment_image_data_from_dir(source_path, experiment_id, data_type="seg"):
+def get_experiment_image_data_from_dir(source_path, experiment_id, data_type="seg", as_dict=False):
     """
     loads and returns all the image data from a single experiment. Expects the following folder structure:
         folder 'experiment number'
@@ -189,10 +189,10 @@ def get_experiment_image_data_from_dir(source_path, experiment_id, data_type="se
         print("no data found under the specified number")
         return
 
-    return load_images_of_experiment(experiment_paths, data_type)
+    return load_images_of_experiment(experiment_paths, data_type, as_dict=as_dict)
 
 
-def load_images_of_experiment(experiment, data_type):
+def load_images_of_experiment(experiment, data_type, as_dict=False):
     """
     loads images from pure paths for an entire experiment
     Args:
@@ -210,8 +210,10 @@ def load_images_of_experiment(experiment, data_type):
 
     images_dict = load_data_from_list_of_paths(image_data_paths)
 
-
-    return convert_dict_to_list(images_dict)
+    if as_dict:
+        return images_dict
+    else:
+        return convert_dict_to_list(images_dict)
 
 
 
@@ -220,7 +222,7 @@ def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_ty
 
     output_dir = create_dir(destination_path, "images_" + img_type)
     for i, img in enumerate(image_data):
-        img = img.astype(np.uint8)
+        img = img[0].astype(np.uint8)
         plt.imsave(output_dir + "/" + img_type + str(i).zfill(4), img)
 
 
@@ -339,7 +341,7 @@ if __name__ == '__main__':
     exp_number = 5
     dest_path = os.path.join(source_path, str(exp_number))
 
-    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_id=exp_number, data_type="seg")
+    image_data = get_experiment_image_data_from_dir(source_path=source_path, experiment_id=exp_number, data_type="seg", as_dict=False)
     save_image_data_to_disk(image_data, dest_path, img_type="rgb")
     all_image_data = get_all_experiment_image_data_from_dir(source_path, data_type=["rgb", "seg"])
 
