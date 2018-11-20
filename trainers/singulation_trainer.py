@@ -3,6 +3,7 @@ import tensorflow as tf
 import time
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output
+from utils.tensorflow import create_pred_summary_dict
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -44,13 +45,14 @@ class SingulationTrainer(BaseTrain):
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
                                   }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
 
+            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+            chrome_trace = fetched_timeline.generate_chrome_trace_format()
         else:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
 
-        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+
         if i is not None:
             with open('timeline_01_step_%d.json' % i, 'w') as f:
                 f.write(chrome_trace)
@@ -142,14 +144,16 @@ class SingulationTrainer(BaseTrain):
             images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], self.config.depth_data_provided)
             features_index = output_for_summary[1]
 
-            predicted_summaries_dict_seg = {prefix + '_predicted_seg_exp_id_{}_batch_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_seg)}
+            predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_pred_summary_dict(
+                images_seg,
+                images_depth,
+                images_rgb,
+                prefix=prefix,
+                features=features,
+                features_index=features_index,
+                cur_batch_it=cur_batch_it
+            )
 
-            predicted_summaries_dict_depth = {prefix + '_predicted_depth_exp_id_{}_batch_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_depth)}
-
-            predicted_summaries_dict_rgb = {prefix + '_predicted_rgb_exp_id_{}_batch_{}_object_{}'.format(
-                int(features[features_index]['experiment_id']), cur_batch_it, i): obj for i, obj in enumerate(images_rgb)}
 
 
             ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
