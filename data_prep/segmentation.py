@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir, convert_float_image_to_int16
+from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir
+from utils.utils import get_all_experiment_image_data_from_dir, convert_float_image_to_int16, save_image_data_to_disk
 
 
 def get_segments_from_experiment_step(images, depth_data_provided=False):
@@ -144,6 +145,7 @@ if __name__ == '__main__':
     """ single experiment """
     b = get_segments_from_single_experiment(single_experiment_image_data)
 
+    save_image_data_to_disk(image_data=a, destination_path='../data/', store_gif=True)
     """ all experiments """
     all_experiments_image_data = get_all_experiment_image_data_from_dir(source_path, data_type=["rgb", "seg"])
     c = get_segments_from_all_experiments(all_experiments_image_data)
