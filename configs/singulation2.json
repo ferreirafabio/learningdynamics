@@ -22,7 +22,7 @@
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_checkpoints_to_keep": 5,
-  "test_interval": 2,
+  "test_interval": 100,
   "model_save_step_interval": 100,
   "n_images_shown_in_tensorboard": 10,
   "node_and_global_as_cnn": true,
