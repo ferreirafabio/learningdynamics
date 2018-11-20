@@ -15,9 +15,10 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
-        run_metadata = tf.RunMetadata()  # todo: remove
+
         while True:
            try:
+                run_metadata = tf.RunMetadata() # todo: remove
                 _, _, cur_batch_it = self.train_batch(prefix, run_metadata)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
