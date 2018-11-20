@@ -1,14 +1,13 @@
 import numpy as np
 import tensorflow as tf
 import time
+import os
+import gc
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output
+from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
-
-
-from tensorflow.python.client import timeline # todo: remove
 
 class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger):
@@ -16,12 +15,9 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
-
-        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  # todo: remove
         while True:
            try:
-                run_metadata = tf.RunMetadata()  # todo: remove
-                _, _, cur_batch_it = self.train_batch(prefix, run_metadata, options)
+                _, _, cur_batch_it = self.train_batch(prefix)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
@@ -32,57 +28,48 @@ class SingulationTrainer(BaseTrain):
            except tf.errors.OutOfRangeError:
                break
 
-    def do_step(self, input_graph, target_graphs, feature, train=True, options=None, run_metadata=None, i=None):
-        #exp_length = feature['experiment_length']
-
-        #if exp_length != 2:
-        #    return None, None
-
-
+    def do_step(self, input_graph, target_graphs, feature, train=True):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
         if train:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
-                                  }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
+                                  }, feed_dict=feed_dict)
 
-            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-            chrome_trace = fetched_timeline.generate_chrome_trace_format()
         else:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
-                                  }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
-
-
-        if i is not None:
-            with open('timeline_01_step_%d.json' % i, 'w') as f:
-                f.write(chrome_trace)
+                                  }, feed_dict=feed_dict)
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
-    def train_batch(self, prefix, run_metadata, options):
+    def train_batch(self, prefix):
         losses = []
         pos_vel_losses = []
 
         next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
 
+        start_time_getting_data = time.time()
+        last_log_time_getting_data = start_time_getting_data
+
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
                                                                                            batch_size=self.config.train_batch_size)
+        the_time = time.time()
+        elapsed_since_last_log_getting_data = the_time - last_log_time_getting_data
 
         start_time = time.time()
         last_log_time = start_time
-
 
         if self.config.parallel_batch_processing:
             with parallel_backend('threading', n_jobs=-3):
                 losses, pos_vel_losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
                                                         features[i], losses) for i in range(self.config.train_batch_size))
         else:
+
             for i in range(self.config.train_batch_size):
-                loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i],
-                                                     options=options, run_metadata=run_metadata, i=i) #todo: remove
+                loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
                 if loss is not None:
                     losses.append(loss)
                     pos_vel_losses.append(pos_vel_loss)
@@ -90,15 +77,22 @@ class SingulationTrainer(BaseTrain):
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
 
+        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
+        gc.collect()
+
         self.sess.run(self.model.increment_cur_batch_tensor)
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
+            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:0.2f}   step time (sec): {:0.2f}   get data time (sec): {:0.2f}'.format(
+                cur_batch_it, batch_loss,
+                pos_vel_batch_loss,
+                elapsed_since_last_log,
+                elapsed_since_last_log_getting_data)
+            )
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
-
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
         else:
             batch_loss = 0
@@ -107,7 +101,6 @@ class SingulationTrainer(BaseTrain):
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
     def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False, export_images=False):
-
         losses = []
         pos_vel_losses = []
         output_for_summary = None
@@ -137,6 +130,9 @@ class SingulationTrainer(BaseTrain):
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
 
+        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
+        gc.collect()
+
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if output_for_summary is not None:
@@ -162,7 +158,10 @@ class SingulationTrainer(BaseTrain):
                 cur_batch_it=cur_batch_it
             )
 
-            #if export_images:
+            if export_images:
+                dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
+                dict_list = []
+                # todo
 
 
 
