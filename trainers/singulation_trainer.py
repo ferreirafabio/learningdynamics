@@ -15,11 +15,11 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
-
+        run_metadata = tf.RunMetadata()  # todo: remove
+        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  # todo: remove
         while True:
            try:
-                run_metadata = tf.RunMetadata() # todo: remove
-                _, _, cur_batch_it = self.train_batch(prefix, run_metadata)
+                _, _, cur_batch_it = self.train_batch(prefix, run_metadata, options)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
@@ -43,24 +43,24 @@ class SingulationTrainer(BaseTrain):
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
                                   }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
-            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-            chrome_trace = fetched_timeline.generate_chrome_trace_format()
-            if i is not None:
-                with open('timeline_01_step_%d.json' % i, 'w') as f:
-                    f.write(chrome_trace)
+
         else:
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict, options=options, run_metadata=run_metadata) # todo
 
-
+        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        if i is not None:
+            with open('timeline_01_step_%d.json' % i, 'w') as f:
+                f.write(chrome_trace)
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
-    def train_batch(self, prefix, run_metadata):
+    def train_batch(self, prefix, run_metadata, options):
         losses = []
         pos_vel_losses = []
-        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE) # todo: remove
+
         next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
 
