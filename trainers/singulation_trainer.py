@@ -130,9 +130,6 @@ class SingulationTrainer(BaseTrain):
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
 
-        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
-        gc.collect()
-
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if output_for_summary is not None:
@@ -172,6 +169,7 @@ class SingulationTrainer(BaseTrain):
                 raise NotImplementedError
 
 
+
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
@@ -191,6 +189,9 @@ class SingulationTrainer(BaseTrain):
         else:
             batch_loss = 0
             pos_vel_batch_loss = 0
+
+        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
+        gc.collect()
 
         return batch_loss, pos_vel_batch_loss
 
