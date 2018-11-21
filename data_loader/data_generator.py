@@ -69,6 +69,9 @@ class DataGenerator:
         self.iterator = self.dataset.make_initializable_iterator()
         sess.run(self.iterator.initializer)
 
+    #def _normalize_images(self, dct, epsilon=.0001):
+
+
 
     def _parse_function(self, example_proto):
         context_features = {

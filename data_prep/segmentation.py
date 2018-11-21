@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir
-from utils.utils import get_all_experiment_image_data_from_dir, convert_float_image_to_int16, save_image_data_to_disk
+from utils.utils import get_all_experiment_image_data_from_dir, convert_float_image_to_int16_legacy, save_image_data_to_disk
 
 
 def get_segments_from_experiment_step(images, depth_data_provided=False):
@@ -45,7 +45,7 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
         seg_rgb_data['full_depth'] = images['depth']
         depth = images['depth']
         if depth.dtype == np.float32:
-            depth = convert_float_image_to_int16(images['depth']) # depth image requires int16 rescaling
+            depth = convert_float_image_to_int16_legacy(images['depth']) # depth image requires int16 rescaling
 
     for i in range(n_segments):
         # get full images

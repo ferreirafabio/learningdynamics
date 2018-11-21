@@ -4,7 +4,8 @@ import time
 import os
 import gc
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir
+from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
+                        save_to_gif_from_dict
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
 from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
@@ -23,7 +24,7 @@ class SingulationTrainer(BaseTrain):
                     self.model.save(self.sess)
                 if cur_batch_it % self.config.test_interval == 1:
                     print("Executing test batch")
-                    self.test_batch(prefix)
+                    self.test_batch(prefix, export_images=self.config.export_test_images)
 
            except tf.errors.OutOfRangeError:
                break
@@ -111,6 +112,7 @@ class SingulationTrainer(BaseTrain):
         _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.test_batch_size)
 
+        summaries_dict_images = {}
         target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
         predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
         target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
@@ -155,11 +157,6 @@ class SingulationTrainer(BaseTrain):
                 cur_batch_it=cur_batch_it
             )
 
-            if export_images:
-                dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
-                dict_list = []
-                # todo
-
 
 
             if log_position_displacements:
@@ -176,19 +173,27 @@ class SingulationTrainer(BaseTrain):
             print('current test loss on batch: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
-            summaries_dict = {
+            summaries_dict_images = {
                 **predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
-                **summaries_dict,
                 **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
                 **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth
             }
 
+            summaries_dict = {**summaries_dict, **summaries_dict_images}
+
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
+
 
         else:
             batch_loss = 0
             pos_vel_batch_loss = 0
+
+
+        if export_images:
+            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
+            save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10)
+
 
         del features, input_graphs_all_exp, target_graphs_all_exp, next_element
         gc.collect()
