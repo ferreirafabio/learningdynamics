@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from graph_nets import utils_tf
-from skimage import img_as_ubyte
+from skimage import img_as_uint
 
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
@@ -237,14 +237,13 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
         return None
 
     for file_name, img_data in image_dicts.items():
-        if len(img_data.shape) == 4 and img_data.shape[3] == 1:
+        img_data_uint = img_as_uint(img_data)
+        if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
             ''' segmentation masks '''
-            clip = mpy.ImageSequenceClip(list(img_data), fps=fps, ismask=True)
-        elif len(img_data.shape) == 4 and img_data.shape[3] == 3:
-            if img_data.dtype == np.int16:
-                img_data = img_as_ubyte(img_data)
+            clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=True)
+        elif len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 3:
             ''' all 3-channel data (rgb, depth etc.)'''
-            clip = mpy.ImageSequenceClip(list(img_data.astype(np.int16)), fps=fps, ismask=False)
+            clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=False)
         else:
             continue
 
