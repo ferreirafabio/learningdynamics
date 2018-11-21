@@ -1,7 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import os
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir, convert_image_to_int16
+from skimage import img_as_uint
+from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
 from data_prep.segmentation import get_segments_from_experiment_step
 from data_prep.segmentation import get_number_of_segment
 from sklearn.model_selection import train_test_split
@@ -79,10 +80,12 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
             stop_object_segments = True
             objects_segments.append(np.stack(temp_list))
         if depth_data_provided:
-            depth.append(convert_image_to_int16(trajectory_step['xyz']))
+            depth.append(img_as_uint(trajectory_step['xyz'])) #todo changed
 
-        seg.append(trajectory_step['seg'].astype(np.int16))
-        img.append(trajectory_step['img'].astype(np.int16))
+        seg.append(img_as_uint(trajectory_step['seg']))
+        img.append(img_as_uint(trajectory_step['img']))
+        #seg.append(trajectory_step['seg'].astype(np.int16))
+        #img.append(trajectory_step['img'].astype(np.int16))
         gripperpos.append(trajectory_step['gripperpos'])
         objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
         objvel.append(np.stack(list(trajectory_step['objvel'].tolist().values())))
