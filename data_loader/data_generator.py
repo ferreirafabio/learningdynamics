@@ -148,7 +148,7 @@ class DataGenerator:
 
         if self.depth_data_provided:
             return_dict['depth'] = depth
-
+            return return_dict
         # if normalize_images:
         #     img_keywords = ['img', 'seg', 'object_segments']
         #     return_dict
