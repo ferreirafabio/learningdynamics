@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from graph_nets import utils_tf
+from skimage import img_as_ubyte
 
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
@@ -231,6 +232,24 @@ def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_ty
         clip = mpy.ImageSequenceClip(output_dir, fps=5, with_mask=False).to_RGB()
         clip.write_gif(os.path.join(output_dir, 'sequence_' + img_type + '.gif'), program='ffmpeg')
 
+def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
+    if not isinstance(image_dicts, dict) or image_dicts is None:
+        return None
+
+    for file_name, img_data in image_dicts.items():
+        if len(img_data.shape) == 4 and img_data.shape[3] == 1:
+            ''' segmentation masks '''
+            clip = mpy.ImageSequenceClip(list(img_data), fps=fps, ismask=True)
+        elif len(img_data.shape) == 4 and img_data.shape[3] == 3:
+            if img_data.dtype == np.int16:
+                img_data = img_as_ubyte(img_data)
+            ''' all 3-channel data (rgb, depth etc.)'''
+            clip = mpy.ImageSequenceClip(list(img_data.astype(np.int16)), fps=fps, ismask=False)
+        else:
+            continue
+
+        clip.write_gif(os.path.join(destination_path, file_name) + ".gif", program="ffmpeg")
+
 
 def convert_dict_to_list(dct):
     """ assumes a dict of subdicts of which each subdict only contains one key containing the desired data """
@@ -275,11 +294,23 @@ def convert_list_of_dicts_to_list_by_concat(lst):
         total_list.append(sub_list)
     return total_list
 
-def convert_float_image_to_int16(float_image):
+def convert_float_image_to_int16_legacy(float_image): #todo: remove wrong (65k vs 255) conversion when creating new tfrecords
     dt = float_image.dtype
     float_image = float_image.astype(dt) / float_image.max()
     float_image = 255 * float_image
     return float_image.astype(np.int16)
+
+def convert_image_to_int16(float_image):
+    dt = float_image.dtype
+    float_image = float_image.astype(dt) / float_image.max()
+    float_image = 65536 * float_image
+    return float_image.astype(np.int16)
+
+def fix_conversion_error(img): #todo: remove wrong (65k vs 255) conversion when creating new tfrecords
+    info = np.iinfo(img.dtype)
+    rescaled_img = img.astype(np.float32) / info.max
+    rescaled_img = 255 * rescaled_img
+    return rescaled_img.astype(np.float32)
 
 def get_number_of_total_samples(tf_records_filenames, options=None):
     c = 0
