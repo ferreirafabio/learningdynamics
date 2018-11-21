@@ -232,12 +232,12 @@ def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_ty
         clip = mpy.ImageSequenceClip(output_dir, fps=5, with_mask=False).to_RGB()
         clip.write_gif(os.path.join(output_dir, 'sequence_' + img_type + '.gif'), program='ffmpeg')
 
-def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
+def vsave_to_gif_from_dict(image_dicts, destination_path, fps=10):
     if not isinstance(image_dicts, dict) or image_dicts is None:
         return None
 
     for file_name, img_data in image_dicts.items():
-        if isinstance(img_data, np.float):
+        if isinstance(img_data, np.float32) or isinstance(img_data, np.float64):
             ''' normalize [-1, 1]'''
             img_data = 2*(img_data - np.min(img_data)/np.ptp(img_data)-1)
             ''' normalize [0,1] '''
