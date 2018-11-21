@@ -248,7 +248,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
         else:
             continue
 
-        clip.write_gif(os.path.join(destination_path, file_name) + ".gif", program="ffmpeg")
+        clip.write_gif(os.path.join(destination_path, file_name) + ".gif", program="ffmpeg", verbose=False, progress_bar=False)
 
 
 def convert_dict_to_list(dct):

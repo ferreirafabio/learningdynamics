@@ -19,7 +19,7 @@
   "test_batch_size": 5,
   "dataset_prefetch_size": 80,
   "n_layers": 5,
-  "n_neurons": 200,
+  "n_neurons": 250,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_checkpoints_to_keep": 5,
@@ -27,7 +27,7 @@
   "model_save_step_interval": 100,
   "n_images_shown_in_tensorboard": 10,
   "node_and_global_as_cnn": true,
-  "n_convnet1D_filters_per_layer": 10,
+  "n_convnet1D_filters_per_layer": 8,
   "convnet1D_kernel_size": 10,
   "convnet1D_stride": 4
 }
