@@ -58,7 +58,7 @@ class BaseTrain:
         loss_ops_train, pos_vel_loss_ops_train = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)
-        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
+        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.cur_batch_tensor)
 
     def initialize_test_model(self):
         assert self.model.input_ph is not None, "initialize model for training first"
@@ -68,4 +68,4 @@ class BaseTrain:
         loss_ops_test, pos_vel_loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.pos_vel_loss_ops_test = tf.reduce_mean(pos_vel_loss_ops_test)
-        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.global_step_tensor)
+        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.cur_batch_tensor)
