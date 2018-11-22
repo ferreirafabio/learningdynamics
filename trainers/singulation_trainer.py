@@ -33,14 +33,16 @@ class SingulationTrainer(BaseTrain):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
         if train:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
                                   }, feed_dict=feed_dict)
 
         else:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict)
+
+        del feed_dict
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
