@@ -1,5 +1,5 @@
 {
-  "exp_name": "singulation2_nodes_cnn",
+  "exp_name": "singulation3_cnn_tanh_activation",
   "tfrecords_dir": "../data/destination",
   "export_test_images": true,
   "use_tfrecord_compression": true,
@@ -18,8 +18,8 @@
   "train_batch_size": 20,
   "test_batch_size": 5,
   "dataset_prefetch_size": 80,
-  "n_layers": 5,
-  "n_neurons": 250,
+  "n_layers": 8,
+  "n_neurons": 300,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_checkpoints_to_keep": 5,
@@ -28,8 +28,8 @@
   "n_images_shown_in_tensorboard": 10,
   "node_and_global_as_cnn": true,
   "n_convnet1D_filters_per_layer": 8,
-  "convnet1D_kernel_size": 10,
-  "convnet1D_stride": 4,
+  "convnet1D_kernel_size": 5,
+  "convnet1D_stride": 1,
   "convnet1D_pooling": true,
   "convnet1D_tanh": true
 }
