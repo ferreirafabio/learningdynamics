@@ -202,6 +202,10 @@ def create_graphs_and_placeholders(config, batch_data, batch_size):
 
     return input_ph, target_ph, input_graphs, target_graphs
 
+def create_graphs(config, batch_data, batch_size):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
+    return input_graphs, target_graphs
+
 def create_placeholders(config, batch_data):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, 1)
 
