@@ -195,16 +195,10 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
     return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
 
-def create_graphs_and_placeholders(config, batch_data, batch_size):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
-    input_ph = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
-    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
-
-    return input_ph, target_ph, input_graphs, target_graphs
-
 def create_graphs(config, batch_data, batch_size):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
     return input_graphs, target_graphs
+
 
 def create_placeholders(config, batch_data):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, 1)

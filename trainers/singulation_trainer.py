@@ -54,16 +54,9 @@ class SingulationTrainer(BaseTrain):
         next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
 
-        start_time_getting_data = time.time()
-        last_log_time_getting_data = start_time_getting_data
-
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
                                                                                            batch_size=self.config.train_batch_size)
-        # todo: try avoid creating placeholders
-
-        the_time = time.time()
-        elapsed_since_last_log_getting_data = the_time - last_log_time_getting_data
 
         start_time = time.time()
         last_log_time = start_time
@@ -92,11 +85,9 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:0.2f}   step time (sec): {:0.2f}   get data time (sec): {:0.2f}'.format(
-                cur_batch_it, batch_loss,
-                pos_vel_batch_loss,
-                elapsed_since_last_log,
-                elapsed_since_last_log_getting_data)
+            print('batch: {:<10} loss: {:<10.2f} pos_vel loss: {:<10.2f} batch processing time (sec): {:<10.2f} '
+                .format(
+                cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log)
             )
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
@@ -188,7 +179,6 @@ class SingulationTrainer(BaseTrain):
 
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
-
 
         else:
             batch_loss = 0
