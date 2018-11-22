@@ -261,7 +261,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_checkpoints_to_keep)
 
     def init_ops(self):
-        self.step_op = None
         self.loss_op_train = None
         self.loss_op_test = None
 
@@ -326,8 +325,9 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
             ''' layer 1'''
             outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                                           kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
+
             outputs = snt.BatchNorm()(outputs, is_training=True)
-            #todo: max pool?
+            # todo: add tf.nn.max_pool()
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
 
             outputs = tf.nn.relu(outputs)

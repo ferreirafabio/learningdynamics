@@ -49,11 +49,11 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
 
     for i in range(n_segments):
         # get full images
-        full_seg_masked = (seg == masks[i]).astype(np.int16)
-        full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.int16)
+        full_seg_masked = (seg == masks[i]).astype(np.int16) # todo: check if these conversions are okay
+        full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.int16) # todo: check if these conversions are okay
 
         if depth_data_provided:
-            full_depth_masked = get_segment_by_mask(depth, full_seg_masked).astype(np.int16)
+            full_depth_masked = get_segment_by_mask(depth, full_seg_masked).astype(np.int16) # todo: check if these conversions are okay
 
 
         full_seg_masked_expanded = np.expand_dims(full_seg_masked, axis=2)
@@ -69,12 +69,12 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
 
         """ get crops """
         crop = crop_by_mask(full_seg_masked).astype(np.int16)
-        rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.int16)
+        rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.int16) # todo: check if these conversions are okay
 
         depth_crop = None
         identifier = "crop_seg_rgb"
         if depth_data_provided:
-            depth_crop = get_segment_by_mask(depth, mask=full_seg_masked, crop=True).astype(np.int16)
+            depth_crop = get_segment_by_mask(depth, mask=full_seg_masked, crop=True).astype(np.int16) # todo: check if these conversions are okay
 
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
         if depth_data_provided:
