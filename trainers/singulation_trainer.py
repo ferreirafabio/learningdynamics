@@ -85,7 +85,7 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('batch: {:<10} loss: {:<10.2f} pos_vel loss: {:<10.2f} batch processing time (sec): {:<10.2f} '
+            print('batch: {:<10} loss: {:<12.2f} pos_vel loss: {:<10.2f} batch processing time (sec): {:<10.2f} '
                 .format(
                 cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log)
             )
@@ -166,7 +166,7 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('current test loss on batch: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
+            print('test batch loss: {:<12.2f} pos_vel loss: {:<12.2f} time (sec): {:<12.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
             summaries_dict_images = {
