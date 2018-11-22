@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import time
 import os
-import gc
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
                         save_to_gif_from_dict
@@ -75,9 +74,6 @@ class SingulationTrainer(BaseTrain):
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
-
-        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
-        gc.collect()
 
         self.sess.run(self.model.increment_cur_batch_tensor)
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -188,10 +184,6 @@ class SingulationTrainer(BaseTrain):
         if export_images:
             dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
             save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10)
-
-
-        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
-        gc.collect()
 
         return batch_loss, pos_vel_batch_loss
 
