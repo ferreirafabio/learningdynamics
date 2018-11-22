@@ -2,12 +2,11 @@ import numpy as np
 import tensorflow as tf
 import time
 import os
-import gc
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
                         save_to_gif_from_dict
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
-from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
+from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
 class SingulationTrainer(BaseTrain):
@@ -32,15 +31,18 @@ class SingulationTrainer(BaseTrain):
     def do_step(self, input_graph, target_graphs, feature, train=True):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
+
         if train:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
                                   }, feed_dict=feed_dict)
 
         else:
-            data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_test,
+            data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict)
+
+        del feed_dict
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
@@ -51,14 +53,9 @@ class SingulationTrainer(BaseTrain):
         next_element = self.train_data.get_next_batch()
         features = self.sess.run(next_element)
 
-        start_time_getting_data = time.time()
-        last_log_time_getting_data = start_time_getting_data
-
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
-        _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
                                                                                            batch_size=self.config.train_batch_size)
-        the_time = time.time()
-        elapsed_since_last_log_getting_data = the_time - last_log_time_getting_data
 
         start_time = time.time()
         last_log_time = start_time
@@ -78,20 +75,15 @@ class SingulationTrainer(BaseTrain):
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
 
-        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
-        gc.collect()
-
         self.sess.run(self.model.increment_cur_batch_tensor)
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('batch: {:06d} loss: {:0.2f} pos_vel loss: {:0.2f}   step time (sec): {:0.2f}   get data time (sec): {:0.2f}'.format(
-                cur_batch_it, batch_loss,
-                pos_vel_batch_loss,
-                elapsed_since_last_log,
-                elapsed_since_last_log_getting_data)
+            print('batch: {:<10} loss: {:<12.2f} pos_vel loss: {:<10.2f} batch processing time (sec): {:<10.2f} '
+                .format(
+                cur_batch_it, batch_loss, pos_vel_batch_loss, elapsed_since_last_log)
             )
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
@@ -109,7 +101,7 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
-        _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.test_batch_size)
 
         summaries_dict_images = {}
@@ -170,7 +162,7 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
-            print('current test loss on batch: {:0.2f} pos_vel loss: {:0.2f} time (sec): {:0.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
+            print('test batch loss: {:<12.2f} pos_vel loss: {:<12.2f} time (sec): {:<12.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
             summaries_dict_images = {
@@ -184,7 +176,6 @@ class SingulationTrainer(BaseTrain):
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
-
         else:
             batch_loss = 0
             pos_vel_batch_loss = 0
@@ -193,10 +184,6 @@ class SingulationTrainer(BaseTrain):
         if export_images:
             dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
             save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10)
-
-
-        del features, input_graphs_all_exp, target_graphs_all_exp, next_element
-        gc.collect()
 
         return batch_loss, pos_vel_batch_loss
 
