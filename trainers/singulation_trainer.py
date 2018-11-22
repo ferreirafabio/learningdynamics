@@ -7,7 +7,7 @@ from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
                         save_to_gif_from_dict
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
-from models.singulation_graph import create_graphs_and_placeholders, create_feed_dict
+from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
 class SingulationTrainer(BaseTrain):
@@ -31,6 +31,7 @@ class SingulationTrainer(BaseTrain):
 
     def do_step(self, input_graph, target_graphs, feature, train=True):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
+
 
         if train:
             data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_train,
@@ -57,8 +58,10 @@ class SingulationTrainer(BaseTrain):
         last_log_time_getting_data = start_time_getting_data
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
-        _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
                                                                                            batch_size=self.config.train_batch_size)
+        # todo: try avoid creating placeholders
+
         the_time = time.time()
         elapsed_since_last_log_getting_data = the_time - last_log_time_getting_data
 
@@ -111,7 +114,7 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
-        _, _, input_graphs_all_exp, target_graphs_all_exp = create_graphs_and_placeholders(config=self.config, batch_data=features,
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
                                                                                          batch_size=self.config.test_batch_size)
 
         summaries_dict_images = {}
