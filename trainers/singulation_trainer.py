@@ -6,7 +6,7 @@ from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
                         save_to_gif_from_dict
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
-from models.singulation_graph import create_graphs, create_feed_dict
+from models.singulation_graph import create_graphs, create_feed_dict, create_graphs_and_placeholders
 from joblib import parallel_backend, Parallel, delayed
 
 class SingulationTrainer(BaseTrain):

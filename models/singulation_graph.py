@@ -164,18 +164,12 @@ def get_graph_dict(graph_tuple):
 def get_graph_ph(graph_dicts):
     return utils_tf.placeholders_from_data_dicts(graph_dicts)
 
+
 def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     labels = nx.get_node_attributes(graph_nx, label_keyword)
     plt.figure(1, figsize=(11, 11))
     nx.draw(graph_nx, labels=labels, node_size=1000, font_size=15)
     plt.show()
-
-
-def create_graph_and_get_graph_ph(config, n_manipulable_objects):
-    graph_nx = generate_singulation_graph(config, n_manipulable_objects)
-    graph_tuple = get_graph_tuple(graph_nx)
-    graph_dict = get_graph_dict(graph_tuple)
-    return get_graph_ph(graph_dict)
 
 
 def create_singulation_graphs(config, batch_data, train_batch_size):
@@ -214,3 +208,10 @@ def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):
 
     return {input_ph: input_tuple, target_ph: target_tuple}
 
+#todo: remove
+def create_graphs_and_placeholders(config, batch_data, batch_size):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
+    input_ph = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
+    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
+
+    return input_ph, target_ph, input_graphs, target_graphs
