@@ -50,8 +50,8 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=EncodeProcessDecode.make_cnn_model,
-              global_model_fn=EncodeProcessDecode.make_cnn_model
+              node_model_fn=lambda: ConvNet1D(),
+              global_model_fn=lambda: ConvNet1D()
             )
 
     def _build(self, inputs):
@@ -66,8 +66,8 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=EncodeProcessDecode.make_transpose_cnn_model,
-                global_model_fn = EncodeProcessDecode.make_transpose_cnn_model
+                node_model_fn=lambda: TransposeConvNet1D(),
+                global_model_fn=lambda: TransposeConvNet1D()
             )
 
     def _build(self, inputs):
@@ -299,7 +299,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons] * EncodeProcessDecode.n_layers, activate_final=True), snt.LayerNorm()])
+        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons] * EncodeProcessDecode.n_layers, activate_final=True),
+                               snt.LayerNorm()])
 
 
     @staticmethod
@@ -313,190 +314,107 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True), snt.LayerNorm()])
+        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
+                               snt.LayerNorm()])
 
-    @staticmethod
-    def make_cnn_model():
-        def convnet1d(inputs):
-            # input shape is (batch_size, feature_length) but CNN operates on depth channels --> (batch_size, feature_length, 1)
-            inputs = tf.expand_dims(inputs, axis=2)
-            ''' layer 1'''
-            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                 kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-                inputs)
 
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            # todo: add tf.nn.max_pool()
-            #outputs = tf.layers.max_pooling1d(outputs, 2, 2)
 
-            outputs = tf.nn.relu(outputs)
-            ''' layer 2'''
-            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                 kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-                outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            #outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-            outputs = tf.nn.relu(outputs)
+class ConvNet1D(snt.AbstractModule):
+    def __init__(self, name='cnn_model'):
+        super(ConvNet1D, self).__init__(name=name)
 
-            ''' layer 3'''
-            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                 kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-                outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            #outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-            outputs = tf.nn.relu(outputs)
+    def _build(self, inputs, is_training=True):
+        if EncodeProcessDecode.convnet1D_tanh:
+            activation = tf.nn.tanh
+        else:
+            activation = tf.nn.relu
+        # input shape is (batch_size, feature_length) but CNN operates on depth channels --> (batch_size, feature_length, 1)
+        inputs = tf.expand_dims(inputs, axis=2)
+        ''' layer 1'''
+        outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                             kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
 
-            ''' layer 4'''
-            outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                 kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-                outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)  # todo: deal with train/test time
-            #outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-            outputs = tf.nn.relu(outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        if EncodeProcessDecode.convnet1D_pooling:
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
+        outputs = activation(outputs)
 
-            ''' layer 5'''
-            outputs = snt.BatchFlatten()(outputs)
-            # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-            outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+        ''' layer 2'''
+        outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                             kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        if EncodeProcessDecode.convnet1D_pooling:
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
+        outputs = activation(outputs)
 
-            return outputs
+        ''' layer 3'''
+        outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                             kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        if EncodeProcessDecode.convnet1D_pooling:
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
+        outputs = activation(outputs)
 
-        return convnet1d
+        ''' layer 4'''
+        outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                             kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
+        if EncodeProcessDecode.convnet1D_pooling:
+            outputs = tf.layers.max_pooling1d(outputs, 2, 2)
+        outputs = activation(outputs)
 
-    @staticmethod
-    def make_transpose_cnn_model():
-        def transpose_convnet1d(inputs):
-            inputs = tf.expand_dims(inputs, axis=2)
 
-            ''' layer 1'''
-            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            outputs = tf.nn.relu(outputs)
+        ''' layer 5'''
+        outputs = snt.BatchFlatten()(outputs)
+        #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
+        outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
 
-            ''' layer 2'''
-            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            outputs = tf.nn.relu(outputs)
+        return outputs
 
-            ''' layer 3'''
-            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True)
-            outputs = tf.nn.relu(outputs)
 
-            ''' layer 4'''
-            outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-                                          kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-            outputs = snt.BatchNorm()(outputs, is_training=True) #todo: deal with train/test time
-            outputs = tf.nn.relu(outputs)
+class TransposeConvNet1D(snt.AbstractModule):
+    def __init__(self, name='transpose_cnn_model'):
+        super(TransposeConvNet1D, self).__init__(name=name)
 
-            ''' layer 5'''
-            outputs = snt.BatchFlatten()(outputs)
-            #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-            outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+    def _build(self, inputs, is_training=True):
+        if EncodeProcessDecode.convnet1D_tanh:
+            activation = tf.nn.tanh
+        else:
+            activation = tf.nn.relu
 
-            return outputs
+        inputs = tf.expand_dims(inputs, axis=2)
 
-        return transpose_convnet1d
-#
-# class ConvNet1D(snt.AbstractModule):
-#     def __init__(self, name='transpose_cnn_model'):
-#         super(ConvNet1D, self).__init__(name=name)
-#
-#     def _build(self, inputs, is_training=True):
-#         if EncodeProcessDecode.convnet1D_tanh:
-#             activation = tf.nn.tanh
-#         else:
-#             activation = tf.nn.relu
-#         # input shape is (batch_size, feature_length) but CNN operates on depth channels --> (batch_size, feature_length, 1)
-#         inputs = tf.expand_dims(inputs, axis=2)
-#         ''' layer 1'''
-#         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
-#
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         if EncodeProcessDecode.convnet1D_pooling:
-#             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-#         outputs = activation(outputs)
-#
-#         ''' layer 2'''
-#         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         if EncodeProcessDecode.convnet1D_pooling:
-#             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-#         outputs = activation(outputs)
-#
-#         ''' layer 3'''
-#         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         if EncodeProcessDecode.convnet1D_pooling:
-#             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-#         outputs = activation(outputs)
-#
-#         ''' layer 4'''
-#         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
-#         if EncodeProcessDecode.convnet1D_pooling:
-#             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
-#         outputs = activation(outputs)
-#
-#
-#         ''' layer 5'''
-#         outputs = snt.BatchFlatten()(outputs)
-#         #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-#         outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
-#
-#         return outputs
-#
-#
-# class TransposeConvNet1D(snt.AbstractModule):
-#     def __init__(self, name='transpose_cnn_model'):
-#         super(TransposeConvNet1D, self).__init__(name=name)
-#
-#     def _build(self, inputs, is_training=True):
-#         if EncodeProcessDecode.convnet1D_tanh:
-#             activation = tf.nn.tanh
-#         else:
-#             activation = tf.nn.relu
-#
-#         inputs = tf.expand_dims(inputs, axis=2)
-#
-#         ''' layer 1'''
-#         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                                       kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-#             inputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         outputs = activation(outputs)
-#
-#         ''' layer 2'''
-#         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                                       kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-#             outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         outputs = activation(outputs)
-#
-#         ''' layer 3'''
-#         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                                       kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-#             outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-#         outputs = activation(outputs)
-#
-#         ''' layer 4'''
-#         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
-#                                       kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
-#             outputs)
-#         outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
-#         outputs = activation(outputs)
-#
-#         ''' layer 5'''
-#         outputs = snt.BatchFlatten()(outputs)
-#         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-#         outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
-#
-#         return outputs
+        ''' layer 1'''
+        outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                      kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
+            inputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        outputs = activation(outputs)
+
+        ''' layer 2'''
+        outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                      kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
+            outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        outputs = activation(outputs)
+
+        ''' layer 3'''
+        outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                      kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
+            outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        outputs = activation(outputs)
+
+        ''' layer 4'''
+        outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
+                                      kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(
+            outputs)
+        outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
+        outputs = activation(outputs)
+
+        ''' layer 5'''
+        outputs = snt.BatchFlatten()(outputs)
+        # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
+        outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+
+        return outputs
