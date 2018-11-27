@@ -68,4 +68,3 @@ class BaseTrain:
         loss_ops_test, pos_vel_loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.pos_vel_loss_ops_test = tf.reduce_mean(pos_vel_loss_ops_test)
-        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_test, global_step=self.model.global_step_tensor)
