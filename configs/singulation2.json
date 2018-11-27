@@ -1,6 +1,6 @@
 {
   "exp_name": "singulation2_nodes_cnn",
-  "tfrecords_dir": "../data/destination",
+  "tfrecords_dir": "/scr2/data/tfrecords/",
   "export_test_images": true,
   "use_tfrecord_compression": true,
   "use_object_seg_data_only_for_init": false,
