@@ -332,10 +332,7 @@ def get_all_images_from_gn_output(outputs, depth=True):
     images_seg = []
     images_depth = []
     n_objects = np.shape(outputs[0][0])[0]
-    if depth:
-        img_shape = (120, 160, 7)
-    else:
-        img_shape = (120, 160, 4)
+    img_shape = get_correct_image_shape(config=None, n_leading_Nones=0, get_type='all', depth_data_provided=depth)
 
     for n in range(n_objects):
         rgb = []
@@ -367,6 +364,32 @@ def get_pos_ndarray_from_output(output_for_summary):
         pos_lst.append(np.stack(pos_t))
 
     return pos_lst
+
+def get_correct_image_shape(config, n_leading_Nones=0, get_type="rgb", depth_data_provided = True):
+    """ returns the correct shape (e.g. (120,160,7) ) according to the settings set in the configuration file """
+    assert get_type in ['seg', 'depth', 'rgb', 'all']
+
+    img_shape = None
+    if config is None:
+        depth = depth_data_provided
+    else:
+        depth = config.depth_data_provided
+
+    if get_type is 'seg':
+        img_shape = (120, 160, 1)
+    elif get_type is 'depth' or get_type is 'rgb':
+        img_shape = (120, 160, 3)
+    elif get_type is 'all':
+        if depth:
+            img_shape = (120, 160, 7)
+        else:
+            img_shape = (120, 160, 4)
+
+    for _ in range(n_leading_Nones):
+        img_shape = (None, *img_shape)
+
+    return img_shape
+
 
 
 
