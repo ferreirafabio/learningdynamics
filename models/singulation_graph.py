@@ -139,13 +139,6 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
             edge_feature = create_edge_feature(receiver, sender, target_graphs[step])
             target_graphs[step].add_edge(sender, receiver, features=edge_feature)
 
-    """ if a conv1d cnn is used for the nodes, an additional channel dimension is required """
-    # if config.use_cnn:
-    #     for step in range(experiment_length):
-    #         for node_index, node_feature in graph.nodes(data=True):
-    #             target_graphs[step].node[node_index]['features'] = np.expand_dims(node_feature['features'], axis=1).astype(np.float32)
-
-
     input_graph = target_graphs[0].copy()
 
     return input_graph, target_graphs
@@ -207,11 +200,3 @@ def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):
     target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
 
     return {input_ph: input_tuple, target_ph: target_tuple}
-
-#todo: remove
-def create_graphs_and_placeholders(config, batch_data, batch_size):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
-    input_ph = [utils_tf.placeholders_from_networkxs([ig], force_dynamic_num_graphs=True) for ig in input_graphs]
-    target_ph = [utils_tf.placeholders_from_networkxs(tg, force_dynamic_num_graphs=True) for tg in target_graphs]
-
-    return input_ph, target_ph, input_graphs, target_graphs

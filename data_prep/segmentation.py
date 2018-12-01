@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir
-from utils.utils import get_all_experiment_image_data_from_dir, convert_float_image_to_int16_legacy, save_image_data_to_disk
-
+from utils.utils import get_all_experiment_image_data_from_dir, save_image_data_to_disk
+from skimage import img_as_ubyte
 
 def get_segments_from_experiment_step(images, depth_data_provided=False):
     """
@@ -45,15 +45,15 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
         seg_rgb_data['full_depth'] = images['depth']
         depth = images['depth']
         if depth.dtype == np.float32:
-            depth = convert_float_image_to_int16_legacy(images['depth']) # depth image requires int16 rescaling
+            depth = img_as_ubyte(images['depth']) # depth image requires int16 rescaling
 
     for i in range(n_segments):
         # get full images
-        full_seg_masked = (seg == masks[i]).astype(np.int16) # todo: check if these conversions are okay
-        full_rgb_masked = get_segment_by_mask(rgb, full_seg_masked).astype(np.int16) # todo: check if these conversions are okay
+        full_seg_masked = (seg == masks[i]).astype(np.uint8)
+        full_rgb_masked = img_as_ubyte(get_segment_by_mask(rgb, full_seg_masked))
 
         if depth_data_provided:
-            full_depth_masked = get_segment_by_mask(depth, full_seg_masked).astype(np.int16) # todo: check if these conversions are okay
+            full_depth_masked = img_as_ubyte(get_segment_by_mask(depth, full_seg_masked))
 
 
         full_seg_masked_expanded = np.expand_dims(full_seg_masked, axis=2)
@@ -68,13 +68,13 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
         seg_rgb_data[str(i) + "_object_" + identifier] = full_seg_rgb_depth_masked
 
         """ get crops """
-        crop = crop_by_mask(full_seg_masked).astype(np.int16)
-        rgb_crop = get_segment_by_mask(rgb, mask=full_seg_masked, crop=True).astype(np.int16) # todo: check if these conversions are okay
+        crop = img_as_ubyte(crop_by_mask(full_seg_masked))
+        rgb_crop = img_as_ubyte(get_segment_by_mask(rgb, mask=full_seg_masked, crop=True))
 
         depth_crop = None
         identifier = "crop_seg_rgb"
         if depth_data_provided:
-            depth_crop = get_segment_by_mask(depth, mask=full_seg_masked, crop=True).astype(np.int16) # todo: check if these conversions are okay
+            depth_crop = img_as_ubyte(get_segment_by_mask(depth, mask=full_seg_masked, crop=True))
 
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
         if depth_data_provided:
