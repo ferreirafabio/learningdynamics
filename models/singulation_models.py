@@ -22,12 +22,14 @@ from graph_nets import modules
 from graph_nets import utils_tf
 from base.base_model import BaseModel
 from keras.applications.resnet50 import ResNet50, preprocess_input
-
+from keras.applications.densenet import DenseNet121
+from keras.applications.vgg16 import VGG16
+from keras.layers import Flatten, Dense, BatchNormalization, Conv2DTranspose, Concatenate
 from keras.models import Model
-from keras.layers import Flatten, Dense
-
+from keras.optimizers import SGD
 from utils.utils import get_correct_image_shape
-
+from keras import backend as K
+import keras
 import sonnet as snt
 import tensorflow as tf
 
@@ -60,7 +62,7 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
               node_model_fn=lambda: ResNet50Encoder(name="resnet50encoder_nodes"),
-              global_model_fn=lambda: ResNet50Encoder(name="resnet50encoder_globals")
+              global_model_fn=lambda: ResNet50Encoder(name="resnet50encoder_globals"),
             )
 
     def _build(self, inputs):
@@ -75,8 +77,8 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=lambda: TransposeLayer5ConvNet2D(),
-                global_model_fn=lambda: TransposeLayer5ConvNet2D()
+                node_model_fn=lambda: TransposeLayer5ConvNet2D(name="2dconvdecoder_nodes"),
+                global_model_fn=lambda: TransposeLayer5ConvNet2D(name="2dconvdecoder_globals"),
             )
 
     def _build(self, inputs):
@@ -313,7 +315,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons] * EncodeProcessDecode.n_layers, activate_final=True),
                                snt.LayerNorm()])
 
-
     @staticmethod
     # since edges are very low-dim, use different number of neurons and layers
     def make_mlp_model_edges():
@@ -328,6 +329,15 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
                                snt.LayerNorm()])
 
+
+
+def make_pos_vel_encoder_model(input):
+    return snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(input)
+
+
+def make_pos_vel_decoder_model(input):
+    return snt.Sequential(
+        [snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_position_velocity, 6], activate_final=True), snt.LayerNorm()])(input)
 
 
 class Layer5ConvNet1D(snt.AbstractModule):
@@ -444,7 +454,6 @@ class ResNet50Encoder(snt.AbstractModule):
         :param is_training:
         :return:
         """
-
         img_data = inputs[:, :-6] # shape: (batch_size, features)
         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
 
@@ -452,18 +461,21 @@ class ResNet50Encoder(snt.AbstractModule):
         input_rgb = img_data[..., :3]
         input_seg = img_data[..., 4]
 
+        #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE) as scope:
+        #scope.reuse_variables()
+
         base_model = ResNet50(weights='imagenet', pooling=max, include_top=False, input_shape=(120, 160, 3))
 
         """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
         base_model.layers.pop()
         for layer in base_model.layers:
-            layer.trainable = False
+           layer.trainable = False
         last = base_model.layers[-1].output  # pool 5 output
         last = Flatten()(last)
         output = Dense(512, activation='relu')(last)
 
         finetuned_model = Model(inputs=base_model.input, outputs=output)
-        #finetuned_model.compile(optimizer='rmsprop', loss='mse') # todo: check if this line is necessary
+        finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
 
         x = preprocess_input(input_rgb)  # ResNet requires data to be centered
         features_rgb = finetuned_model(x)
@@ -477,24 +489,26 @@ class ResNet50Encoder(snt.AbstractModule):
             x = preprocess_input(input_depth)
             features_depth = finetuned_model(x)
 
-
         """ map velocity and map into a latent space """
         vel_pos = inputs[:, -6:]
-        vel_pos_net = snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity])  # n_pos_vel_neurons * 2 layers
-        vel_pos_output = vel_pos_net(vel_pos)
+        vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(vel_pos)
+        #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
 
-        outputs = tf.concat([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
+        outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
 
-        # todo: save RessNet weights
+
+        # todo: save ResNet weights
         # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
 
         #outputs = snt.BatchFlatten()(outputs)
-        print("Encoder Output Shape", outputs.get_shape())
+        #print("Encoder Output Shape", outputs.get_shape())
+        outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+        #outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(features_rgb)
         return outputs
 
 
 class TransposeLayer5ConvNet2D(snt.AbstractModule):
-    def __init__(self, name='cnn_model'):
+    def __init__(self, name='transpose_convnet2d'):
         super(TransposeLayer5ConvNet2D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True):
@@ -506,44 +520,85 @@ class TransposeLayer5ConvNet2D(snt.AbstractModule):
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode.depth_data_provided)
 
-        print("Decoder Input Shape", inputs.get_shape())
+        #print("Decoder Input Shape", inputs.get_shape())
         """ separate image from position/velocity data """
         pos_vel_latent = inputs[:, -EncodeProcessDecode.n_neurons_mlp_position_velocity:] # get last n elements
         image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_position_velocity] # get everything except last n elements
 
         """ map latent position+velocity from 32d to original 6d space """
-        vel_pos_net = snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_position_velocity, 6])
-        pos_vel_output = vel_pos_net(pos_vel_latent)
-        print(pos_vel_output.get_shape())
+        #pos_vel_output = make_pos_vel_encoder_model(pos_vel_latent)
+        pos_vel_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_position_velocity, 6], activate_final=True), snt.LayerNorm()])(pos_vel_latent)
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,128)
 
-        ''' layer 1'''
-        outputs = snt.Conv2DTranspose(output_channels=EncodeProcessDecode.n_neurons, output_shape=(30, 40), kernel_shape=1)(image_data)
-        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        print(image_data.get_shape())
+        ''' layer 1 (1,1,x) -> (7,7,x) '''
+        outputs = tf.layers.conv2d_transpose(image_data, filters=image_data.get_shape()[3], kernel_size=[1, 1], strides=(5, 5), padding='valid')
+        #outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
-        ''' layer 2'''
-        outputs = snt.Conv2DTranspose(output_channels=64, output_shape=(60, 80), kernel_shape=1)(outputs)
-        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        ''' layer 2 (7,7,x) -> (15,20,x) '''
+        outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=(3, 4), strides=(3, 4), padding='valid') #kernel_size=[3, 2], strides=(2, 3), padding='valid')
+        #outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
-        ''' layer 3'''
-        outputs = snt.Conv2DTranspose(output_channels=32, output_shape=(90, 120), kernel_shape=1)(outputs)
-        outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        outputs = tf.layers.conv2d_transpose(outputs, filters=32, kernel_size=[2, 2], strides=(2, 2), padding='valid')
+        #outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
-        ''' layer 4'''
-        outputs = snt.Conv2DTranspose(output_channels=img_shape[2], output_shape=(img_shape[0], img_shape[1]), kernel_shape=1)(outputs)
-        outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
+
+        outputs = tf.layers.conv2d_transpose(outputs, filters=16, kernel_size=[2, 2], strides=(2, 2), padding='valid')
+        #outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
-        ''' layer 5'''
+
+        outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=[2, 2], strides=(2, 2), padding='valid')
+        #outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = activation(outputs)
+        print(outputs.get_shape())
+
+        # ''' layer 1'''
+        # outputs = snt.Conv2DTranspose(output_channels=image_data.get_shape()[3], kernel_shape=(1,1), stride=(5,5), padding='VALID')(image_data)
+        # outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        # outputs = activation(outputs)
+        # print(outputs.get_shape())
+        #
+        #
+        # ''' layer 2'''
+        # outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=(3,4), stride=(3,4), padding='VALID')(outputs)
+        # outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        # outputs = activation(outputs)
+        # print(outputs.get_shape())
+        #
+        # ''' layer 3'''
+        # outputs = snt.Conv2DTranspose(output_channels=32, kernel_shape=(2,2), stride=(2,2), padding='VALID')(outputs)
+        # outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        # outputs = activation(outputs)
+        # print(outputs.get_shape())
+        #
+        # ''' layer 4'''
+        # outputs = snt.Conv2DTranspose(output_channels=16, kernel_shape=(2,2), stride=(2,2), padding='VALID')(outputs)
+        # outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        # outputs = activation(outputs)
+        # print(outputs.get_shape())
+        #
+        # ''' layer 5'''
+        # outputs = snt.Conv2DTranspose(output_channels=img_shape[2], kernel_shape=(2, 2), stride=(2, 2), padding='VALID')(outputs)
+        # outputs = snt.BatchNorm()(outputs, is_training=is_training)
+        # outputs = activation(outputs)
+        # print(outputs.get_shape())
+
+        ''' layer 6'''
         outputs = snt.BatchFlatten()(outputs)
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
         outputs = tf.concat([outputs, pos_vel_output], axis=1)
-        print("Decoder Output Shape", outputs.get_shape())
+        #print("Decoder Output Shape", outputs.get_shape())
+        outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
         return outputs
