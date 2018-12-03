@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 class BaseModel:
-    def __init__(self, config, name=None):
+    def __init__(self, config):
         self.config = config
         # init the global step
         self.init_global_step()

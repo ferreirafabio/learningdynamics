@@ -23,12 +23,16 @@ from graph_nets import utils_tf
 from base.base_model import BaseModel
 from keras.applications.resnet50 import ResNet50, preprocess_input
 from keras.applications.densenet import DenseNet121
+from keras.applications.xception import Xception
 from keras.applications.vgg16 import VGG16
+from keras.applications.mobilenet_v2 import MobileNetV2
 from keras.layers import Flatten, Dense, BatchNormalization, Conv2DTranspose, Concatenate
 from keras.models import Model
 from keras.optimizers import SGD
 from utils.utils import get_correct_image_shape
-from keras import backend as K
+from tensorflow.contrib.slim.nets import resnet_v1
+
+
 import keras
 import sonnet as snt
 import tensorflow as tf
@@ -61,12 +65,13 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: ResNet50Encoder(name="resnet50encoder_nodes"),
-              global_model_fn=lambda: ResNet50Encoder(name="resnet50encoder_globals"),
+              node_model_fn=lambda: ResNet50Encoder(name='cnn_nodes'),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
+              global_model_fn=lambda: ResNet50Encoder(name='cnn_globals')#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
             )
 
     def _build(self, inputs):
         return self._network(inputs)
+
 
 class CNNDecoderGraphIndependent(snt.AbstractModule):
     """Graph decoder network with Transpose CNN node and MLP edge / global models."""
@@ -77,8 +82,8 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=lambda: TransposeLayer5ConvNet2D(name="2dconvdecoder_nodes"),
-                global_model_fn=lambda: TransposeLayer5ConvNet2D(name="2dconvdecoder_globals"),
+                node_model_fn=lambda: TransposeLayer5ConvNet2D(name="transpose_nodes"),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
+                global_model_fn=lambda: TransposeLayer5ConvNet2D(name="transpose_globals")#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
             )
 
     def _build(self, inputs):
@@ -136,7 +141,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.depth_data_provided = config.depth_data_provided
         EncodeProcessDecode.n_neurons_mlp_position_velocity = config.n_neurons_mlp_position_velocity
 
-
         self.config = config
         # init the global step
         self.init_global_step()
@@ -144,6 +148,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         self.init_cur_epoch()
         # init the batch counter
         self.init_batch_step()
+
+        self.is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
         self.use_cnn = self.config.node_and_global_as_cnn
 
@@ -166,40 +172,18 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
         self.init_transform()
 
-    def _build(self, input_op, num_processing_steps):
-        latent = self._encoder(input_op)
+    def _build(self, input_op, num_processing_steps, is_training):
+        latent = self._encoder(input_op)#, is_training)
 
         latent0 = latent
         output_ops = []
         for _ in range(num_processing_steps):
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
-            decoded_op = self._decoder(latent)
+            decoded_op = self._decoder(input_op)#, is_training)
             output_ops.append(self._output_transform(decoded_op))
 
         return output_ops
-
-
-    def _build2(self, input_op, num_processing_steps):
-        latent = self._encoder(input_op)
-        latent0 = latent
-        index = tf.constant(0)
-        output_ops = tf.Variable([])
-
-        def condition(index, output_ops, latent):
-            return tf.less(index, num_processing_steps)
-
-        def body(index, output_ops, latent):
-            core_input = utils_tf.concat([latent0, latent], axis=1)
-            latent = self._core(core_input)
-            decoded_op = self._decoder(latent)
-            d = tf.cast(self._output_transform(decoded_op), tf.float32)
-            output_ops = utils_tf.concat([output_ops, d], 0)
-
-            return tf.add(index, 1), output_ops, latent
-
-        return tf.while_loop(condition, body, loop_vars=[index, output_ops, latent])
-
 
     def create_loss_ops(self, target_op, output_ops):
         """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
@@ -343,8 +327,9 @@ def make_pos_vel_decoder_model(input):
 class Layer5ConvNet1D(snt.AbstractModule):
     def __init__(self, name='cnn_model'):
         super(Layer5ConvNet1D, self).__init__(name=name)
+        # todo:  store parameters in member variables prefixed with an underscore, to indicate that it is private.
 
-    def _build(self, inputs, is_training=True):
+    def _build(self, inputs, is_training):
         if EncodeProcessDecode.convnet1D_tanh:
             activation = tf.nn.tanh
         else:
@@ -397,7 +382,7 @@ class TransposeLayer5ConvNet1D(snt.AbstractModule):
     def __init__(self, name='transpose_cnn_model'):
         super(TransposeLayer5ConvNet1D, self).__init__(name=name)
 
-    def _build(self, inputs, is_training=True):
+    def _build(self, inputs, is_training):
         if EncodeProcessDecode.convnet1D_tanh:
             activation = tf.nn.tanh
         else:
@@ -461,50 +446,49 @@ class ResNet50Encoder(snt.AbstractModule):
         input_rgb = img_data[..., :3]
         input_seg = img_data[..., 4]
 
-        #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE) as scope:
-        #scope.reuse_variables()
+        with self._enter_variable_scope():
+            #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
+            base_model = VGG16(weights='imagenet', pooling='max', include_top=False, input_shape=(120, 160, 3))
 
-        base_model = ResNet50(weights='imagenet', pooling=max, include_top=False, input_shape=(120, 160, 3))
+            """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
+            base_model.layers.pop()
+            for layer in base_model.layers:
+               layer.trainable = False
+            last = base_model.layers[-1].output  # pool 5 output
+            last = Flatten()(last)
+            output = Dense(512, activation='relu')(last)
 
-        """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
-        base_model.layers.pop()
-        for layer in base_model.layers:
-           layer.trainable = False
-        last = base_model.layers[-1].output  # pool 5 output
-        last = Flatten()(last)
-        output = Dense(512, activation='relu')(last)
+            finetuned_model = Model(inputs=base_model.input, outputs=output)
+            #finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
 
-        finetuned_model = Model(inputs=base_model.input, outputs=output)
-        finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
+            x = preprocess_input(input_rgb)  # ResNet requires data to be centered
+            features_rgb = finetuned_model(x)
 
-        x = preprocess_input(input_rgb)  # ResNet requires data to be centered
-        features_rgb = finetuned_model(x)
+            input_seg = tf.stack([input_seg]*3, axis=-1)
+            x = preprocess_input(input_seg)
+            features_seg = finetuned_model(x)
 
-        input_seg = tf.stack([input_seg]*3, axis=-1)
-        x = preprocess_input(input_seg)
-        features_seg = finetuned_model(x)
+            if EncodeProcessDecode.depth_data_provided:
+                input_depth = img_data[..., -3:]
+                x = preprocess_input(input_depth)
+                features_depth = finetuned_model(x)
 
-        if EncodeProcessDecode.depth_data_provided:
-            input_depth = img_data[..., -3:]
-            x = preprocess_input(input_depth)
-            features_depth = finetuned_model(x)
+            """ map velocity and map into a latent space """
+            vel_pos = inputs[:, -6:]
+            vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(vel_pos)
+            #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
 
-        """ map velocity and map into a latent space """
-        vel_pos = inputs[:, -6:]
-        vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(vel_pos)
-        #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
-
-        outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
+            outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
 
 
-        # todo: save ResNet weights
-        # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
+            # todo: save ResNet weights
+            # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
 
-        #outputs = snt.BatchFlatten()(outputs)
-        #print("Encoder Output Shape", outputs.get_shape())
-        outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
-        #outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(features_rgb)
-        return outputs
+            #outputs = snt.BatchFlatten()(outputs)
+            #print("Encoder Output Shape", outputs.get_shape())
+            outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(outputs)
+            #outputs = snt.Linear(output_size=EncodeProcessDecode.n_neurons)(features_rgb)
+            return outputs
 
 
 class TransposeLayer5ConvNet2D(snt.AbstractModule):
