@@ -1,5 +1,5 @@
 {
-  "exp_name": "singulation4_resnet",
+  "exp_name": "singulation4_cnn2d",
   "tfrecords_dir": "../data/destination",
   "export_test_images": true,
   "use_tfrecord_compression": true,
@@ -20,7 +20,7 @@
   "train_batch_size": 20,
   "test_batch_size": 5,
   "dataset_prefetch_size": 80,
-  "n_layers": 5,
+  "n_layers": 4,
   "dimensions_latent_repr": 200,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
@@ -32,5 +32,7 @@
   "n_convnet1D_filters_per_layer": 12,
   "convnet1D_kernel_size": 10,
   "convnet1D_stride": 2,
-  "n_neurons_mlp_position_velocity": 32
+  "n_neurons_mlp_position_velocity": 32,
+  "n_conv_filters_nodes": 16,
+  "n_conv_filters_global": 32
 }
