@@ -557,7 +557,8 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         vel_pos_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(vel_pos)
 
         outputs = tf.concat([visual_latent_output, vel_pos_latent_output], axis=1)
-        print("Encoder shape before fc", outputs.get_shape())
+
+        print("Encoder shape after fc", outputs.get_shape())
 
         return outputs
 
