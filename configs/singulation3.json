@@ -8,7 +8,7 @@
   "gripper_as_global": true,
   "parallel_batch_processing": false,
   "convnet1D_pooling": true,
-  "convnet1D_tanh": true,
+  "convnet_tanh": true,
   "data_offset_manipulable_objects": 2,
   "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
