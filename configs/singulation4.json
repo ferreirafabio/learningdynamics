@@ -22,7 +22,7 @@
   "n_layers": 4,
   "n_layers_edges": 3,
   "n_neurons_edges": 32,
-  "n_neurons_mlp_non_visual": 32,
+  "n_neurons_mlp_nonvisual": 32,
   "n_rollouts": 10,
   "node_and_global_as_cnn": true,
   "node_output_size": 134406,
