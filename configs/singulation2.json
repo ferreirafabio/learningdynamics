@@ -19,7 +19,7 @@
   "test_batch_size": 5,
   "dataset_prefetch_size": 80,
   "n_layers": 5,
-  "n_neurons": 250,
+  "dimensions_latent_repr": 250,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_checkpoints_to_keep": 5,

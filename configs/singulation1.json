@@ -17,7 +17,7 @@
   "test_batch_size": 5,
   "dataset_buffer_size": 80,
   "n_layers": 8,
-  "n_neurons": 128,
+  "dimensions_latent_repr": 128,
   "n_neurons_edges": 32,
   "n_layers_edges": 3,
   "max_to_keep": 5,

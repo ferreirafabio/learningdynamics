@@ -33,13 +33,13 @@ class SingulationTrainer(BaseTrain):
 
 
         if train:
-            feed_dict['is_training'] = True
+            #feed_dict['is_training'] = True
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
                                   }, feed_dict=feed_dict)
 
         else:
-            feed_dict['is_training'] = False
+            #feed_dict['is_training'] = False
             data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict)
