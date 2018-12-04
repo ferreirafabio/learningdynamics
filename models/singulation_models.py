@@ -445,13 +445,13 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,128)
 
         ''' layer 1 (1,1,134374) -> (5,5,134374) '''
-        outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=[1, 1], strides=(5, 5), padding='valid')
+        outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[0], kernel_size=[1, 1], strides=(5, 5), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
 
         ''' layer 2 (5,5,x) -> (15,20,x) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='valid') #kernel_size=[3, 2], strides=(2, 3), padding='valid')
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=(3, 4), strides=(3, 4), padding='valid') #kernel_size=[3, 2], strides=(2, 3), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
