@@ -1,5 +1,4 @@
 {
-  "convnet1D_kernel_size": 10,
   "convnet_pooling": true,
   "convnet1D_stride": 2,
   "convnet_tanh": false,
@@ -18,7 +17,6 @@
   "model_type": "cnn2d",
   "n_conv_filters_global": 32,
   "n_conv_filters_nodes": 16,
-  "n_convnet1D_filters_per_layer": 12,
   "n_epochs": 100,
   "n_images_shown_in_tensorboard": 10,
   "n_layers": 4,
