@@ -1,9 +1,11 @@
 import tensorflow as tf
 import os
 
+from shutil import copy2
+
 
 class Logger:
-    def __init__(self, sess,config):
+    def __init__(self, sess, config):
         self.sess = sess
         self.config = config
         self.summary_placeholders = {}
@@ -11,6 +13,9 @@ class Logger:
         self.train_summary_writer = tf.summary.FileWriter(os.path.join(self.config.summary_dir, "train"),
                                                           self.sess.graph)
         self.test_summary_writer = tf.summary.FileWriter(os.path.join(self.config.summary_dir, "test"))
+
+        copy2(self.config.file_name, self.config.config_file_dir)
+
 
     # it can summarize scalars and images.
     def summarize(self, step, summarizer="train", scope="", summaries_dict=None):
