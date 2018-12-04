@@ -62,8 +62,8 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: Encoder5LayerConvNet1D(name='encoder_nodes'),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
-              global_model_fn=lambda: Encoder5LayerConvNet1D(name='encoder_global')#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
+              node_model_fn=lambda: Encoder5LayerConvNet1D(),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
+              global_model_fn=lambda: Encoder5LayerConvNet1D()#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
             )
 
     def _build(self, inputs):
@@ -79,8 +79,8 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=lambda: Decoder5LayerConvNet1D(name="decoder_nodes"),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
-                global_model_fn=lambda: Decoder5LayerConvNet1D(name="decoder_global")#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
+                node_model_fn=lambda: Decoder5LayerConvNet1D(),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
+                global_model_fn=lambda: Decoder5LayerConvNet1D()#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
             )
 
     def _build(self, inputs):
