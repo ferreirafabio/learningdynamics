@@ -1,9 +1,7 @@
 import os
 import multiprocessing
-import math
 import tensorflow as tf
 from tensorflow.python.platform import gfile
-from utils.utils import get_number_of_total_samples
 
 class DataGenerator:
     def __init__(self, config, sess, train=True):

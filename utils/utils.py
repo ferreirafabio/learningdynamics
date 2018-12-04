@@ -394,7 +394,6 @@ def get_correct_image_shape(config, n_leading_Nones=0, get_type="rgb", depth_dat
 
 
 
-
 if __name__ == '__main__':
     source_path = "../data/source"
     exp_number = 5

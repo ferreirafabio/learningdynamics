@@ -29,11 +29,9 @@ from keras.models import Model
 from utils.utils import get_correct_image_shape
 from tensorflow.contrib.slim.nets import resnet_v1
 
-
 import keras
 import sonnet as snt
 import tensorflow as tf
-
 
 
 
@@ -56,14 +54,14 @@ class MLPGraphIndependent(snt.AbstractModule):
 class CNNEncoderGraphIndependent(snt.AbstractModule):
     """GraphNetwork with CNN node and MLP edge / global models."""
 
-    def __init__(self, name="CNNEncoderGraphIndependent"):
+    def __init__(self, model_id, name="CNNEncoderGraphIndependent"):
         super(CNNEncoderGraphIndependent, self).__init__(name=name)
 
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: Encoder5LayerConvNet1D(),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
-              global_model_fn=lambda: Encoder5LayerConvNet1D()#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="encoder"),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="encoder")#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
             )
 
     def _build(self, inputs):
@@ -73,14 +71,14 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
 class CNNDecoderGraphIndependent(snt.AbstractModule):
     """Graph decoder network with Transpose CNN node and MLP edge / global models."""
 
-    def __init__(self, name="CNNDecoderGraphIndependent"):
+    def __init__(self, model_id, name="CNNDecoderGraphIndependent"):
         super(CNNDecoderGraphIndependent, self).__init__(name=name)
 
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=lambda: Decoder5LayerConvNet1D(),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
-                global_model_fn=lambda: Decoder5LayerConvNet1D()#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
+                node_model_fn=lambda: get_model_from_config(model_id, model_type="decoder"),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
+                global_model_fn=lambda: get_model_from_config(model_id, model_type="decoder")#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
             )
 
     def _build(self, inputs):
@@ -133,12 +131,13 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_convnet1D_filters_per_layer = config.n_convnet1D_filters_per_layer
         EncodeProcessDecode.convnet1D_kernel_size = config.convnet1D_kernel_size
         EncodeProcessDecode.convnet1D_stride = config.convnet1D_stride
-        EncodeProcessDecode.convnet1D_pooling = config.convnet1D_pooling
+        EncodeProcessDecode.convnet_pooling = config.convnet_pooling
         EncodeProcessDecode.convnet_tanh = config.convnet_tanh
         EncodeProcessDecode.depth_data_provided = config.depth_data_provided
         EncodeProcessDecode.n_neurons_mlp_position_velocity = config.n_neurons_mlp_position_velocity
         EncodeProcessDecode.n_conv_filters_nodes = config.n_conv_filters_nodes
         EncodeProcessDecode.n_conv_filters_global = config.n_conv_filters_global
+        EncodeProcessDecode.model_type = config.model_type
 
         self.config = config
         # init the global step
@@ -153,8 +152,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         self.use_cnn = self.config.node_and_global_as_cnn
 
         if self.use_cnn:
-            self._encoder = CNNEncoderGraphIndependent()
-            self._decoder = CNNDecoderGraphIndependent()
+            self._encoder = CNNEncoderGraphIndependent(config.model_type)
+            self._decoder = CNNDecoderGraphIndependent(config.model_type)
         else:
             self._encoder = MLPGraphIndependent()
             self._decoder = MLPGraphIndependent()
@@ -329,7 +328,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(inputs)
 
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -338,7 +337,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -347,7 +346,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -356,7 +355,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
                              kernel_shape=EncodeProcessDecode.convnet1D_kernel_size, stride=EncodeProcessDecode.convnet1D_stride)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -428,7 +427,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         self._name = name
 
     def _build(self, inputs, is_training=True):
-
         if "global" in self._name:
             filter_sizes = [EncodeProcessDecode.n_conv_filters_global, EncodeProcessDecode.n_conv_filters_global*2]
         else:
@@ -519,7 +517,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         #print("Layer1 Output Shape", outputs.get_shape())
 
@@ -527,7 +525,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         #print("Layer2 Output Shape", outputs.get_shape())
 
@@ -535,7 +533,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         #print("Layer3 Output Shape", outputs.get_shape())
 
@@ -544,7 +542,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
-        if EncodeProcessDecode.convnet1D_pooling:
+        if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         #print("Layer4 Output Shape", outputs.get_shape())
 
@@ -562,7 +560,6 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         #print("Encoder shape before fc", outputs.get_shape())
 
         return outputs
-
 
 
 class ResNet50Encoder(snt.AbstractModule):
@@ -628,3 +625,16 @@ class ResNet50Encoder(snt.AbstractModule):
             outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
             #outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(features_rgb)
             return outputs
+
+
+def get_model_from_config(model_id, model_type="encoder"):
+    if "cnn2d" in model_id and model_type == "encoder":
+        return Encoder5LayerConvNet2D()
+    if "cnn2d" in model_id and model_type == "decoder":
+        return Decoder5LayerConvNet2D()
+    if "cnn1d" in model_id and model_type == "encoder":
+        return Encoder5LayerConvNet1D()
+    if "cnn1d" in model_id and model_type == "decoder":
+        return Decoder5LayerConvNet1D()
+
+
