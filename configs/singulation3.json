@@ -1,6 +1,6 @@
 {
   "exp_name": "singulation3_cnn",
-  "tfrecords_dir": "/scr2/data/tfrecords/",
+  "tfrecords_dir": "../data/destination/",
   "export_test_images": true,
   "use_tfrecord_compression": true,
   "use_object_seg_data_only_for_init": false,
@@ -29,7 +29,10 @@
   "model_save_step_interval": 100,
   "n_images_shown_in_tensorboard": 10,
   "node_and_global_as_cnn": true,
+  "n_neurons_mlp_position_velocity": 32,
   "n_convnet1D_filters_per_layer": 12,
+  "n_conv_filters_nodes": 16,
+  "n_conv_filters_global": 32,
   "convnet1D_kernel_size": 10,
   "convnet1D_stride": 2
 }

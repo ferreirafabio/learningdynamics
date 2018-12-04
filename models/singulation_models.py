@@ -62,8 +62,8 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: Encoder5LayerConvNet2D(name='encoder_nodes'),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
-              global_model_fn=lambda: Encoder5LayerConvNet2D(name='encoder_global')#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
+              node_model_fn=lambda: Encoder5LayerConvNet1D(name='encoder_nodes'),#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_nodes')(inputs, is_training),
+              global_model_fn=lambda: Encoder5LayerConvNet1D(name='encoder_global')#lambda inputs, is_training: Layer5ConvNet1D(name='cnn_globals')(inputs, is_training)
             )
 
     def _build(self, inputs):
@@ -79,8 +79,8 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=lambda: DecoderTranspose5LayerConvNet2D(name="decoder_nodes"),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
-                global_model_fn=lambda: DecoderTranspose5LayerConvNet2D(name="decoder_global")#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
+                node_model_fn=lambda: Decoder5LayerConvNet1D(name="decoder_nodes"),#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_nodes")(inputs=inputs, is_training=is_training),
+                global_model_fn=lambda: Decoder5LayerConvNet1D(name="decoder_global")#lambda inputs, is_training: TransposeLayer5ConvNet1D(name="2dconvdecoder_globals")(inputs=inputs, is_training=is_training)
             )
 
     def _build(self, inputs):
@@ -323,10 +323,9 @@ def make_pos_vel_decoder_model(input):
         [snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_position_velocity, 6], activate_final=True), snt.LayerNorm()])(input)
 
 
-class Layer5ConvNet1D(snt.AbstractModule):
-    def __init__(self, name='cnn_model'):
-        super(Layer5ConvNet1D, self).__init__(name=name)
-        # todo:  store parameters in member variables prefixed with an underscore, to indicate that it is private.
+class Encoder5LayerConvNet1D(snt.AbstractModule):
+    def __init__(self, name='encoder_cnn_model'):
+        super(Encoder5LayerConvNet1D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True):
         if EncodeProcessDecode.convnet_tanh:
@@ -343,6 +342,7 @@ class Layer5ConvNet1D(snt.AbstractModule):
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 2'''
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -351,6 +351,7 @@ class Layer5ConvNet1D(snt.AbstractModule):
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 3'''
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -359,6 +360,7 @@ class Layer5ConvNet1D(snt.AbstractModule):
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 4'''
         outputs = snt.Conv1D(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -367,18 +369,19 @@ class Layer5ConvNet1D(snt.AbstractModule):
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 5'''
         outputs = snt.BatchFlatten()(outputs)
         #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
         outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
-
+        print(outputs.get_shape())
         return outputs
 
 
-class TransposeLayer5ConvNet1D(snt.AbstractModule):
-    def __init__(self, name='transpose_cnn_model'):
-        super(TransposeLayer5ConvNet1D, self).__init__(name=name)
+class Decoder5LayerConvNet1D(snt.AbstractModule):
+    def __init__(self, name='decoder_cnn_model'):
+        super(Decoder5LayerConvNet1D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True):
         if EncodeProcessDecode.convnet_tanh:
@@ -394,6 +397,7 @@ class TransposeLayer5ConvNet1D(snt.AbstractModule):
             inputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 2'''
         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -401,6 +405,7 @@ class TransposeLayer5ConvNet1D(snt.AbstractModule):
             outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 3'''
         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -408,6 +413,7 @@ class TransposeLayer5ConvNet1D(snt.AbstractModule):
             outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 4'''
         outputs = snt.Conv1DTranspose(output_channels=EncodeProcessDecode.n_convnet1D_filters_per_layer,
@@ -415,19 +421,20 @@ class TransposeLayer5ConvNet1D(snt.AbstractModule):
             outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
         outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 5'''
         outputs = snt.BatchFlatten()(outputs)
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
         outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
+        print(outputs.get_shape())
 
         return outputs
 
 
-
-class DecoderTranspose5LayerConvNet2D(snt.AbstractModule):
+class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
-        super(DecoderTranspose5LayerConvNet2D, self).__init__(name=name)
+        super(Decoder5LayerConvNet2D, self).__init__(name=name)
         self._name = name
 
     def _build(self, inputs, is_training=True):
@@ -460,37 +467,37 @@ class DecoderTranspose5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=[1, 1], strides=(5, 5), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        #print(outputs.get_shape())
+        print(outputs.get_shape())
 
         ''' layer 2 (5,5,x) -> (15,20,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='valid') #kernel_size=[3, 2], strides=(2, 3), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        #print(outputs.get_shape())
+        print(outputs.get_shape())
 
         ''' layer 3 (15,20,x) -> (30,40,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=[2, 2], strides=(2, 2), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        #print(outputs.get_shape())
+        print(outputs.get_shape())
 
         ''' layer 4 (30,40,x) -> (60,80,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=[2, 2], strides=(2, 2), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        #print(outputs.get_shape())
+        print(outputs.get_shape())
 
         ''' layer 5 (60,80,x) -> (120,160,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=[2, 2], strides=(2, 2), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        #print(outputs.get_shape())
+        print(outputs.get_shape())
 
         visual_latent_output = tf.layers.flatten(outputs)
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
         outputs = tf.concat([visual_latent_output, pos_vel_output], axis=1)
-        #print(visual_latent_output.get_shape())
+        print("Decoder shape", outputs.get_shape())
 
         return outputs
 
@@ -517,14 +524,14 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         else:
             filter_sizes = [EncodeProcessDecode.n_conv_filters_nodes, EncodeProcessDecode.n_conv_filters_nodes*2]
 
-        #print("Encoder Input Shape", img_data.get_shape())
+        print("Encoder Input Shape", img_data.get_shape())
         ''' layer 1'''
         outputs = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        #print("Layer1 Output Shape", outputs.get_shape())
+        print("Layer1 Output Shape", outputs.get_shape())
 
         ''' layer 2'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
@@ -532,7 +539,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        #print("Layer2 Output Shape", outputs.get_shape())
+        print("Layer2 Output Shape", outputs.get_shape())
 
         ''' layer 3'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
@@ -540,7 +547,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        #print("Layer3 Output Shape", outputs.get_shape())
+        print("Layer3 Output Shape", outputs.get_shape())
 
         ''' layer 4 and 5'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=[3, 3], strides=(1, 1), padding='valid', activation=activation)
@@ -549,7 +556,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         if EncodeProcessDecode.convnet1D_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        #print("Layer4 Output Shape", outputs.get_shape())
+        print("Layer4 Output Shape", outputs.get_shape())
 
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
@@ -562,7 +569,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         vel_pos_latent_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(vel_pos)
 
         outputs = tf.concat([visual_latent_output, vel_pos_latent_output], axis=1)
-        #print("Encoder shape before fc", outputs.get_shape())
+        print("Encoder shape before fc", outputs.get_shape())
 
         return outputs
 
