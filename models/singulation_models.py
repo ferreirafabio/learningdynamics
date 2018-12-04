@@ -179,7 +179,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         for _ in range(num_processing_steps):
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
-            decoded_op = self._decoder(input_op)#, is_training)
+            decoded_op = self._decoder(latent)#, is_training)
             output_ops.append(self._output_transform(decoded_op))
 
         return output_ops
@@ -311,16 +311,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         """
         return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
                                snt.LayerNorm()])
-
-
-
-def make_pos_vel_encoder_model(input):
-    return snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_position_velocity], activate_final=True), snt.LayerNorm()])(input)
-
-
-def make_pos_vel_decoder_model(input):
-    return snt.Sequential(
-        [snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_position_velocity, 6], activate_final=True), snt.LayerNorm()])(input)
 
 
 class Encoder5LayerConvNet1D(snt.AbstractModule):
