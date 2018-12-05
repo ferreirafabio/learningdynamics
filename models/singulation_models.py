@@ -471,6 +471,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr)
         # no dense layer since later _output_transform call will transform into appropriate shape
 
         print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
@@ -495,7 +496,6 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
 
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
-
 
         #print("Encoder Input Shape", img_data.get_shape())
         ''' layer 1'''
