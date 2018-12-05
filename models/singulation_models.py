@@ -59,11 +59,12 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
 
         with self._enter_variable_scope():
             """ we want to re-use the cnn encoder for both nodes and global attributes """
-            visual_encoder = get_model_from_config(model_id, model_type="visual_encoder")(name="cnn_model")
+            visual_encoder_node = get_model_from_config(model_id, model_type="visual_encoder")(name="cnn_model_node")
+            visual_encoder_global = get_model_from_config(model_id, model_type="visual_encoder")(name="cnn_model_global")
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_node"),
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_global")
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder_node, name="non_visual_enc_node"),
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder_global, name="non_visual_enc_global")
             )
 
     def _build(self, inputs):
@@ -77,11 +78,12 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         super(CNNDecoderGraphIndependent, self).__init__(name=name)
 
         with self._enter_variable_scope():
-            visual_decoder = get_model_from_config(model_id, model_type="visual_decoder")(name="tranpose_model")
+            visual_decoder_node = get_model_from_config(model_id, model_type="visual_decoder")(name="tranpose_model_node")
+            visual_decoder_global = get_model_from_config(model_id, model_type="visual_decoder")(name="tranpose_model_global")
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges_decode,
-                node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_node"),
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_global"),
+                node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder_node, name="non_visual_dec_node"),
+                global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder_global, name="non_visual_dec_global"),
             )
 
     def _build(self, inputs):
@@ -459,35 +461,35 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,x)
 
         ''' layer 1 (1,1,x) -> (5,5,filter_sizes[1]) '''
-        print(image_data.get_shape())
+        #print(image_data.get_shape())
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=1, strides=5, padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        #print(outputs.get_shape())
 
         ''' layer 2 (5,5,x) -> (15,20,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        #print(outputs.get_shape())
 
         ''' layer 3 (15,20,x) -> (30,40,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        #print(outputs.get_shape())
 
         ''' layer 4 (30,40,x) -> (60,80,x) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        #print(outputs.get_shape())
 
         ''' layer 5 (60,80,x) -> (120,160,img_shape[2]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=2, strides=2, padding='valid')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        #print(outputs.get_shape())
 
         visual_latent_output = tf.layers.flatten(outputs)
         #print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
