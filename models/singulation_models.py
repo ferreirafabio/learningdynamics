@@ -424,7 +424,6 @@ class Decoder5LayerConvNet1D(snt.AbstractModule):
 class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
-        self._name = name
 
     def _build(self, inputs, is_training=True):
         filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
@@ -438,7 +437,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         """ get image data """
         image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_nonvisual]  # get everything >except< last n elements which are non-visual
-        print("++++++++++++++image data shape", image_data.get_shape())
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
@@ -475,32 +473,40 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #print(outputs.get_shape())
 
         visual_latent_output = tf.layers.flatten(outputs)
-        #print("xxxxxxxx", visual_latent_output.get_shape())
+        # print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
         #visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
 
-        #print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
+
         return visual_latent_output
 
 
 class Encoder5LayerConvNet2D(snt.AbstractModule):
-    def __init__(self, name='encoder_convnet2d'):
+    def __init__(self, name):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
-        self._name = name
 
-    def _build(self, inputs, is_training=True):
+    def _build(self, inputs, name, is_training=True):
 
         if EncodeProcessDecode.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
+        if "global" in name:
+            n_non_visual_elements = 5
+        else:
+            n_non_visual_elements = 6
+
+
         filter_sizes = [EncodeProcessDecode.n_conv_filters / 2, EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
 
-        img_data = inputs[:, :-5]  # shape: (batch_size, features)
+        img_data = inputs[:, :-n_non_visual_elements]  # shape: (batch_size, features)
         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
+        print("name", name)
+        print("--------img shape", img_shape)
+        print("--------img_data", img_data.get_shape())
 
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
@@ -543,7 +549,6 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ' shape (?, 4, 6, 64) -> (?, dimensions_latent_repr-n_neurons_mlp_nonvisual), e.g. (?, 200-32)'
         visual_latent_output = tf.layers.flatten(outputs)
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
-        print("-----------visual encoder output shape: ", visual_latent_output.get_shape())
         return visual_latent_output
 
 
@@ -582,7 +587,7 @@ class NonVisualEncoder(snt.AbstractModule):
 
     def _build(self, inputs, is_training=True):
 
-        visual_latent_output = self._visual_enc(inputs)
+        visual_latent_output = self._visual_enc(inputs, name=self._name)
 
         if "global" in self._name:
             n_non_visual_elements = 5
