@@ -180,6 +180,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
             latent = self._core(core_input)
             decoded_op = self._decoder(latent)#, is_training)
             output_ops.append(self._output_transform(decoded_op))
+            #output_ops.append(decoded_op)
 
         return output_ops
 
@@ -268,18 +269,23 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
     def init_transform(self):
         # Transforms the outputs into the appropriate shapes.
-        if self.edge_output_size is None:
-          edge_fn = None
+        if "cnn2d" in self.config.model_type:
+            edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
+            node_fn, global_fn = None, None
         else:
-          edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
-        if self.node_output_size is None:
-          node_fn = None
-        else:
-          node_fn = lambda: snt.Linear(self.node_output_size, name="node_output")
-        if self.global_output_size is None:
-          global_fn = None
-        else:
-          global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
+            if self.edge_output_size is None:
+              edge_fn = None
+            else:
+              edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
+            if self.node_output_size is None:
+              node_fn = None
+            else:
+              node_fn = lambda: snt.Linear(self.node_output_size, name="node_output")
+            if self.global_output_size is None:
+              global_fn = None
+            else:
+              global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
+
         with self._enter_variable_scope():
           self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
 
@@ -432,6 +438,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         """ get image data """
         image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_nonvisual]  # get everything >except< last n elements which are non-visual
+        print("++++++++++++++image data shape", image_data.get_shape())
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
@@ -468,13 +475,13 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #print(outputs.get_shape())
 
         visual_latent_output = tf.layers.flatten(outputs)
+        #print("xxxxxxxx", visual_latent_output.get_shape())
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
-        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr)
-        # no dense layer since later _output_transform call will transform into appropriate shape
+        #visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
 
-        print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
+        #print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
         return visual_latent_output
 
 
@@ -536,7 +543,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ' shape (?, 4, 6, 64) -> (?, dimensions_latent_repr-n_neurons_mlp_nonvisual), e.g. (?, 200-32)'
         visual_latent_output = tf.layers.flatten(outputs)
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
-
+        print("-----------visual encoder output shape: ", visual_latent_output.get_shape())
         return visual_latent_output
 
 
