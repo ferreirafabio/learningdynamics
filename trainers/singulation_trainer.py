@@ -34,9 +34,10 @@ class SingulationTrainer(BaseTrain):
 
         if train:
             #feed_dict['is_training'] = True
+            run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
                                   "outputs": self.model.output_ops_train, "pos_vel_loss": self.model.pos_vel_loss_ops_train
-                                  }, feed_dict=feed_dict)
+                                  }, options=run_options, feed_dict=feed_dict)
 
         else:
             #feed_dict['is_training'] = False
