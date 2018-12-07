@@ -28,7 +28,7 @@ def create_loss_ops(config, target_op, output_ops, loss_type):
             ]
         elif loss_type == 'mse_gdl':
             loss = 0.0
-            
+
 
     pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], node_splits[i][:, -6:]) for i, output_op in
         enumerate(output_ops)]

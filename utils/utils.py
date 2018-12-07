@@ -6,6 +6,7 @@ import numpy as np
 import moviepy.editor as mpy
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import math
 
 from graph_nets import utils_tf
 from skimage import img_as_ubyte
@@ -390,8 +391,20 @@ def get_correct_image_shape(config, n_leading_Nones=0, get_type="rgb", depth_dat
 
     return img_shape
 
+def is_square(integer):
+    root = math.sqrt(integer)
+    if int(root + 0.5) ** 2 == integer:
+        return True
+    else:
+        return False
 
-
+def check_power(N, k):
+    if N == k:
+        return True
+    try:
+        return N == k**int(round(math.log(N, k)))
+    except Exception:
+        return False
 
 
 if __name__ == '__main__':

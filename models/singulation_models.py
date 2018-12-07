@@ -26,12 +26,14 @@ from keras.applications.densenet import DenseNet121
 from keras.applications.vgg16 import VGG16
 from keras.layers import Flatten, Dense
 from keras.models import Model
-from utils.utils import get_correct_image_shape
+from utils.utils import get_correct_image_shape, is_square
 from tensorflow.contrib.slim.nets import resnet_v1
 
 import keras
 import sonnet as snt
 import tensorflow as tf
+import math
+
 
 
 
@@ -59,12 +61,11 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
 
         with self._enter_variable_scope():
             """ we want to re-use the cnn encoder for both nodes and global attributes """
-            visual_encoder_node = get_model_from_config(model_id, model_type="visual_encoder")(name="cnn_model_node")
-            visual_encoder_global = get_model_from_config(model_id, model_type="visual_encoder")(name="cnn_model_global")
+            visual_encoder = get_model_from_config(model_id, model_type="visual_encoder")(name="visual_encoder")
             self._network = modules.GraphIndependent(
               edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder_node, name="non_visual_enc_node"),
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder_global, name="non_visual_enc_global")
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_node"),
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_global")
             )
 
     def _build(self, inputs):
@@ -78,12 +79,11 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         super(CNNDecoderGraphIndependent, self).__init__(name=name)
 
         with self._enter_variable_scope():
-            visual_decoder_node = get_model_from_config(model_id, model_type="visual_decoder")(name="tranpose_model_node")
-            visual_decoder_global = get_model_from_config(model_id, model_type="visual_decoder")(name="tranpose_model_global")
+            visual_decoder = get_model_from_config(model_id, model_type="visual_decoder")(name="visual_decoder")
             self._network = modules.GraphIndependent(
                 edge_model_fn=EncodeProcessDecode.make_mlp_model_edges_decode,
-                node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder_node, name="non_visual_dec_node"),
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder_global, name="non_visual_dec_global"),
+                node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_node"),
+                global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_global"),
             )
 
     def _build(self, inputs):
@@ -447,46 +447,67 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode.depth_data_provided)
 
-        """ get image data """
-        image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_nonvisual]  # get everything >except< last n elements which are non-visual
+        """ get image data, get everything >except< last n elements which are non-visual """
+        image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_nonvisual]
+
+        visual_latent_space_dim = EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,latent_dim)
-        image_data = tf.reshape(image_data, (-1, 16, 16, 1))
+        assert is_square(visual_latent_space_dim), "dimension of visual latent space vector (dimensions of latent representation: ({}) - " \
+                                                   "dimensions of non visual latent representation({})) must be square".format(
+            EncodeProcessDecode.dimensions_latent_repr, EncodeProcessDecode.n_neurons_mlp_nonvisual)
 
-        ''' layer 1 (16,16,1) -> (18,18,filter_sizes[1]) '''
+        image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
+
+        ''' layer 1 e.g. (16,16,1) -> (18,18,filter_sizes[1]) '''
         print(image_data.get_shape())
-        outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
-        #outputs = snt.Conv2DTranspose(filter_sizes[1], (5, 5), kernel_shape=1)(image_data)
+        outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
+        #outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID') #  dim 288
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
 
         ''' layer 2 (18,18,filter_sizes[1]) -> (20,20,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
 
+        ''' layer 2 (18,18,filter_sizes[1]) -> (20,20,filter_sizes[1]) '''
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
+        # outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
+        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = activation(outputs)
+        print(outputs.get_shape())
 
         ''' layer 3 (20,20,filter_sizes[1]) -> (60,80,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='VALID')
-        #outputs = snt.Conv2DTranspose(filter_sizes[1], (15, 20), kernel_shape=(3,4))(outputs)
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3,4), strides=(3,4), padding='VALID')
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
 
-        ''' layer 4 (60,80,filter_sizes[1]) -> (120,160,filter_sizes[0]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='VALID')
-        #outputs = snt.Conv2DTranspose(filter_sizes[0], (30, 40), kernel_shape=2)(outputs)
+        ''' layer 4 (60,80,filter_sizes[1]) -> (120,160,filter_sizes[1]) '''
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='VALID')
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
 
-        ''' layer 5 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
+
+        ''' layer 5 (120,160,filter_sizes[1]) -> (120,160,filter_sizes[0]) '''
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='VALID')
+        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = activation(outputs)
+        print(outputs.get_shape())
+
+
+        ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=1, strides=1, padding='VALID')
-        #outputs = snt.Conv2DTranspose(filter_sizes[0], (60, 80), kernel_shape=2)(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=1, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
         print(outputs.get_shape())
@@ -495,9 +516,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-
-        #visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
-
 
         return visual_latent_output
 
@@ -571,7 +589,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
-        ' shape (?, 4, 6, 64) -> (?, dimensions_latent_repr-n_neurons_mlp_nonvisual), e.g. (?, 200-32)'
+        ' shape (?, 4, 6, 64) -> (?, dimensions_latent_repr-n_neurons_mlp_nonvisual), e.g. (?, 200-32) '
         visual_latent_output = tf.layers.flatten(outputs)
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
         return visual_latent_output
