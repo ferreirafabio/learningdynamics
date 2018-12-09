@@ -27,6 +27,11 @@ class BaseTrain:
             self.train_epoch()
             self.sess.run(self.model.increment_cur_epoch_tensor)
 
+    def test(self):
+        self.test_epoch()
+
+    def test_epoch(self):
+        raise NotImplementedError
 
     def train_epoch(self):
         """

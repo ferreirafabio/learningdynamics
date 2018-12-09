@@ -276,14 +276,15 @@ def convert_dict_to_list_subdicts(dct, length):
     return list_of_subdicts
 
 
-def create_dir(output_dir, dir_name):
+def create_dir(output_dir, dir_name, verbose=False):
     assert(output_dir)
     output_dir = os.path.join(output_dir, dir_name)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
         print('Created custom directory:', dir_name)
         return output_dir
-    print('Using existing directory:', dir_name)
+    if verbose:
+        print('Using existing directory:', dir_name)
     return output_dir
 
 

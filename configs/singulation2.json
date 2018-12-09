@@ -35,5 +35,7 @@
   "tfrecords_dir": "../data/destination",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
-  "use_tfrecord_compression": true
+  "use_tfrecord_compression": true,
+  "mode": "train_test",
+  "initial_pos_vel_known": true
 }
