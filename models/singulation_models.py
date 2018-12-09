@@ -437,7 +437,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, is_training=True):
+    def _build(self, inputs, is_training=True, verbose=False):
         filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
 
         if EncodeProcessDecode.convnet_tanh:
@@ -462,47 +462,48 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
 
         ''' layer 1 e.g. (16,16,1) -> (18,18,filter_sizes[1]) '''
-        print(image_data.get_shape())
+        image_data_shape = image_data.get_shape()
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
         #outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID') #  dim 288
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l1_shape = outputs.get_shape()
 
         ''' layer 2 (18,18,filter_sizes[1]) -> (20,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l2_shape = outputs.get_shape()
 
         ''' layer 2 (18,18,filter_sizes[1]) -> (20,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='VALID')
         # outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l3_shape = outputs.get_shape()
 
         ''' layer 3 (20,20,filter_sizes[1]) -> (60,80,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3,4), strides=(3,4), padding='VALID')
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 4), strides=(3, 4), padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l4_shape = outputs.get_shape()
+
 
         ''' layer 4 (60,80,filter_sizes[1]) -> (120,160,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='VALID')
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l5_shape = outputs.get_shape()
 
 
         ''' layer 5 (120,160,filter_sizes[1]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l6_shape = outputs.get_shape()
 
 
         ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
@@ -510,10 +511,20 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=1, strides=1, padding='VALID')
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
         outputs = activation(outputs)
-        print(outputs.get_shape())
+        l7_shape = outputs.get_shape()
 
         visual_latent_output = tf.layers.flatten(outputs)
-        #print("Decoder shape before adding non-visual data", visual_latent_output.get_shape())
+
+        if verbose:
+            print("Image data shape", image_data.get_shape())
+            print("Layer1 decoder output shape", l1_shape)
+            print("Layer2 decoder output shape", l2_shape)
+            print("Layer3 decoder output shape", l3_shape)
+            print("Layer4 decoder output shape", l4_shape)
+            print("Layer5 decoder output shape", l5_shape)
+            print("Layer6 decoder output shape", l6_shape)
+            print("Layer7 decoder output shape", l7_shape)
+            print("decoder shape before adding non-visual data", visual_latent_output.get_shape())
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
@@ -524,7 +535,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, name, is_training=True):
+    def _build(self, inputs, name, is_training=True, verbose=False):
 
         if EncodeProcessDecode.convnet_tanh:
             activation = tf.nn.tanh
@@ -536,58 +547,60 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         else:
             n_non_visual_elements = 6
 
+
         filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
 
         img_data = inputs[:, :-n_non_visual_elements]  # shape: (batch_size, features)
         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
-
-        #print("Encoder Input Shape", img_data.get_shape())
         ''' layer 1'''
         outputs = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='valid', activation=activation)
-        #outputs = snt.Conv2D(filter_sizes[0], 3, 1, padding='VALID')(img_data)
         outputs = activation(outputs)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
         if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        print("Layer1 Output Shape", outputs.get_shape())
+        l1_shape = outputs.get_shape()
 
         ''' layer 2'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='valid', activation=activation)
-        #outputs = snt.Conv2D(filter_sizes[0], 3, 1, padding='VALID')(outputs)
         outputs = activation(outputs)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
         if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        print("Layer2 Output Shape", outputs.get_shape())
+        l2_shape = outputs.get_shape()
 
         ''' layer 3'''
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='valid', activation=activation)
-        #outputs = snt.Conv2D(filter_sizes[1], 3, 1, padding='SAME')(outputs)
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='valid', activation=activation)
         outputs = activation(outputs)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
         if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        print("Layer3 Output Shape", outputs.get_shape())
+        l3_shape = outputs.get_shape()
 
         ''' layer 4 and 5'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='valid', activation=activation)
-        #outputs = snt.Conv2D(filter_sizes[1], 3, 1, padding='SAME')(outputs)
         outputs = activation(outputs)
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='valid', activation=activation)
-        #outputs = snt.Conv2D(filter_sizes[0], 3, 1, padding='SAME')(outputs)
+        l4_shape = outputs.get_shape()
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='valid', activation=activation)
         outputs = activation(outputs)
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
 
         if EncodeProcessDecode.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
-        print("Layer4 Output Shape", outputs.get_shape())
+        l5_shape = outputs.get_shape()
 
         outputs = tf.layers.batch_normalization(outputs, training=is_training)
+
+        if verbose:
+            print("Layer1 encoder output shape", l1_shape)
+            print("Layer2 encoder output shape", l2_shape)
+            print("Layer3 encoder output shape", l3_shape)
+            print("Layer4 encoder output shape", l4_shape)
+            print("Layer5 encoder output shape", l5_shape)
 
         ' shape (?, 4, 6, 64) -> (?, dimensions_latent_repr-n_neurons_mlp_nonvisual), e.g. (?, 200-32) '
         visual_latent_output = tf.layers.flatten(outputs)
@@ -709,9 +722,6 @@ class ResNet50Encoder(snt.AbstractModule):
             outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
             #outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(features_rgb)
             return outputs
-
-
-
 
 
 def get_model_from_config(model_id, model_type="encoder"):

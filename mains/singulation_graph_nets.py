@@ -41,7 +41,12 @@ def main():
     # load model if exists
     model.load(sess)
 
-    trainer.train()
+    if config.mode == "train_test":
+        tf.logging.info("--- Running TRAIN/TEST MODE ---")
+        trainer.train()
+    elif config.mode == "test":
+        tf.logging.info("--- Running TEST MODE ---")
+        trainer.test()
 
 if __name__ == '__main__':
     main()

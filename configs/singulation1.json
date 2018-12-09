@@ -23,5 +23,7 @@
   "max_to_keep": 5,
   "test_interval": 3,
   "model_save_step_interval": 150,
-  "n_images_shown_in_tensorboard": 10
+  "n_images_shown_in_tensorboard": 10,
+  "mode": "train_test",
+  "initial_pos_vel_known": true
 }

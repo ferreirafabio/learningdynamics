@@ -34,5 +34,5 @@
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "test",
-  "initial_pos_vel_known": true
+  "initial_pos_vel_known": false
 }

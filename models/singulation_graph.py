@@ -47,7 +47,7 @@ def generate_singulation_graph(config, n_manipulable_objects):
     return graph_nx
 
 
-def graph_to_input_and_targets_single_experiment(config, graph, features):
+def graph_to_input_and_targets_single_experiment(config, graph, features, initial_pos_vel_known):
     """Returns 2 graphs with input and target feature vectors for training.
 
     Args:
@@ -111,16 +111,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
         """ the position is always located as the last three elements of the flattened feature vector """
         pos1 = node_feature_rcv['features'][-3:]
         pos2 = node_feature_snd['features'][-3:]
-        #pos1 = node_feature_rcv['pos']
-        #pos2 = node_feature_snd['pos']
         return (pos1-pos2).astype(np.float32)
 
     for step in range(experiment_length):
         for node_index, node_feature in graph.nodes(data=True):
-            #node_feature, pos = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
             node_feature = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
             target_graphs[step].add_node(node_index, features=node_feature)
-            #target_graphs[step].add_node(node_index, pos=pos)
 
         """ if gripper_as_global = True, graphs will have one node less
          add globals (image, segmentation, depth, gravity, time_step) """
@@ -140,6 +136,19 @@ def graph_to_input_and_targets_single_experiment(config, graph, features):
             target_graphs[step].add_edge(sender, receiver, features=edge_feature)
 
     input_graph = target_graphs[0].copy()
+
+    # todo: following code assumes all nodes are of type 'manipulable'
+    """ set velocity and position info to zero """
+    if not initial_pos_vel_known:
+        """ for all nodes """
+        for idx, node_feature in input_graph.nodes(data=True):
+            feature = node_feature['features']
+            feature[-6:] = 0
+            input_graph.add_node(idx, features=feature)
+        """ for all edges """
+        for receiver, sender, edge_feature in input_graph.edges(data=True):
+            # todo
+            raise NotImplementedError
 
     return input_graph, target_graphs
 
@@ -165,7 +174,7 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     plt.show()
 
 
-def create_singulation_graphs(config, batch_data, train_batch_size):
+def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_vel_known):
     input_graphs_all_experiments = []
     target_graphs_all_experiments = []
     graphs = []
@@ -174,7 +183,7 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
         n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
         graph = generate_singulation_graph(config, n_manipulable_objects)
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i])
+        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i], initial_pos_vel_known)
         input_graphs_all_experiments.append(input_graphs)
         target_graphs_all_experiments.append(target_graphs)
         graphs.append(graph)
@@ -182,13 +191,13 @@ def create_singulation_graphs(config, batch_data, train_batch_size):
     return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
 
-def create_graphs(config, batch_data, batch_size):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size)
+def create_graphs(config, batch_data, batch_size, train_test_with_initial_pos_vel_known=True):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size, train_test_with_initial_pos_vel_known)
     return input_graphs, target_graphs
 
 
 def create_placeholders(config, batch_data):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, 1)
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=False)
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)

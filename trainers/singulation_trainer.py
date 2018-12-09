@@ -48,6 +48,17 @@ class SingulationTrainer(BaseTrain):
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
+
+    def test_epoch(self):
+        prefix = self.config.exp_name
+        while True:
+           try:
+               self.test_batch(prefix, export_images=self.config.export_test_images)
+
+           except tf.errors.OutOfRangeError:
+               break
+
+
     def train_batch(self, prefix):
         losses = []
         pos_vel_losses = []
@@ -95,7 +106,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, log_position_displacements=False, log_vel_discplacements=False, export_images=False):
+    def test_batch(self, prefix, log_position_displacements=False, train_test_with_init_pos_vel_known=True, export_images=False):
         losses = []
         pos_vel_losses = []
         output_for_summary = None
@@ -103,8 +114,11 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
-        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
-                                                                                         batch_size=self.config.test_batch_size)
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                    batch_data=features,
+                                                                    batch_size=self.config.test_batch_size,
+                                                                    train_test_with_initial_pos_vel_known=train_test_with_init_pos_vel_known
+                                                                    )
 
         summaries_dict_images = {}
         target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
@@ -150,8 +164,6 @@ class SingulationTrainer(BaseTrain):
                 features_index=features_index,
                 cur_batch_it=cur_batch_it
             )
-
-
 
             if log_position_displacements:
                 pos_array_predicted = get_pos_ndarray_from_output(output_for_summary)
