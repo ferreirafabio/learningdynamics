@@ -68,7 +68,7 @@ class DataGenerator:
         sess.run(self.iterator.initializer)
 
 
-    def _parse_function(self, example_proto, normalize_images=True, epsilon=.0001):
+    def _parse_function(self, example_proto):
         context_features = {
             'experiment_length': tf.FixedLenFeature([], tf.int64),
             'experiment_id': tf.FixedLenFeature([], tf.int64),
@@ -148,11 +148,6 @@ class DataGenerator:
             return_dict['depth'] = depth
 
         return return_dict
-        # if normalize_images:
-        #     img_keywords = ['img', 'seg', 'object_segments']
-        #     return_dict
-        #
-        # return return_dict
 
     def get_next_batch(self):
         return self.iterator.get_next()

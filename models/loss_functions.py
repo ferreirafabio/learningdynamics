@@ -1,7 +1,8 @@
 import tensorflow as tf
+from utils.utils import get_correct_image_shape
 
 
-def create_loss_ops(config, target_op, output_ops, loss_type):
+def create_loss_ops(config, target_op, output_ops):
     """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
     is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
     --> same applies for edges """
@@ -9,28 +10,39 @@ def create_loss_ops(config, target_op, output_ops, loss_type):
     n_nodes = [tf.shape(output_ops[0].nodes)[0]]
     n_edges = [tf.shape(output_ops[0].edges)[0]]
 
-    node_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-    edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
+    target_node_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+    target_edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
     """ if object seg data is only used for init, the ground truth features in the rest of the sequence are static except position 
     --> in this case compute loss only over the position since image prediction is infeasible """
     if config.use_object_seg_data_only_for_init:
         # compute loss of the nodes only over velocity and position and not over ground truth static images
         loss_ops = [
-            tf.losses.mean_squared_error(output_op.nodes[:, -6:], node_splits[i][:, -6:]) +
-            tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+            tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) +
+            tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
             for i, output_op in enumerate(output_ops)]
     else:
-        if loss_type == 'mse':
-            loss_ops = [tf.losses.mean_squared_error(output_op.nodes, node_splits[i]) + \
-                        tf.losses.mean_squared_error(output_op.edges, edge_splits[i])
+        if config.loss_type == 'mse':
+            loss_ops = [tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i]) + \
+                        tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
                         for i, output_op in enumerate(output_ops)
             ]
-        elif loss_type == 'mse_gdl':
-            loss = 0.0
+        elif config.loss_type == 'mse_gdl':
+            loss_ops = []
+            for i, output_op in enumerate(output_ops):
+                loss_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
+
+                loss_mse = 0.5 * tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i])
+
+                predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
+                target_node_reshaped = _transform_into_images(config, target_node_splits[i])
+
+                loss_gdl = 0.5 * gradient_difference_loss(predicted_node_reshaped[...,:3], target_node_reshaped[...,:3])
+
+                loss_ops.append(loss_mse + loss_gdl + loss_edges)
 
 
-    pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], node_splits[i][:, -6:]) for i, output_op in
+    pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) for i, output_op in
         enumerate(output_ops)]
 
     # todo: might use weighted MSE loss here
@@ -67,3 +79,11 @@ def difference_gradient(image, vertical=True):
     return tf.abs(image[:, 0:s[1] - 1, :, :] - image[:, 1:s[1], :, :])
   else:
     return tf.abs(image[:, :, 0:s[2]-1,:] - image[:, :, 1:s[2], :])
+
+
+def _transform_into_images(config, data):
+    data_shape = get_correct_image_shape(config, get_type="all")
+    data = data[:, :-6]
+    data = tf.reshape(data, data_shape)
+
+    return tf.expand_dims(data, axis=0)
