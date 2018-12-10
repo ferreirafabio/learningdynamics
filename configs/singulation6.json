@@ -7,7 +7,7 @@
   "depth_data_provided": true,
   "dimensions_latent_repr": 432,
   "edge_output_size": 3,
-  "exp_name": "singulation4_cnn2d",
+  "exp_name": "singulation6",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -33,6 +33,7 @@
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
-  "mode": "test",
-  "initial_pos_vel_known": false
+  "mode": "train_test",
+  "initial_pos_vel_known": false,
+  "loss_type": "mse_gdl"
 }

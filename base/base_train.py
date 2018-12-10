@@ -2,6 +2,7 @@ import tensorflow as tf
 from models.singulation_graph import create_placeholders
 from utils.utils import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
+from models.loss_functions import create_loss_ops
 
 
 class BaseTrain:
@@ -61,7 +62,7 @@ class BaseTrain:
         self.model.target_ph = target_ph
 
         self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts)#, self.is_training) # todo
-        loss_ops_train, pos_vel_loss_ops_train = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_train)
+        loss_ops_train, pos_vel_loss_ops_train = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
@@ -71,6 +72,6 @@ class BaseTrain:
         assert self.model.target_ph is not None, "initialize model for training first"
 
         self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts)#, self.is_training) # todo
-        loss_ops_test, pos_vel_loss_ops_test = self.model.create_loss_ops(self.model.target_ph, self.model.output_ops_test)
+        loss_ops_test, pos_vel_loss_ops_test = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.pos_vel_loss_ops_test = tf.reduce_mean(pos_vel_loss_ops_test)

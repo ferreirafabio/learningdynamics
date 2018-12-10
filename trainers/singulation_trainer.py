@@ -68,8 +68,10 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
-        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features,
-                                                                                           batch_size=self.config.train_batch_size)
+        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                    batch_data=features,
+                                                                    batch_size=self.config.train_batch_size,
+                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known)
 
         start_time = time.time()
         last_log_time = start_time
