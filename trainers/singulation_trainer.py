@@ -23,7 +23,7 @@ class SingulationTrainer(BaseTrain):
                     self.model.save(self.sess)
                 if cur_batch_it % self.config.test_interval == 1:
                     print("Executing test batch")
-                    self.test_batch(prefix, export_images=self.config.export_test_images)
+                    self.test_batch(prefix, export_images=self.config.export_test_images, initial_pos_vel_known=self.config.initial_pos_vel_known)
 
            except tf.errors.OutOfRangeError:
                break
@@ -51,9 +51,10 @@ class SingulationTrainer(BaseTrain):
 
     def test_epoch(self):
         prefix = self.config.exp_name
+        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         while True:
            try:
-               self.test_batch(prefix, export_images=self.config.export_test_images)
+               self.test_batch(prefix, export_images=self.config.export_test_images, initial_pos_vel_known=self.config.initial_pos_vel_known)
 
            except tf.errors.OutOfRangeError:
                break
@@ -106,7 +107,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, log_position_displacements=False, train_test_with_init_pos_vel_known=True, export_images=False):
+    def test_batch(self, prefix, initial_pos_vel_known, log_position_displacements=False, export_images=False):
         losses = []
         pos_vel_losses = []
         output_for_summary = None
@@ -117,7 +118,7 @@ class SingulationTrainer(BaseTrain):
         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     batch_size=self.config.test_batch_size,
-                                                                    train_test_with_initial_pos_vel_known=train_test_with_init_pos_vel_known
+                                                                    initial_pos_vel_known=initial_pos_vel_known
                                                                     )
 
         summaries_dict_images = {}
