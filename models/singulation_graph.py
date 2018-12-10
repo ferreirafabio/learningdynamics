@@ -142,13 +142,14 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     if not initial_pos_vel_known:
         """ for all nodes """
         for idx, node_feature in input_graph.nodes(data=True):
-            feature = node_feature['features']
-            feature[-6:] = 0
-            input_graph.add_node(idx, features=feature)
+            feat = node_feature['features']
+            feat[-6:] = 0
+            input_graph.add_node(idx, features=feat)
         """ for all edges """
         for receiver, sender, edge_feature in input_graph.edges(data=True):
-            # todo
-            raise NotImplementedError
+            feat = edge_feature['features']
+            feat[:] = 0
+            input_graph.add_edge(sender, receiver, features=feat)
 
     return input_graph, target_graphs
 
@@ -191,8 +192,17 @@ def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_
     return input_graphs_all_experiments, target_graphs_all_experiments, graphs
 
 
-def create_graphs(config, batch_data, batch_size, train_test_with_initial_pos_vel_known=True):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size, train_test_with_initial_pos_vel_known)
+def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size, initial_pos_vel_known=initial_pos_vel_known)
+
+    if not initial_pos_vel_known:
+        """ sanity checking one of the graphs """
+        for _, node_feature in input_graphs[1].nodes(data=True):
+            assert not np.any(node_feature['features'][-6:])
+
+        for _, _, edge_feature in input_graphs[1].edges(data=True):
+            assert not np.any(edge_feature['features'][-3:])
+
     return input_graphs, target_graphs
 
 

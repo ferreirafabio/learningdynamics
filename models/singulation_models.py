@@ -139,7 +139,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_neurons_mlp_nonvisual = config.n_neurons_mlp_nonvisual
         EncodeProcessDecode.n_conv_filters = config.n_conv_filters
         EncodeProcessDecode.edge_output_size = config.edge_output_size
-
         EncodeProcessDecode.model_type = config.model_type
 
         self.config = config
@@ -712,7 +711,6 @@ class ResNet50Encoder(snt.AbstractModule):
             #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
 
             outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
-
 
             # todo: save ResNet weights
             # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py

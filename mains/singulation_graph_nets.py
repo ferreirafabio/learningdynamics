@@ -42,10 +42,10 @@ def main():
     model.load(sess)
 
     if config.mode == "train_test":
-        tf.logging.info("--- Running TRAIN/TEST MODE ---")
+        print("--- Running TRAIN/TEST MODE ---")
         trainer.train()
     elif config.mode == "test":
-        tf.logging.info("--- Running TEST MODE ---")
+        print("--- Running TEST MODE ---")
         trainer.test()
 
 if __name__ == '__main__':
