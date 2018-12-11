@@ -16,8 +16,9 @@ def main():
         args = get_args()
         config = process_config(args.config)
 
-    except:
-        print("missing or invalid arguments")
+    except Exception as e :
+        print("An error occurred during processing the configuration file")
+        print(e)
         exit(0)
 
     # create the experiments dirs

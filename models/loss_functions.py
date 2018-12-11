@@ -30,16 +30,17 @@ def create_loss_ops(config, target_op, output_ops):
         elif config.loss_type == 'mse_gdl':
             loss_ops = []
             for i, output_op in enumerate(output_ops):
-                loss_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
+                print(output_op.nodes.get_shape())
+                loss_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
 
-                loss_mse = 0.5 * tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i])
+                loss_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i])
 
                 predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
                 target_node_reshaped = _transform_into_images(config, target_node_splits[i])
 
-                loss_gdl = 0.5 * gradient_difference_loss(predicted_node_reshaped[...,:3], target_node_reshaped[...,:3])
+                loss_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
-                loss_ops.append(loss_mse + loss_gdl + loss_edges)
+                loss_ops.append(loss_mse_edges + loss_mse_nodes + loss_gdl_nodes)
 
 
     pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) for i, output_op in
@@ -82,8 +83,9 @@ def difference_gradient(image, vertical=True):
 
 
 def _transform_into_images(config, data):
+    """ reshapes data (shape: (batch_size, feature_length)) into the required image shape with an
+    additional batch_dimension, e.g. (1,120,160,7) """
     data_shape = get_correct_image_shape(config, get_type="all")
     data = data[:, :-6]
-    data = tf.reshape(data, data_shape)
-
-    return tf.expand_dims(data, axis=0)
+    data = tf.reshape(data, [-1, *data_shape])
+    return data
