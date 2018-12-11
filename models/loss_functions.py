@@ -23,7 +23,7 @@ def create_loss_ops(config, target_op, output_ops):
             for i, output_op in enumerate(output_ops)]
     else:
         if config.loss_type == 'mse':
-            loss_ops = [tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i]) + \
+            loss_ops = [tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i]) +
                         tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
                         for i, output_op in enumerate(output_ops)
             ]
@@ -31,13 +31,13 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops = []
             for i, output_op in enumerate(output_ops):
                 print(output_op.nodes.get_shape())
+                """ MSE loss (frames and non-visual data) """
                 loss_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
-
                 loss_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i])
 
+                """ Gradient difference loss (frames only) """
                 predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
                 target_node_reshaped = _transform_into_images(config, target_node_splits[i])
-
                 loss_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
                 loss_ops.append(loss_mse_edges + loss_mse_nodes + loss_gdl_nodes)
@@ -45,9 +45,6 @@ def create_loss_ops(config, target_op, output_ops):
 
     pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) for i, output_op in
         enumerate(output_ops)]
-
-    # todo: might use weighted MSE loss here
-    # todo: perhaps include global attributes into loss function
 
     return loss_ops, pos_vel_loss_ops
 

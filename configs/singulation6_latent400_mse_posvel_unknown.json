@@ -1,13 +1,13 @@
 {
   "convnet_pooling": true,
   "convnet1D_stride": 2,
-  "convnet_tanh": true,
+  "convnet_tanh": false,
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
   "dimensions_latent_repr": 432,
   "edge_output_size": 3,
-  "exp_name": "singulation4_cnn2d",
+  "exp_name": "singulation7_latent400_mse_posvel_unknown",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -18,7 +18,7 @@
   "n_conv_filters": 16,
   "n_epochs": 100,
   "n_images_shown_in_tensorboard": 10,
-  "n_layers": 10,
+  "n_layers": 6,
   "n_layers_edges": 3,
   "n_neurons_edges": 32,
   "n_neurons_mlp_nonvisual": 32,
@@ -33,6 +33,8 @@
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
-  "mode": "test",
-  "initial_pos_vel_known": true
+  "mode": "train_test",
+  "initial_pos_vel_known": false,
+  "loss_type": "mse"
+
 }
