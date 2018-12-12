@@ -5,7 +5,7 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "dimensions_latent_repr": 382,
+  "dimensions_latent_repr": 432,
   "edge_output_size": 3,
   "exp_name": "singulation6_latent400_mse_posvel_unknown",
   "export_test_images": true,

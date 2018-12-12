@@ -5,9 +5,9 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "dimensions_latent_repr": 432,
+  "dimensions_latent_repr": 382,
   "edge_output_size": 3,
-  "exp_name": "singulation7_latent400_mse_gdl",
+  "exp_name": "singulation7_latent350_mse_gdl",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -34,6 +34,6 @@
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "train_test",
-  "initial_pos_vel_known": true,
+  "initial_pos_vel_known": false,
   "loss_type": "mse_gdl"
 }
