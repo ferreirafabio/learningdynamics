@@ -5,9 +5,9 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "dimensions_latent_repr": 432,
+  "dimensions_latent_repr": 382,
   "edge_output_size": 3,
-  "exp_name": "singulation7_latent400_mse_posvel_unknown",
+  "exp_name": "singulation6_latent400_mse_posvel_unknown",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -36,5 +36,4 @@
   "mode": "train_test",
   "initial_pos_vel_known": false,
   "loss_type": "mse"
-
 }
