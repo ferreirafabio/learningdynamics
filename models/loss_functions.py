@@ -15,6 +15,9 @@ def create_loss_ops(config, target_op, output_ops):
 
     """ if object seg data is only used for init, the ground truth features in the rest of the sequence are static except position 
     --> in this case compute loss only over the position since image prediction is infeasible """
+    pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) for i, output_op in
+                        enumerate(output_ops)]
+
     if config.use_object_seg_data_only_for_init:
         # compute loss of the nodes only over velocity and position and not over ground truth static images
         loss_ops = [
@@ -39,11 +42,9 @@ def create_loss_ops(config, target_op, output_ops):
                 target_node_reshaped = _transform_into_images(config, target_node_splits[i])
                 loss_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
-                loss_ops.append(loss_mse_edges + loss_mse_nodes + loss_gdl_nodes)
+                pos_vel_loss_ops = tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
 
-
-    pos_vel_loss_ops = [tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:]) for i, output_op in
-        enumerate(output_ops)]
+                loss_ops.append(loss_mse_edges + loss_mse_nodes + loss_gdl_nodes + pos_vel_loss_ops)
 
     return loss_ops, pos_vel_loss_ops
 

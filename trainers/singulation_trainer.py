@@ -201,6 +201,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss
 
+
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
         loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
         if loss is not None:

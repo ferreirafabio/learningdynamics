@@ -64,7 +64,7 @@ class BaseTrain:
         self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts)#, self.is_training) # todo
         loss_ops_train, pos_vel_loss_ops_train = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
-        self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)
+        self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)  # just for summary, is already included in loss_op_train
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
 
     def initialize_test_model(self):
