@@ -55,7 +55,7 @@ def gradient_difference_loss(true, pred, alpha=2.0):
     :param predicted image: Tensor of shape (batch_size, frame_height, frame_width, num_channels)
     :param alpha parameter of the used l-norm
     """
-    if true.get_shape()[3] == 7 and tf.assert_equal(tf.shape(true), tf.shape(pred)):
+    if true.get_shape()[3] == 7:
         true_pred_diff_vert_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=True) - difference_gradient(pred[..., :3], vertical=True)), alpha)
         true_pred_diff_hor_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=False) - difference_gradient(pred[..., :3], vertical=False)), alpha)
         true_pred_diff_vert_seg = tf.pow(tf.abs(difference_gradient(true[..., 4, None], vertical=True) - difference_gradient(pred[..., 4, None], vertical=True)), alpha)
@@ -68,7 +68,7 @@ def gradient_difference_loss(true, pred, alpha=2.0):
                (tf.reduce_mean(true_pred_diff_vert_depth) + tf.reduce_mean(true_pred_diff_hor_depth)) / tf.to_float(2)
 
     else:
-        tf.assert_equal(tf.shape(true), tf.shape(pred))
+        #tf.assert_equal(tf.shape(true), tf.shape(pred))
         """ vertical """
         true_pred_diff_vert = tf.pow(tf.abs(difference_gradient(true, vertical=True) - difference_gradient(pred, vertical=True)), alpha)
         """ horizontal """
