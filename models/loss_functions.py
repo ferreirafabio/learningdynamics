@@ -58,8 +58,8 @@ def gradient_difference_loss(true, pred, alpha=2.0):
     if true.get_shape()[3] == 7 and tf.assert_equal(tf.shape(true), tf.shape(pred)):
         true_pred_diff_vert_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=True) - difference_gradient(pred[..., :3], vertical=True)), alpha)
         true_pred_diff_hor_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=False) - difference_gradient(pred[..., :3], vertical=False)), alpha)
-        true_pred_diff_vert_seg = tf.pow(tf.abs(difference_gradient(true[..., 4], vertical=True) - difference_gradient(pred[..., 4], vertical=True)), alpha)
-        true_pred_diff_hor_seg = tf.pow(tf.abs(difference_gradient(true[..., 4], vertical=False) - difference_gradient(pred[..., 4], vertical=False)), alpha)
+        true_pred_diff_vert_seg = tf.pow(tf.abs(difference_gradient(true[..., 4, None], vertical=True) - difference_gradient(pred[..., 4, None], vertical=True)), alpha)
+        true_pred_diff_hor_seg = tf.pow(tf.abs(difference_gradient(true[..., 4, None], vertical=False) - difference_gradient(pred[..., 4, None], vertical=False)), alpha)
         true_pred_diff_vert_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=True) - difference_gradient(pred[..., -3:], vertical=True)), alpha)
         true_pred_diff_hor_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=False) - difference_gradient(pred[..., -3:], vertical=False)), alpha)
 
