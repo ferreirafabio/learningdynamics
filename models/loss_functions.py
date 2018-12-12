@@ -42,10 +42,7 @@ def create_loss_ops(config, target_op, output_ops):
 
                 """ NONVISUAL LOSS """
                 loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
-
                 loss_nonvisual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
-
-    
 
                 loss_ops.append(loss_visual_mse_nodes + loss_visual_gdl_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes)
 
