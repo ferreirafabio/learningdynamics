@@ -130,13 +130,13 @@ class DataGenerator:
         object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
 
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
-
+        240
         return_dict = {
             'img': img,
             'seg': seg,
-            'gripperpos': gripperpos * 240.,  # data has been normalized by 1/240 per time-step
-            'objpos': objpos * 240.,  # data has been normalized by 1/240 per time-step
-            'objvel': objvel * 240.,  # data has been normalized by 1/240 per time-step
+            'gripperpos': gripperpos, # * 240.,  # data has been normalized by 1/240 per time-step
+            'objpos': objpos, # * 240.,  # data has been normalized by 1/240 per time-step
+            'objvel': objvel, # * 240.,  # data has been normalized by 1/240 per time-step
             'object_segments': object_segments,
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
