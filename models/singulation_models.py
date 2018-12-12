@@ -624,7 +624,6 @@ class NonVisualDecoder(snt.AbstractModule):
     def _build(self, inputs, is_training=True):
 
         visual_decoded_output = self.visual_dec(inputs)
-        print(visual_decoded_output.get_shape())
 
         if "global" in self._name:
             n_non_visual_elements = 5
