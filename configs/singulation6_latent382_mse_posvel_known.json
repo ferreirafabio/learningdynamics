@@ -7,7 +7,7 @@
   "depth_data_provided": true,
   "dimensions_latent_repr": 382,
   "edge_output_size": 3,
-  "exp_name": "singulation6_latent350_mse_posvel_known",
+  "exp_name": "singulation6_latent382_mse_posvel_known",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
