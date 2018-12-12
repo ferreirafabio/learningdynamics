@@ -33,18 +33,21 @@ def create_loss_ops(config, target_op, output_ops):
         elif config.loss_type == 'mse_gdl':
             loss_ops = []
             for i, output_op in enumerate(output_ops):
-                """ MSE loss (frames and non-visual data) """
-                loss_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
-                loss_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes, target_node_splits[i])
+                """ VISUAL LOSS """
+                loss_visual_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
 
-                """ Gradient difference loss (frames only) """
                 predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
                 target_node_reshaped = _transform_into_images(config, target_node_splits[i])
-                loss_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
+                loss_visual_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
-                pos_vel_loss_ops = tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
+                """ NONVISUAL LOSS """
+                loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
 
-                loss_ops.append(loss_mse_edges + loss_mse_nodes + loss_gdl_nodes + pos_vel_loss_ops)
+                loss_nonvisual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
+
+    
+
+                loss_ops.append(loss_visual_mse_nodes + loss_visual_gdl_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes)
 
     return loss_ops, pos_vel_loss_ops
 
