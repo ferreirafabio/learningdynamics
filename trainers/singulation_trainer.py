@@ -81,7 +81,6 @@ class SingulationTrainer(BaseTrain):
                 losses, pos_vel_losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
                                                         features[i], losses) for i in range(self.config.train_batch_size))
         else:
-
             for i in range(self.config.train_batch_size):
                 loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
                 if loss is not None:
@@ -174,8 +173,6 @@ class SingulationTrainer(BaseTrain):
                 # todo: check whether both arrays come from the same input-target-pair
                 raise NotImplementedError
 
-
-
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
@@ -203,7 +200,6 @@ class SingulationTrainer(BaseTrain):
             save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10)
 
         return batch_loss, pos_vel_batch_loss
-
 
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
         loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
