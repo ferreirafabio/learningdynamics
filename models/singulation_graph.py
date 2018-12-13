@@ -63,6 +63,11 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     gripper_as_global = config.gripper_as_global
     data_offset_manipulable_objects = config.data_offset_manipulable_objects
     experiment_length = features['experiment_length']
+
+    """ handles the testing cycles when a different number of rollouts shall be predicted than seen in training """
+    if config.n_rollouts is not experiment_length:
+        experiment_length = config.n_rollouts
+
     target_graphs = [graph.copy() for _ in range(experiment_length)]
 
     def create_node_feature(attr, features, step, use_object_seg_data_only_for_init):

@@ -5,6 +5,7 @@ import collections
 import numpy as np
 import moviepy.editor as mpy
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import tensorflow as tf
 import math
 
@@ -227,13 +228,13 @@ def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_ty
         img = img[0].astype(np.uint8)
         plt.imsave(output_dir + "/" + img_type + str(i).zfill(4), img)
 
-
     if store_gif:
         output_dir = create_dir(destination_path, "images" + '_' + img_type)
         clip = mpy.ImageSequenceClip(output_dir, fps=5, with_mask=False).to_RGB()
         clip.write_gif(os.path.join(output_dir, 'sequence_' + img_type + '.gif'), program='ffmpeg')
 
-def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
+
+def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=False):
     if not isinstance(image_dicts, dict) or image_dicts is None:
         return None
 
@@ -244,15 +245,41 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10):
 
         img_data_uint = img_as_ubyte(img_data)
         if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
-            ''' segmentation masks '''
-            clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=True)
+            if use_moviepy:
+                ''' segmentation masks '''
+                clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=True)
+            else:
+                fig = plt.figure(frameon=False)
+                ax = plt.Axes(fig, [0., 0., 1., 1.])
+                ax.set_axis_off()
+                fig.add_axes(ax)
+                ims = []
+                for i in range(img_data_uint.shape[0]):
+                    ims.append([plt.imshow(img_data_uint[i,:,:,0], animated=True)])
+                clip = animation.ArtistAnimation(fig, ims, interval=10, blit=True, repeat_delay=1000)
+
         elif len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 3:
-            ''' all 3-channel data (rgb, depth etc.)'''
-            clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=False)
+            if use_moviepy:
+                ''' all 3-channel data (rgb, depth etc.)'''
+                clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=False)
+            else:
+                fig = plt.figure(frameon=False)
+                ax = plt.Axes(fig, [0., 0., 1., 1.])
+                ax.set_axis_off()
+                fig.add_axes(ax)
+                ims = []
+                for i in range(img_data_uint.shape[0]):
+                    ims.append([plt.imshow(img_data_uint[i,:,:,:], animated=True)])
+                clip = animation.ArtistAnimation(fig, ims, interval=10, blit=True, repeat_delay=1000)
         else:
             continue
 
-        clip.write_gif(os.path.join(destination_path, file_name) + ".gif", program="ffmpeg", verbose=False, progress_bar=False)
+        name = os.path.join(destination_path, file_name) + ".gif"
+        if use_moviepy:
+            clip.write_gif(name, program="ffmpeg", verbose=False, progress_bar=False)
+        else:
+            clip.save(name, writer='imagemagick')
+
 
 
 def convert_dict_to_list(dct):

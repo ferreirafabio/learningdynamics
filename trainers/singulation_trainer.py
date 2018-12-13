@@ -31,7 +31,6 @@ class SingulationTrainer(BaseTrain):
     def do_step(self, input_graph, target_graphs, feature, train=True):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
-
         if train:
             #feed_dict['is_training'] = True
             data = self.sess.run({"step": self.model.step_op, "target": self.model.target_ph, "loss": self.model.loss_op_train,
@@ -43,8 +42,6 @@ class SingulationTrainer(BaseTrain):
             data = self.sess.run({"target": self.model.target_ph, "loss": self.model.loss_op_test,
                                   "outputs": self.model.output_ops_test, "pos_vel_loss": self.model.pos_vel_loss_ops_test
                                   }, feed_dict=feed_dict)
-
-        del feed_dict
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
@@ -196,8 +193,9 @@ class SingulationTrainer(BaseTrain):
 
 
         if export_images:
-            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}".format(cur_batch_it))
-            save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10)
+            exp_id = features[features_index]['experiment_id']
+            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+            save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=self.config.n_rollouts)
 
         return batch_loss, pos_vel_batch_loss
 
