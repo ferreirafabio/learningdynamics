@@ -256,7 +256,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 ims = []
                 for i in range(img_data_uint.shape[0]):
                     ims.append([plt.imshow(img_data_uint[i,:,:,0], animated=True)])
-                clip = animation.ArtistAnimation(fig, ims, interval=10, blit=True, repeat_delay=1000)
+                clip = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=1000)
 
         elif len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 3:
             if use_moviepy:
@@ -270,7 +270,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 ims = []
                 for i in range(img_data_uint.shape[0]):
                     ims.append([plt.imshow(img_data_uint[i,:,:,:], animated=True)])
-                clip = animation.ArtistAnimation(fig, ims, interval=10, blit=True, repeat_delay=1000)
+                clip = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=1000)
         else:
             continue
 
