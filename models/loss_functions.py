@@ -64,9 +64,9 @@ def gradient_difference_loss(true, pred, alpha=2.0):
         true_pred_diff_vert_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=True) - difference_gradient(pred[..., -3:], vertical=True)), alpha)
         true_pred_diff_hor_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=False) - difference_gradient(pred[..., -3:], vertical=False)), alpha)
 
-        return (tf.reduce_mean(true_pred_diff_vert_rgb+true_pred_diff_hor_rgb)) + \
-               (tf.reduce_mean(true_pred_diff_vert_seg+true_pred_diff_hor_seg)) + \
-               (tf.reduce_mean(true_pred_diff_vert_depth+true_pred_diff_hor_depth))
+        return (tf.reduce_mean(true_pred_diff_vert_rgb) + tf.reduce_mean(true_pred_diff_hor_rgb)) / tf.to_float(2) + \
+               (tf.reduce_mean(true_pred_diff_vert_seg) + tf.reduce_mean(true_pred_diff_hor_seg)) / tf.to_float(2) + \
+               (tf.reduce_mean(true_pred_diff_vert_depth) + tf.reduce_mean(true_pred_diff_hor_depth)) / tf.to_float(2)
 
     else:
         #tf.assert_equal(tf.shape(true), tf.shape(pred))
@@ -75,7 +75,8 @@ def gradient_difference_loss(true, pred, alpha=2.0):
         """ horizontal """
         true_pred_diff_hor = tf.pow(tf.abs(difference_gradient(true, vertical=False) - difference_gradient(pred, vertical=False)), alpha)
         """ normalization over all dimensions """
-        return tf.reduce_mean(true_pred_diff_vert+true_pred_diff_hor)
+        return (tf.reduce_mean(true_pred_diff_vert) + tf.reduce_mean(true_pred_diff_hor)) / tf.to_float(2)
+
 
 
 def difference_gradient(image, vertical=True):
