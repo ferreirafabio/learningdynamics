@@ -34,11 +34,11 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops = []
             for i, output_op in enumerate(output_ops):
                 """ VISUAL LOSS """
-                loss_visual_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
+                loss_visual_mse_nodes = 0.8 * tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
 
                 predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
                 target_node_reshaped = _transform_into_images(config, target_node_splits[i])
-                loss_visual_gdl_nodes = 0.5 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
+                loss_visual_gdl_nodes = 0.2 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
                 """ NONVISUAL LOSS """
                 loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
@@ -49,7 +49,7 @@ def create_loss_ops(config, target_op, output_ops):
     return loss_ops, pos_vel_loss_ops
 
 
-def gradient_difference_loss(true, pred, alpha=1.0):
+def gradient_difference_loss(true, pred, alpha=2.0):
     """
     computes gradient difference loss of two images
     :param ground truth image: Tensor of shape (batch_size, frame_height, frame_width, num_channels)
