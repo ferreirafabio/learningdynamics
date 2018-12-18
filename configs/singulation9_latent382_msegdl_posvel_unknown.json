@@ -7,7 +7,7 @@
   "depth_data_provided": true,
   "dimensions_latent_repr": 382,
   "edge_output_size": 3,
-  "exp_name": "singulation9_latent382_msegdl_posvel_known",
+  "exp_name": "singulation9_latent382_msegdl_posvel_unknown",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -29,11 +29,11 @@
   "parallel_batch_processing": false,
   "test_batch_size": 20,
   "test_interval": 100,
-  "tfrecords_dir": "../data/destination/",
+  "tfrecords_dir": "/scr2/data/tfrecords/",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "train_test",
-  "initial_pos_vel_known": true,
+  "initial_pos_vel_known": false,
   "loss_type": "mse_gdl"
 }
