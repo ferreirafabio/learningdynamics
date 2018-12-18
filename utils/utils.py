@@ -281,7 +281,6 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
             clip.save(name, writer='imagemagick')
 
 
-
 def convert_dict_to_list(dct):
     """ assumes a dict of subdicts of which each subdict only contains one key containing the desired data """
     lst = []
@@ -292,6 +291,7 @@ def convert_dict_to_list(dct):
             element = next(iter(value.values())) # get the first element, assuming the dicts contain only the desired data
             lst.append(element)
     return lst
+
 
 def convert_dict_to_list_subdicts(dct, length):
     list_of_subdicts = []
