@@ -134,9 +134,9 @@ class DataGenerator:
         return_dict = {
             'img': img,
             'seg': seg,
-            'gripperpos': gripperpos, # * 240.,  # data has been normalized by 1/240 per time-step
-            'objpos': objpos, # * 240.,  # data has been normalized by 1/240 per time-step
-            'objvel': objvel, # * 240.,  # data has been normalized by 1/240 per time-step
+            'gripperpos': gripperpos,
+            'objpos': objpos,
+            'objvel': objpos*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
             'object_segments': object_segments,
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
