@@ -16,7 +16,7 @@ def main():
         args = get_args()
         config = process_config(args.config)
 
-    except Exception as e :
+    except Exception as e:
         print("An error occurred during processing the configuration file")
         print(e)
         exit(0)
