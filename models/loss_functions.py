@@ -32,12 +32,12 @@ def create_loss_ops(config, target_op, output_ops):
             for i, output_op in enumerate(output_ops):
                 """ VISUAL LOSS """
                 loss_visual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, :-6], target_node_splits[i][:, :-6])
-                loss_ops.append(loss_visual_mse_nodes)
 
                 """ NONVISUAL LOSS """
                 loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
                 loss_nonvisual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, -6:], target_node_splits[i][:, -6:])
                 pos_vel_loss_ops.append(loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes)
+                loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes)
 
 
         elif config.loss_type == 'mse_gdl':
