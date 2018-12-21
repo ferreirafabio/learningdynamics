@@ -45,14 +45,26 @@ class SingulationTrainer(BaseTrain):
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
-
     def test_epoch(self):
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         while True:
            try:
                self.test_batch(prefix, export_images=self.config.export_test_images, initial_pos_vel_known=self.config.initial_pos_vel_known)
+           except tf.errors.OutOfRangeError:
+               break
 
+    def test_rollouts(self):
+        assert self.config.n_epochs == 1, "set n_epochs to 1"
+        prefix = self.config.exp_name
+        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+        while True:
+           try:
+               self.test_batch(prefix=prefix,
+                               export_images=self.config.export_test_images,
+                               initial_pos_vel_known=self.config.initial_pos_vel_known,
+                               process_all_nn_outputs=True,
+                               sub_dir_name="test_rollouts")
            except tf.errors.OutOfRangeError:
                break
 
@@ -105,10 +117,13 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, initial_pos_vel_known, log_position_displacements=False, export_images=False):
+    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None):
         losses = []
         pos_vel_losses = []
-        output_for_summary = None
+        outputs_for_summary = []
+        summaries_dict = {}
+        summaries_dict_images = {}
+
         next_element = self.test_data.get_next_batch()
         features = self.sess.run(next_element)
 
@@ -118,11 +133,6 @@ class SingulationTrainer(BaseTrain):
                                                                     batch_size=self.config.test_batch_size,
                                                                     initial_pos_vel_known=initial_pos_vel_known
                                                                     )
-
-        summaries_dict_images = {}
-        target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
-        predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
-        target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
 
         start_time = time.time()
         last_log_time = start_time
@@ -134,68 +144,41 @@ class SingulationTrainer(BaseTrain):
                 pos_vel_losses.append(pos_vel_loss)
             ''' get the last not-None output '''
             if outputs is not None:
-                output_for_summary = (outputs, i)
+                outputs_for_summary.append((outputs, i))
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
-
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        if output_for_summary is not None:
-            ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
-            images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], self.config.depth_data_provided)
-            features_index = output_for_summary[1]
-
-            predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
-                images_seg,
-                images_depth,
-                images_rgb,
-                prefix=prefix,
-                features=features,
-                features_index=features_index,
-                cur_batch_it=cur_batch_it
-            )
-
-            target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
-            target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
-                prefix=prefix,
-                features=features,
-                features_index=features_index,
-                cur_batch_it=cur_batch_it
-            )
-
-            if log_position_displacements:
-                pos_array_predicted = get_pos_ndarray_from_output(output_for_summary)
-                pos_array_target = features[features_index]['objpos']
-                # todo: check whether both arrays come from the same input-target-pair
-                raise NotImplementedError
+        if not process_all_nn_outputs:
+            """ due to brevity, just use last element """
+            outputs_for_summary = [outputs_for_summary[-1]]
 
         if losses:
             batch_loss = np.mean(losses)
             pos_vel_batch_loss = np.mean(pos_vel_losses)
             print('test batch loss: {:<12.2f} pos_vel loss: {:<12.2f} time (sec): {:<12.2f}'.format(batch_loss, pos_vel_batch_loss, elapsed_since_last_log))
-
             summaries_dict = {prefix + '_loss': batch_loss, prefix + '_pos_vel_loss': pos_vel_batch_loss}
-            summaries_dict_images = {
-                **predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
-                **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
-                **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth
-            }
-
-            summaries_dict = {**summaries_dict, **summaries_dict_images}
-
-            cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-            self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
         else:
             batch_loss = 0
             pos_vel_batch_loss = 0
 
+        if outputs_for_summary is not None:
+            for output in outputs_for_summary:
+                summaries_dict_images = _create_image_summary(output,
+                                                              config=self.config,
+                                                              prefix=prefix,
+                                                              features=features,
+                                                              cur_batch_it=cur_batch_it,
+                                                              export_images=export_images,
+                                                              dir_name=sub_dir_name)
 
-        if export_images:
-            exp_id = features[features_index]['experiment_id']
-            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
-            save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=self.config.n_rollouts)
+
+        summaries_dict = {**summaries_dict, **summaries_dict_images}
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+        self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
+
 
         return batch_loss, pos_vel_batch_loss
 
@@ -206,3 +189,36 @@ class SingulationTrainer(BaseTrain):
             losses.append(loss)
             pos_vel_losses.append(pos_vel_loss)
         return losses, pos_vel_loss
+
+
+def _create_image_summary(output_for_summary, config, prefix, features, cur_batch_it, export_images, dir_name=None):
+    # target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
+    # predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
+    # target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
+
+    ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
+    images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], config.depth_data_provided)
+    features_index = output_for_summary[1]
+
+    predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(images_seg,
+        images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+
+
+    target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
+    target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+
+    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
+        **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth, **target_summaries_dict_global_img,
+    **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
+
+    if export_images:
+        exp_id = features[features_index]['experiment_id']
+        if dir_name is not None:
+            dir_path = create_dir(os.path.join("../experiments", prefix), dir_name)
+            dir_path = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+        else:
+            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+        save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
+
+    return summaries_dict_images

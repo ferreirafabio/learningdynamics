@@ -31,6 +31,9 @@ class BaseTrain:
     def test(self):
         self.test_epoch()
 
+    def test_rollouts(self):
+        self.test_rollouts()
+
     def test_epoch(self):
         raise NotImplementedError
 
