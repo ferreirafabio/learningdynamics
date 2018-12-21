@@ -16,7 +16,7 @@
   "model_save_step_interval": 500,
   "model_type": "cnn2d",
   "n_conv_filters": 16,
-  "n_epochs": 100,
+  "n_epochs": 1,
   "n_images_shown_in_tensorboard": 10,
   "n_layers": 6,
   "n_layers_edges": 3,
@@ -29,11 +29,11 @@
   "parallel_batch_processing": false,
   "test_batch_size": 5,
   "test_interval": 100,
-  "tfrecords_dir": "../data/destination/",
+  "tfrecords_dir": "../data/destination_20rollouts/",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
-  "mode": "train_test",
+  "mode": "test_rollouts",
   "initial_pos_vel_known": false,
   "loss_type": "mse"
 }
