@@ -204,4 +204,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "../data/source", "../data/destination", test_size=0.2, n_sequences_per_batch=30)
+    create_tfrecords_from_dir(config, "../data/seg_dir_20_rollouts", "../data/destination_20_rollouts", test_size=0.8, n_sequences_per_batch=30)

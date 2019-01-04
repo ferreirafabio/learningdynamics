@@ -96,14 +96,14 @@ class DataGenerator:
         experiment_id = context['experiment_id']
         n_total_objects = context['n_total_objects']
 
-        img = tf.decode_raw(sequence['img'], out_type=tf.int16)
+        img = tf.decode_raw(sequence['img'], out_type=tf.uint16)
         img = tf.reshape(img, tf.stack([experiment_length, 120, 160, 3]))
 
-        seg = tf.decode_raw(sequence['seg'], out_type=tf.int16)
+        seg = tf.decode_raw(sequence['seg'], out_type=tf.uint16)
         seg = tf.reshape(seg, tf.stack([experiment_length, 120, 160]))
 
         if self.depth_data_provided:
-            depth = tf.decode_raw(sequence['depth'], out_type=tf.int16)
+            depth = tf.decode_raw(sequence['depth'], out_type=tf.uint16)
             depth = tf.reshape(depth, tf.stack([experiment_length, 120, 160, 3]))
 
             if not self.use_object_seg_data_only_for_init:
@@ -127,8 +127,7 @@ class DataGenerator:
         objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
         objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
-        object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
-
+        object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         return_dict = {
