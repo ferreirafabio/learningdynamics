@@ -23,7 +23,9 @@ class SingulationTrainer(BaseTrain):
                     self.model.save(self.sess)
                 if cur_batch_it % self.config.test_interval == 1:
                     print("Executing test batch")
-                    self.test_batch(prefix, export_images=self.config.export_test_images, initial_pos_vel_known=self.config.initial_pos_vel_known)
+                    self.test_batch(prefix, export_images=self.config.export_test_images,
+                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                    sub_dir_name="tests_during_training")
 
            except tf.errors.OutOfRangeError:
                break
@@ -50,7 +52,9 @@ class SingulationTrainer(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         while True:
            try:
-               self.test_batch(prefix, export_images=self.config.export_test_images, initial_pos_vel_known=self.config.initial_pos_vel_known)
+               self.test_batch(prefix, export_images=self.config.export_test_images,
+                               initial_pos_vel_known=self.config.initial_pos_vel_known,
+                               sub_dir_name="test_epoch")
            except tf.errors.OutOfRangeError:
                break
 
@@ -64,7 +68,7 @@ class SingulationTrainer(BaseTrain):
                                export_images=self.config.export_test_images,
                                initial_pos_vel_known=self.config.initial_pos_vel_known,
                                process_all_nn_outputs=True,
-                               sub_dir_name="test_rollouts")
+                               sub_dir_name="test_higher_n_rollouts")
            except tf.errors.OutOfRangeError:
                break
 
@@ -151,7 +155,7 @@ class SingulationTrainer(BaseTrain):
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if not process_all_nn_outputs:
-            """ due to brevity, just use last element """
+            """ due to brevity, just use last results """
             outputs_for_summary = [outputs_for_summary[-1]]
 
         if losses:
