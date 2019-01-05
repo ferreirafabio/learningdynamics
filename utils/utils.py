@@ -304,15 +304,17 @@ def convert_dict_to_list_subdicts(dct, length):
 
 
 def create_dir(output_dir, dir_name, verbose=False):
+    exists = False
     assert(output_dir)
     output_dir = os.path.join(output_dir, dir_name)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
         print('Created custom directory:', dir_name)
-        return output_dir
+        return output_dir, exists
+    exists = True
     if verbose:
         print('Using existing directory:', dir_name)
-    return output_dir
+    return output_dir, exists
 
 
 def convert_list_of_dicts_to_list_by_concat(lst):

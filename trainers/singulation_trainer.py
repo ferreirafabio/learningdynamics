@@ -225,8 +225,11 @@ def _create_image_summary(output_for_summary, config, prefix, features, cur_batc
     if export_images:
         exp_id = features[features_index]['experiment_id']
         if dir_name is not None:
-            dir_path = create_dir(os.path.join("../experiments", prefix), dir_name)
-            dir_path = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+            dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
+            dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+            if exists:
+                print("skipping summary, directory already exists")
+                return None
         else:
             dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
         save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
