@@ -62,13 +62,14 @@ class SingulationTrainer(BaseTrain):
         assert self.config.n_epochs == 1, "set n_epochs to 1"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+
         while True:
            try:
                self.test_batch(prefix=prefix,
                                export_images=self.config.export_test_images,
                                initial_pos_vel_known=self.config.initial_pos_vel_known,
                                process_all_nn_outputs=True,
-                               sub_dir_name="test_higher_n_rollouts")
+                               sub_dir_name="test_{}_rollouts".format(self.config.n_rollouts))
            except tf.errors.OutOfRangeError:
                break
 
@@ -169,19 +170,24 @@ class SingulationTrainer(BaseTrain):
             pos_vel_batch_loss = 0
 
         if outputs_for_summary is not None:
-            for output in outputs_for_summary:
-                summaries_dict_images = _create_image_summary(output,
-                                                              config=self.config,
-                                                              prefix=prefix,
-                                                              features=features,
-                                                              cur_batch_it=cur_batch_it,
-                                                              export_images=export_images,
-                                                              dir_name=sub_dir_name)
+            if self.config.parallel_batch_processing:
+                with parallel_backend('loky', n_jobs=-3):
+                    _ = Parallel()(delayed(_create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
+                        for output in outputs_for_summary)
+            else:
+                for output in outputs_for_summary:
+                    summaries_dict_images = _create_image_summary(output,
+                                                                  config=self.config,
+                                                                  prefix=prefix,
+                                                                  features=features,
+                                                                  cur_batch_it=cur_batch_it,
+                                                                  export_images=export_images,
+                                                                  dir_name=sub_dir_name)
 
 
-        summaries_dict = {**summaries_dict, **summaries_dict_images}
-        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-        self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
+            summaries_dict = {**summaries_dict, **summaries_dict_images}
+            cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+            self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
 
         return batch_loss, pos_vel_batch_loss
