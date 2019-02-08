@@ -3,8 +3,8 @@ import tensorflow as tf
 import time
 import os
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir,\
-                        save_to_gif_from_dict
+from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir, \
+    save_to_gif_from_dict
 from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
@@ -16,7 +16,7 @@ class SingulationTrainer(BaseTrain):
     def train_epoch(self):
         prefix = self.config.exp_name
         while True:
-           try:
+            try:
                 _, _, cur_batch_it = self.train_batch(prefix)
 
                 if cur_batch_it % self.config.model_save_step_interval == 1:
@@ -27,8 +27,8 @@ class SingulationTrainer(BaseTrain):
                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                     sub_dir_name="tests_during_training")
 
-           except tf.errors.OutOfRangeError:
-               break
+            except tf.errors.OutOfRangeError:
+                break
 
     def do_step(self, input_graph, target_graphs, feature, train=True):
         feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
@@ -51,28 +51,28 @@ class SingulationTrainer(BaseTrain):
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         while True:
-           try:
-               self.test_batch(prefix, export_images=self.config.export_test_images,
-                               initial_pos_vel_known=self.config.initial_pos_vel_known,
-                               sub_dir_name="test_epoch")
-           except tf.errors.OutOfRangeError:
-               break
+            try:
+                self.test_batch(prefix, export_images=self.config.export_test_images,
+                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                sub_dir_name="test_epoch")
+            except tf.errors.OutOfRangeError:
+                break
 
     def test_rollouts(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+        cur_batch_it = None
 
         while True:
-           try:
-               self.test_batch(prefix=prefix,
-                               export_images=self.config.export_test_images,
-                               initial_pos_vel_known=self.config.initial_pos_vel_known,
-                               process_all_nn_outputs=True,
-                               sub_dir_name="test_{}_rollouts".format(self.config.n_rollouts))
-           except tf.errors.OutOfRangeError:
-               break
-
+            try:
+                self.test_batch(prefix=prefix,
+                                export_images=self.config.export_test_images,
+                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                process_all_nn_outputs=True,
+                                sub_dir_name="test_{}_rollouts_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it))
+            except tf.errors.OutOfRangeError:
+                break
 
     def train_batch(self, prefix):
         losses = []
@@ -93,7 +93,7 @@ class SingulationTrainer(BaseTrain):
         if self.config.parallel_batch_processing:
             with parallel_backend('threading', n_jobs=-3):
                 losses, pos_vel_losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
-                                                        features[i], losses) for i in range(self.config.train_batch_size))
+                                                                                    features[i], losses) for i in range(self.config.train_batch_size))
         else:
             for i in range(self.config.train_batch_size):
                 loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i], features[i])
@@ -173,7 +173,7 @@ class SingulationTrainer(BaseTrain):
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-3):
                     summaries_dict_images = Parallel()(delayed(_create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
-                        for output in outputs_for_summary)
+                                                       for output in outputs_for_summary)
             else:
                 for output in outputs_for_summary:
                     summaries_dict_images = _create_image_summary(output,
@@ -189,9 +189,7 @@ class SingulationTrainer(BaseTrain):
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
-
-        return batch_loss, pos_vel_batch_loss
-
+        return batch_loss, pos_vel_batch_loss, cur_batch_it
 
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
         loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
@@ -211,7 +209,7 @@ def _create_image_summary(output_for_summary, config, prefix, features, cur_batc
     features_index = output_for_summary[1]
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(images_seg,
-        images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+                                                                                                                                images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
 
 
     target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
@@ -219,8 +217,8 @@ def _create_image_summary(output_for_summary, config, prefix, features, cur_batc
         prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
 
     summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
-        **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth, **target_summaries_dict_global_img,
-    **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
+                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth, **target_summaries_dict_global_img,
+                             **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
 
     if export_images:
         exp_id = features[features_index]['experiment_id']
