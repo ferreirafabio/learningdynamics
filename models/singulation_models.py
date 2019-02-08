@@ -398,7 +398,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, is_training=True, verbose=False):
+    def _build(self, inputs, is_training=True, verbose=True):
         filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
 
         if EncodeProcessDecode.convnet_tanh:
@@ -422,7 +422,8 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #    EncodeProcessDecode.dimensions_latent_repr, EncodeProcessDecode.n_neurons_mlp_nonvisual)
 
         #image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
-        image_data = tf.reshape(image_data, (-1, 7, 10, 5))
+        #image_data = tf.reshape(image_data, (-1, 7, 10, 5))
+        image_data = tf.reshape(image_data, (-1, 7, 10, 15))
 
         ''' layer 1 (7,10,5) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
@@ -518,7 +519,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, name, is_training=True, verbose=False):
+    def _build(self, inputs, name, is_training=True, verbose=True):
 
         if EncodeProcessDecode.convnet_tanh:
             activation = tf.nn.tanh

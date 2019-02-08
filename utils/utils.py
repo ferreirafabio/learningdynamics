@@ -150,8 +150,10 @@ def load_data_from_list_of_paths(batch_element):
         experiment[j] = trajectory_step_data
     return experiment
 
+
 def get_dir_name(path):
     return os.path.basename(os.path.dirname(path))
+
 
 def get_all_experiment_image_data_from_dir(source_path, data_type="rgb"):
     all_paths = get_all_experiment_file_paths_from_dir(source_path=source_path)
@@ -334,17 +336,6 @@ def convert_float_image_to_int16_legacy(float_image): #todo: remove wrong (65k v
     float_image = 255 * float_image
     return float_image.astype(np.int16)
 
-def convert_image_to_int16(float_image):
-    dt = float_image.dtype
-    float_image = float_image.astype(dt) / float_image.max()
-    float_image = 65536 * float_image
-    return float_image.astype(np.int16)
-
-def fix_conversion_error(img): #todo: remove wrong (65k vs 255) conversion when creating new tfrecords
-    info = np.iinfo(img.dtype)
-    rescaled_img = img.astype(np.float32) / info.max
-    rescaled_img = 255 * rescaled_img
-    return rescaled_img.astype(np.float32)
 
 def get_number_of_total_samples(tf_records_filenames, options=None):
     c = 0
@@ -396,6 +387,7 @@ def get_pos_ndarray_from_output(output_for_summary):
 
     return pos_lst
 
+
 def get_correct_image_shape(config, n_leading_Nones=0, get_type="rgb", depth_data_provided = True):
     """ returns the correct shape (e.g. (120,160,7) ) according to the settings set in the configuration file """
     assert get_type in ['seg', 'depth', 'rgb', 'all']
@@ -421,12 +413,14 @@ def get_correct_image_shape(config, n_leading_Nones=0, get_type="rgb", depth_dat
 
     return img_shape
 
+
 def is_square(integer):
     root = math.sqrt(integer)
     if int(root + 0.5) ** 2 == integer:
         return True
     else:
         return False
+
 
 def check_power(N, k):
     if N == k:
