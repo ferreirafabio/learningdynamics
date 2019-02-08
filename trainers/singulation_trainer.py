@@ -50,7 +50,7 @@ class SingulationTrainer(BaseTrain):
     def test_epoch(self):
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         while True:
             try:
@@ -64,7 +64,7 @@ class SingulationTrainer(BaseTrain):
         assert self.config.n_epochs == 1, "set n_epochs to 1"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         while True:
             try:
