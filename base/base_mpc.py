@@ -19,3 +19,6 @@ class MPC:
 
     def solve(self, state):
         raise NotImplementedError
+
+
+
