@@ -15,6 +15,7 @@ noise_sigma = 10
 lambda_ = 1
 
 
+
 if __name__ == "__main__":
     U = np.random.uniform(low=ACTION_LOW, high=ACTION_HIGH, size=TIMESTEPS)  # pendulum joint effort in (-2, +2)
 
