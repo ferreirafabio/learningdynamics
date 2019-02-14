@@ -22,7 +22,6 @@ from graph_nets import modules
 from graph_nets import utils_tf
 from base.base_model import BaseModel
 from keras.applications.resnet50 import ResNet50, preprocess_input
-from keras.applications.densenet import DenseNet121
 from keras.applications.vgg16 import VGG16
 from keras.layers import Flatten, Dense
 from keras.models import Model

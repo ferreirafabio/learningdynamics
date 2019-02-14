@@ -4,7 +4,8 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 
 class DataGenerator:
-    def __init__(self, config, sess, train=True):
+    def __init__(self, config, sess, train=True, old_tfrecords=True):
+        self.old_tfrecords = old_tfrecords
         self.config = config
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
         self.depth_data_provided = config.depth_data_provided
@@ -127,7 +128,10 @@ class DataGenerator:
         objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
         objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
-        object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
+        if self.old_tfrecords:
+            object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
+        else:
+            self.object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         return_dict = {
