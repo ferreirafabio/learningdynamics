@@ -131,7 +131,7 @@ class DataGenerator:
         if self.old_tfrecords:
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
         else:
-            self.object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
+            object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         return_dict = {
