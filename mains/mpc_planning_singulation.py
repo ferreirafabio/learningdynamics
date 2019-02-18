@@ -29,8 +29,8 @@ def main():
     sess = tf.Session()
 
     # create your data generator
-    train_data = DataGenerator(config, sess, train=True)
-    test_data = DataGenerator(config, sess, train=False)
+    train_data = DataGenerator(config, sess, old_tfrecords=config.old_tfrecords, train=True)
+    test_data = DataGenerator(config, sess, old_tfrecords=config.old_tfrecords, train=False)
 
     model = EncodeProcessDecode(config)
 

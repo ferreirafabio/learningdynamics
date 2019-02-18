@@ -24,6 +24,8 @@ def main():
         if args.mode:
             print("overwriting mode in config file")
             config.mode = args.mode
+        if args.old_tfrecords:
+            config.mode = args.old_tfrecords
 
     except Exception as e:
         print("An error occurred during processing the configuration file")
