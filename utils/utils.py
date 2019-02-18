@@ -16,8 +16,8 @@ def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument('-c', '--config', metavar='C', default='None', help='The Configuration file')
 
-    argparser.add_argument('-n_epochs', default=None, help='overwrites the n_epoch specified in the configuration file', type=int)
-    argparser.add_argument('-mode', default=None, help='overwrites the mode specified in the configuration file')
+    argparser.add_argument('-n_epochs', '--n_epochs', default=None, help='overwrites the n_epoch specified in the configuration file', type=int)
+    argparser.add_argument('-mode', '--mode', default=None, help='overwrites the mode specified in the configuration file')
     args, _ = argparser.parse_known_args()
     return args
 
