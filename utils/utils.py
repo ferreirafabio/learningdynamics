@@ -18,7 +18,7 @@ def get_args():
 
     argparser.add_argument('-n_epochs', '--n_epochs', default=None, help='overwrites the n_epoch specified in the configuration file', type=int)
     argparser.add_argument('-mode', '--mode', default=None, help='overwrites the mode specified in the configuration file')
-    argparser.add_argument('-old_tfrecords', '--old_tfrecords', default=None, help='overwrites the mode specified in the configuration file')
+    #argparser.add_argument('-old_tfrecords', '--old_tfrecords', default=False, help='overwrites the mode specified in the configuration file', type=bool)
     args, _ = argparser.parse_known_args()
     return args
 
@@ -349,10 +349,11 @@ def make_all_runnable_in_session(*args):
   return [utils_tf.make_runnable_in_session(a) for a in args]
 
 
-def get_all_images_from_gn_output(outputs, depth=True):
+def get_images_from_gn_output(outputs, depth=True):
     images_rgb = []
     images_seg = []
     images_depth = []
+
     n_objects = np.shape(outputs[0][0])[0]
     img_shape = get_correct_image_shape(config=None, n_leading_Nones=0, get_type='all', depth_data_provided=depth)
 
@@ -372,6 +373,24 @@ def get_all_images_from_gn_output(outputs, depth=True):
             images_depth.append(np.stack(depth_lst))
     # todo: possibly expand_dims before stacking since (exp_length, w, h, c) might become (w,h,c) if exp_length = 1
     return images_rgb, images_seg, images_depth
+
+
+def get_latent_from_gn_output(outputs):
+    n_objects = np.shape(outputs[0][0][0])[0]
+    velocities = []
+    positions = []
+
+    for n in range(n_objects):
+        vel = []
+        pos = []
+        for data_t in outputs:
+            obj_vel = data_t[0][n][-3:]
+            obj_pos = data_t[0][n][-6:-3]
+            pos.append(obj_pos)
+            vel.append(obj_vel)
+        velocities.append(vel)
+        positions.append(pos)
+    return positions, velocities
 
 
 def get_pos_ndarray_from_output(output_for_summary):
@@ -429,6 +448,23 @@ def check_power(N, k):
         return N == k**int(round(math.log(N, k)))
     except Exception:
         return False
+
+
+def export_summary_images(config, summaries_dict_images, features, features_index, prefix, dir_name, cur_batch_it):
+    exp_id = features[features_index]['experiment_id']
+    if dir_name is not None:
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
+        dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+        if exists:
+            print("skipping summary, directory already exists")
+            return None
+    else:
+        dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+    save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
+
+def export_summary_df(df, features, features_index, prefix, dir_name, cur_batch_it):
+    exp_id = features[features_index]['experiment_id']
+    raise NotImplementedError
 
 
 if __name__ == '__main__':

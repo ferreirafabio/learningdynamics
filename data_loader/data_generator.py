@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 
 class DataGenerator:
-    def __init__(self, config, sess, train=True, old_tfrecords=True):
+    def __init__(self, config, sess, train=True, old_tfrecords=False):
         self.old_tfrecords = old_tfrecords
         self.config = config
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
