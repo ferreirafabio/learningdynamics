@@ -1,4 +1,5 @@
 import tensorflow as tf
+import argparse
 
 from data_loader.data_generator import DataGenerator
 from trainers.singulation_trainer import SingulationTrainer
@@ -15,6 +16,14 @@ def main():
     try:
         args = get_args()
         config = process_config(args.config)
+
+        if args.n_epochs:
+            print("overwriting n_epochs in config file")
+            config.n_epochs = args.n_epochs
+
+        if args.mode:
+            print("overwriting mode in config file")
+            config.mode = args.mode
 
     except Exception as e:
         print("An error occurred during processing the configuration file")
