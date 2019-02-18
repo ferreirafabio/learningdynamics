@@ -14,12 +14,11 @@ from skimage import img_as_ubyte
 
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
-    argparser.add_argument(
-        '-c', '--config',
-        metavar='C',
-        default='None',
-        help='The Configuration file')
-    args = argparser.parse_args()
+    argparser.add_argument('-c', '--config', metavar='C', default='None', help='The Configuration file')
+
+    argparser.add_argument('-n_epochs', default=None, help='overwrites the n_epoch specified in the configuration file', type=int)
+    argparser.add_argument('-mode', default=None, help='overwrites the mode specified in the configuration file')
+    args, _ = argparser.parse_known_args()
     return args
 
 def convert_batch_to_list(batch, fltr):
