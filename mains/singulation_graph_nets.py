@@ -26,6 +26,9 @@ def main():
             print("overwriting mode in config file")
             config.mode = args.mode
 
+        if args.tfrecords_dir is not None:
+            print("overwriting tfrecord dir in config file")
+            config.mode = args.mode
 
 
     except Exception as e:
