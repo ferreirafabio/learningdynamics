@@ -1,11 +1,9 @@
 import numpy as np
 import tensorflow as tf
 import time
-import os
 from base.base_train import BaseTrain
-from utils.utils import convert_dict_to_list_subdicts, get_all_images_from_gn_output, get_pos_ndarray_from_output, create_dir, \
-    save_to_gif_from_dict
-from utils.tensorflow import create_predicted_summary_dicts, create_target_summary_dicts
+from utils.utils import convert_dict_to_list_subdicts
+from utils.tensorflow import create_image_summary, create_latent_data_df
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -112,7 +110,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None):
+    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None, export_latent_data=True):
         losses = []
         pos_vel_losses = []
         outputs_for_summary = []
@@ -162,17 +160,26 @@ class SingulationTrainer(BaseTrain):
         if outputs_for_summary is not None:
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-3):
-                    summaries_dict_images = Parallel()(delayed(_create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
+                    summaries_dict_images = Parallel()(delayed(create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
                                                        for output in outputs_for_summary)
             else:
                 for output in outputs_for_summary:
-                    summaries_dict_images = _create_image_summary(output,
-                                                                  config=self.config,
-                                                                  prefix=prefix,
-                                                                  features=features,
-                                                                  cur_batch_it=cur_batch_it,
-                                                                  export_images=export_images,
-                                                                  dir_name=sub_dir_name)
+                    summaries_dict_images = create_image_summary(output,
+                                                                 config=self.config,
+                                                                 prefix=prefix,
+                                                                 features=features,
+                                                                 cur_batch_it=cur_batch_it,
+                                                                 export_images=export_images,
+                                                                 dir_name=sub_dir_name)
+                    if export_latent_data:
+                        _ = create_latent_data_df(output,
+                                                   prefix=prefix,
+                                                   gt_features=features,
+                                                   cur_batch_it=cur_batch_it,
+                                                   export_df=True,
+                                                   dir_name=sub_dir_name
+                                                   )
+
 
             if summaries_dict_images is not None:
                 summaries_dict = {**summaries_dict, **summaries_dict_images}
@@ -189,37 +196,3 @@ class SingulationTrainer(BaseTrain):
         return losses, pos_vel_loss
 
 
-def _create_image_summary(output_for_summary, config, prefix, features, cur_batch_it, export_images, dir_name=None):
-    # target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth = {}, {}, {}
-    # predicted_summaries_dict_rgb, predicted_summaries_dict_seg, predicted_summaries_dict_depth = {}, {}, {}
-    # target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth = {}, {}, {}
-
-    ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
-    images_rgb, images_seg, images_depth = get_all_images_from_gn_output(output_for_summary[0], config.depth_data_provided)
-    features_index = output_for_summary[1]
-
-    predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(images_seg,
-                                                                                                                                images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
-
-
-    target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
-    target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
-        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
-
-    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
-                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth, **target_summaries_dict_global_img,
-                             **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
-
-    if export_images:
-        exp_id = features[features_index]['experiment_id']
-        if dir_name is not None:
-            dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
-            dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
-            if exists:
-                print("skipping summary, directory already exists")
-                return None
-        else:
-            dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
-        save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
-
-    return summaries_dict_images

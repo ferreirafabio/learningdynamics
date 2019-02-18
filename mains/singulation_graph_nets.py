@@ -17,15 +17,16 @@ def main():
         args = get_args()
         config = process_config(args.config)
 
+
         if args.n_epochs:
             print("overwriting n_epochs in config file")
             config.n_epochs = args.n_epochs
 
-        if args.mode:
+        if args.mode is not None:
             print("overwriting mode in config file")
             config.mode = args.mode
-        if args.old_tfrecords:
-            config.mode = args.old_tfrecords
+
+
 
     except Exception as e:
         print("An error occurred during processing the configuration file")

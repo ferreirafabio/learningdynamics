@@ -1,4 +1,10 @@
+import os
+
 import numpy as np
+import pandas as pd
+
+from utils.utils import get_images_from_gn_output, export_summary_images, get_latent_from_gn_output, export_summary_df
+
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it):
     predicted_summaries_dict_seg = {
@@ -49,3 +55,46 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it):
 
     return target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
            target_summaries_dict_global_seg, target_summaries_dict_global_depth
+
+
+def create_image_summary(output_for_summary, config, prefix, features, cur_batch_it, export_images, dir_name):
+    ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
+    images_rgb, images_seg, images_depth = get_images_from_gn_output(output_for_summary[0], config.depth_data_provided)
+    features_index = output_for_summary[1]  # assumes outside caller uses for loop to iterate over outputs --> use always first index
+
+    predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
+        images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+
+
+    target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
+    target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+
+    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
+                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
+                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg,
+                             **target_summaries_dict_global_depth}
+
+    if export_images:
+        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, features=features, features_index=features_index,
+                              prefix=prefix, dir_name=dir_name, cur_batch_it=cur_batch_it)
+    return summaries_dict_images
+
+
+def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it, export_df=True, dir_name=None):
+    pos, vel = get_latent_from_gn_output(output_for_summary)
+    features_index = output_for_summary[1]
+    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
+
+    df = pd.DataFrame()
+
+    if export_df:
+        export_summary_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
+                          cur_batch_it=cur_batch_it)
+
+
+def get_latent_target_data(features, features_index):
+    n_manipulable_objects = features[features_index]['n_manipulable_objects']
+    list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
+    list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
+    return list_obj_pos, list_obj_vel
