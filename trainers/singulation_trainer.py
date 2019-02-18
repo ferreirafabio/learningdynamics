@@ -47,21 +47,9 @@ class SingulationTrainer(BaseTrain):
 
         return data['loss'], data['outputs'], data['pos_vel_loss']
 
-    def test_epoch(self):
-        prefix = self.config.exp_name
-        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-        while True:
-            try:
-                self.test_batch(prefix, export_images=self.config.export_test_images,
-                                initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                sub_dir_name="test_epoch_{}_iterations_trained".format(cur_batch_it))
-            except tf.errors.OutOfRangeError:
-                break
 
     def test_rollouts(self):
-        assert self.config.n_epochs == 1, "set n_epochs to 1"
+        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)

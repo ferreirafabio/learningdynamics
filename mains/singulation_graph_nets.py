@@ -45,11 +45,8 @@ def main():
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")
         trainer.train()
-    elif config.mode == "test":
-        print("--- Running TEST MODE ---")
-        trainer.test()
     elif config.mode == "test_rollouts":
-        print("--- Running TEST_ROLLOUTS MODE ---")
+        print("--- Running TEST MODE ---")
         trainer.test_rollouts()
 
 if __name__ == '__main__':

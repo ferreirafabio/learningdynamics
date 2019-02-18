@@ -21,17 +21,16 @@ from __future__ import print_function
 from graph_nets import modules
 from graph_nets import utils_tf
 from base.base_model import BaseModel
-from keras.applications.resnet50 import ResNet50, preprocess_input
-from keras.applications.vgg16 import VGG16
-from keras.layers import Flatten, Dense
-from keras.models import Model
-from utils.utils import get_correct_image_shape, is_square
-from tensorflow.contrib.slim.nets import resnet_v1
 
-import keras
+#from keras.applications.resnet50 import ResNet50, preprocess_input
+#from keras.applications.vgg16 import VGG16
+#from keras.layers import Flatten, Dense
+#from keras.models import Model
+#from tensorflow.contrib.slim.nets import resnet_v1
+from utils.utils import get_correct_image_shape
+
 import sonnet as snt
 import tensorflow as tf
-import math
 
 
 
@@ -666,69 +665,69 @@ class NonVisualEncoder(snt.AbstractModule):
         return outputs
 
 
-class ResNet50Encoder(snt.AbstractModule):
-    def __init__(self, name='resnet50encoder'):
-        super(ResNet50Encoder, self).__init__(name=name)
-
-    def _build(self, inputs, is_training=True):
-        """
-        Extracts ResNet50 features from the given images and concatenates them into one large latent vector. If 3 image types are used
-        (RGB, Segmentation and Depth), a vector of dimensionality (batch_size, config.n_neurons * 3 large + 6 (position+velocity)) is
-        returned. The pre-trained ResNet50 on ImageNet is used and as features, a new fully connected layer is learned.
-        :param inputs:
-        :param is_training:
-        :return:
-        """
-        img_data = inputs[:, :-6] # shape: (batch_size, features)
-        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
-
-        img_data = tf.reshape(img_data, [-1, *img_shape]) #-1 means "all", i.e. batch dimension
-        input_rgb = img_data[..., :3]
-        input_seg = img_data[..., 4]
-
-        with self._enter_variable_scope():
-            #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-            base_model = VGG16(weights='imagenet', pooling='max', include_top=False, input_shape=(120, 160, 3))
-
-            """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
-            base_model.layers.pop()
-            for layer in base_model.layers:
-               layer.trainable = False
-            last = base_model.layers[-1].output  # pool 5 output
-            last = Flatten()(last)
-            output = Dense(512, activation='relu')(last)
-
-            finetuned_model = Model(inputs=base_model.input, outputs=output)
-            #finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
-
-            x = preprocess_input(input_rgb)  # ResNet requires data to be centered
-            features_rgb = finetuned_model(x)
-
-            input_seg = tf.stack([input_seg]*3, axis=-1)
-            x = preprocess_input(input_seg)
-            features_seg = finetuned_model(x)
-
-            if EncodeProcessDecode.depth_data_provided:
-                input_depth = img_data[..., -3:]
-                x = preprocess_input(input_depth)
-                features_depth = finetuned_model(x)
-
-            """ map velocity and map into a latent space """
-            vel_pos = inputs[:, -6:]
-            vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(vel_pos)
-            #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
-
-            outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
-
-            # todo: save ResNet weights
-            # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
-
-            #outputs = snt.BatchFlatten()(outputs)
-            #print("Encoder Output Shape", outputs.get_shape())
-            outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
-            #outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(features_rgb)
-            return outputs
-
+# class ResNet50Encoder(snt.AbstractModule):
+#     def __init__(self, name='resnet50encoder'):
+#         super(ResNet50Encoder, self).__init__(name=name)
+#
+#     def _build(self, inputs, is_training=True):
+#         """
+#         Extracts ResNet50 features from the given images and concatenates them into one large latent vector. If 3 image types are used
+#         (RGB, Segmentation and Depth), a vector of dimensionality (batch_size, config.n_neurons * 3 large + 6 (position+velocity)) is
+#         returned. The pre-trained ResNet50 on ImageNet is used and as features, a new fully connected layer is learned.
+#         :param inputs:
+#         :param is_training:
+#         :return:
+#         """
+#         img_data = inputs[:, :-6] # shape: (batch_size, features)
+#         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
+#
+#         img_data = tf.reshape(img_data, [-1, *img_shape]) #-1 means "all", i.e. batch dimension
+#         input_rgb = img_data[..., :3]
+#         input_seg = img_data[..., 4]
+#
+#         with self._enter_variable_scope():
+#             #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
+#             base_model = VGG16(weights='imagenet', pooling='max', include_top=False, input_shape=(120, 160, 3))
+#
+#             """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
+#             base_model.layers.pop()
+#             for layer in base_model.layers:
+#                layer.trainable = False
+#             last = base_model.layers[-1].output  # pool 5 output
+#             last = Flatten()(last)
+#             output = Dense(512, activation='relu')(last)
+#
+#             finetuned_model = Model(inputs=base_model.input, outputs=output)
+#             #finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
+#
+#             x = preprocess_input(input_rgb)  # ResNet requires data to be centered
+#             features_rgb = finetuned_model(x)
+#
+#             input_seg = tf.stack([input_seg]*3, axis=-1)
+#             x = preprocess_input(input_seg)
+#             features_seg = finetuned_model(x)
+#
+#             if EncodeProcessDecode.depth_data_provided:
+#                 input_depth = img_data[..., -3:]
+#                 x = preprocess_input(input_depth)
+#                 features_depth = finetuned_model(x)
+#
+#             """ map velocity and map into a latent space """
+#             vel_pos = inputs[:, -6:]
+#             vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(vel_pos)
+#             #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
+#
+#             outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
+#
+#             # todo: save ResNet weights
+#             # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
+#
+#             #outputs = snt.BatchFlatten()(outputs)
+#             #print("Encoder Output Shape", outputs.get_shape())
+#             outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
+#             #outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(features_rgb)
+#             return outputs
+#
 
 def get_model_from_config(model_id, model_type="encoder"):
     """ cnn2d case """
