@@ -45,7 +45,7 @@ def main():
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")
         trainer.train()
-    elif config.mode == "test_rollouts":
+    elif config.mode == "test":
         print("--- Running TEST MODE ---")
         trainer.test_rollouts()
 
