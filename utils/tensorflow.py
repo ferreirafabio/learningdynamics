@@ -82,7 +82,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
 
 
 def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it, export_df=True, dir_name=None):
-    pos, vel = get_latent_from_gn_output(output_for_summary)
+    pos, vel = get_latent_from_gn_output(output_for_summary[0]) # exclude the index
     features_index = output_for_summary[1]
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
 

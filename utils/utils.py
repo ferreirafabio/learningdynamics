@@ -18,6 +18,7 @@ def get_args():
 
     argparser.add_argument('-n_epochs', '--n_epochs', default=None, help='overwrites the n_epoch specified in the configuration file', type=int)
     argparser.add_argument('-mode', '--mode', default=None, help='overwrites the mode specified in the configuration file')
+    argparser.add_argument('-tfrecords_dir', '--tfrecords_dir', default=None, help='overwrites the tfrecords dir specified in the configuration file')
     #argparser.add_argument('-old_tfrecords', '--old_tfrecords', default=False, help='overwrites the mode specified in the configuration file', type=bool)
     args, _ = argparser.parse_known_args()
     return args
