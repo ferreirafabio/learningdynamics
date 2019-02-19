@@ -118,13 +118,13 @@ def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it,
     np.testing.assert_array_equal(df.ix[:,-1].tolist(), vel[-1])  # check last column
 
     """ compute statistics of pos """
-    for i in range(n_objects*2):  # 2: each a column for pred and gt
+    for i in range(0, n_objects*2, 2):  # 2: each a column for pred and gt
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
         df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
         df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
     """ compute statistics of vel """
-    for i in range(n_objects * 2, n_objects * 2 + n_objects * 2):
+    for i in range(n_objects * 2, (n_objects * 2)*2, 2):
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
         df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
         df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
@@ -133,6 +133,7 @@ def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it,
     if export_df:
         export_summary_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
                           cur_batch_it=cur_batch_it)
+
     return df
 
 def get_latent_target_data(features, features_index):
