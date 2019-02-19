@@ -162,6 +162,10 @@ class SingulationTrainer(BaseTrain):
                 with parallel_backend('loky', n_jobs=-3):
                     summaries_dict_images = Parallel()(delayed(create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
                                                        for output in outputs_for_summary)
+                if export_latent_data:
+                    _ = create_latent_data_df(output, config=self.config, prefix=prefix, gt_features=features, cur_batch_it=cur_batch_it,
+                                              export_df=True, dir_name=sub_dir_name)
+
             else:
                 for output in outputs_for_summary:
                     summaries_dict_images = create_image_summary(output,
