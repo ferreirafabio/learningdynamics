@@ -5,6 +5,12 @@ from tensorflow.python.platform import gfile
 
 class DataGenerator:
     def __init__(self, config, sess, train=True, old_tfrecords=False):
+        """
+        :param config: the config as a dict
+        :param sess: the TF session
+        :param train: the mode. If True, Train DataGenerator object is returned, else a Test object.
+        :param old_tfrecords: specifies whether the specified path in the config file points to new or old tfrecords
+        """
         self.old_tfrecords = old_tfrecords
         self.config = config
         self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
