@@ -464,9 +464,10 @@ def export_summary_images(config, summaries_dict_images, features, features_inde
         dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
     save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
 
+
 def export_summary_df(df, features, features_index, prefix, dir_name, cur_batch_it):
     exp_id = features[features_index]['experiment_id']
-    dir_path = create_dir(os.path.join("../experiments", prefix), dir_name)
+    dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
     dir_path, _ = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
     path = os.path.join(dir_path, "obj_pos_vel_dataframe.pkl")
     df.to_pickle(path)
