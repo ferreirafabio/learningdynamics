@@ -105,14 +105,17 @@ def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it,
     header_vel_gt = [str(i) + "_obj_gt_vel" for i in range(n_objects)]
     header_vel = sum(zip(header_vel_gt, header_vel_pred), ())  # alternating list [0_pred, 0_gt, 1_pred, 1_gt...]
 
-    all_pos = sum(zip(pos, pos_gt), ())  # alternate pos and pos_gt in a list
-    all_vel = sum(zip(vel, vel_gt), ())
+    all_pos = sum(zip(pos_gt, pos), ())  # alternate pos and pos_gt in a list
+    all_vel = sum(zip(vel_gt, vel), ())
 
     all_data = all_pos + all_vel
     all_header = header_pos + header_vel
 
     df = pd.DataFrame.from_items(zip(all_header, all_data))
 
+    """ testing """
+    np.testing.assert_array_equal(df.ix[:,0].tolist(), pos_gt[0])  # check first column
+    np.testing.assert_array_equal(df.ix[:,-1].tolist(), vel[-1])  # check last colun
     if export_df:
         export_summary_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
                           cur_batch_it=cur_batch_it)
