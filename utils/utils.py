@@ -458,7 +458,7 @@ def export_summary_images(config, summaries_dict_images, features, features_inde
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
         dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
         if exists:
-            print("skipping summary, directory already exists")
+            print("skipping image export for exp_id: {} (directory already exists)".format(exp_id))
             return None
     else:
         dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
@@ -468,7 +468,10 @@ def export_summary_images(config, summaries_dict_images, features, features_inde
 def export_summary_df(df, features, features_index, prefix, dir_name, cur_batch_it):
     exp_id = features[features_index]['experiment_id']
     dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
-    dir_path, _ = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+    dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+    if exists:
+        print("skipping df export for exp_id: {} (directory already exists)".format(exp_id))
+        return None
     path_pkl = os.path.join(dir_path, "obj_pos_vel_dataframe.pkl")
     df.to_pickle(path_pkl)
     path_csv = os.path.join(dir_path, "obj_pos_vel_dataframe.csv")
