@@ -173,12 +173,13 @@ class SingulationTrainer(BaseTrain):
                                                                  dir_name=sub_dir_name)
                     if export_latent_data:
                         _ = create_latent_data_df(output,
-                                                   prefix=prefix,
-                                                   gt_features=features,
-                                                   cur_batch_it=cur_batch_it,
-                                                   export_df=True,
-                                                   dir_name=sub_dir_name
-                                                   )
+                                                  config=self.config,
+                                                  prefix=prefix,
+                                                  gt_features=features,
+                                                  cur_batch_it=cur_batch_it,
+                                                  export_df=True,
+                                                  dir_name=sub_dir_name)
+
 
 
             if summaries_dict_images is not None:
