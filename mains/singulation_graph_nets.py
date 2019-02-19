@@ -17,6 +17,8 @@ def main():
         args = get_args()
         config = process_config(args.config)
 
+        config.old_tfrecords = args.old_tfrecords
+
         if args.n_epochs:
             print("overwriting n_epochs in config file")
             config.n_epochs = args.n_epochs
@@ -29,9 +31,6 @@ def main():
             print("overwriting tfrecord dir in config file")
             config.mode = args.mode
 
-        if args.old_tfrecords is not None:
-            print("overwriting old_tfrecords in config file")
-            config.mode = args.mode
 
 
 
