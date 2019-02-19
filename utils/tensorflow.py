@@ -121,13 +121,13 @@ def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it,
     for i in range(n_objects*2):  # 2: each a column for pred and gt
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
         df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
-        df['mean' + '(' + column_name + ')'] = np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
     """ compute statistics of vel """
     for i in range(n_objects * 2, n_objects * 2 + n_objects * 2):
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
         df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
-        df['mean' + '(' + column_name + ')'] = np.std((df.ix[:, i] - df.ix[:, i + 1]).tolist(), axis=0)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
 
     if export_df:
