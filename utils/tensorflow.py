@@ -82,11 +82,36 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
 
 
 def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it, export_df=True, dir_name=None):
+    """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
+     of velocities and columns, e.g.
+        0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
+    0   [...], ..., [...]
+    1
+    """
     pos, vel = get_latent_from_gn_output(output_for_summary[0]) # exclude the index
+
     features_index = output_for_summary[1]
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
 
-    df = pd.DataFrame()
+    n_objects = np.shape(output_for_summary[0][0][0])[0]
+
+    """ position header """
+    header_pos_pred = [str(i) + "_obj_pred_pos" for i in range(n_objects)]
+    header_pos_gt = [str(i) + "_obj_gt_pos" for i in range(n_objects)]
+    header_pos = sum(zip(header_pos_gt, header_pos_pred), ())  # alternating list [#0_pred, 0_gt, 1_pred, 1_gt...]
+
+    """ velocity header """
+    header_vel_pred = [str(i) + "_obj_pred_vel" for i in range(n_objects)]
+    header_vel_gt = [str(i) + "_obj_gt_vel" for i in range(n_objects)]
+    header_vel = sum(zip(header_vel_gt, header_vel_pred), ())  # alternating list [0_pred, 0_gt, 1_pred, 1_gt...]
+
+    all_pos = sum(zip(pos, pos_gt), ())  # alternate pos and pos_gt in a list
+    all_vel = sum(zip(vel, vel_gt), ())
+
+    all_data = all_pos + all_vel
+    all_header = header_pos + header_vel
+
+    df = pd.DataFrame.from_items(zip(all_header, all_data))
 
     if export_df:
         export_summary_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
@@ -97,4 +122,7 @@ def get_latent_target_data(features, features_index):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
     list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
+    list_obj_pos = [list(np.squeeze(i)) for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
+    list_obj_vel = [list(np.squeeze(i)) for i in list_obj_vel]
+
     return list_obj_pos, list_obj_vel

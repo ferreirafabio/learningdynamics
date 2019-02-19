@@ -380,6 +380,7 @@ def get_latent_from_gn_output(outputs):
     n_objects = np.shape(outputs[0][0])[0]
     velocities = []
     positions = []
+    # todo: implement gripperpos
 
     for n in range(n_objects):
         vel = []
