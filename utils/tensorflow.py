@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from utils.utils import get_images_from_gn_output, export_summary_images, get_latent_from_gn_output, export_summary_df
+from utils.utils import get_images_from_gn_output, export_summary_images, get_latent_from_gn_output, export_latent_df, export_latent_images
 
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it):
@@ -81,7 +81,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images
 
 
-def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it, export_df=True, dir_name=None):
+def create_latent_data_df(output_for_summary, config, prefix, gt_features, cur_batch_it, export_df=True, export_images=True, dir_name=None):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
@@ -131,8 +131,10 @@ def create_latent_data_df(output_for_summary, prefix, gt_features, cur_batch_it,
 
 
     if export_df:
-        export_summary_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
-                          cur_batch_it=cur_batch_it)
+        export_latent_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
+                         cur_batch_it=cur_batch_it)
+    if export_images:
+        export_latent_images(config, df, features_index=features_index, prefix=prefix, dir_name=dir_name, cur_batch_it=cur_batch_it)
 
     return df
 
