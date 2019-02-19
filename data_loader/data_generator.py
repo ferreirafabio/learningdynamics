@@ -145,7 +145,7 @@ class DataGenerator:
             'seg': seg,
             'gripperpos': gripperpos,
             'objpos': objpos,
-            'objvel': objpos*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+            'objvel': objvel, #*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
             'object_segments': object_segments,
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
