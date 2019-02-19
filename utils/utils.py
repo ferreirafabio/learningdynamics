@@ -377,7 +377,7 @@ def get_images_from_gn_output(outputs, depth=True):
 
 
 def get_latent_from_gn_output(outputs):
-    n_objects = np.shape(outputs[0][0][0])[0]
+    n_objects = np.shape(outputs[0][0])[0]
     velocities = []
     positions = []
 
