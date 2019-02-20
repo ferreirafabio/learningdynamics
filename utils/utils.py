@@ -481,7 +481,27 @@ def export_latent_df(df, features, features_index, prefix, dir_name, cur_batch_i
     df.to_csv(path_csv)
 
 
-def export_latent_images(config, df, features_index, prefix, dir_name, cur_batch_it):
+def export_latent_images(config, df, features, features_index, prefix, dir_name, cur_batch_it, mode="position"):
+    assert mode in ["position", "velocity"]
+    exp_id = features[features_index]['experiment_id']
+    n_objects = features[features_index]['n_manipulable_objects']
+
+    if mode == "position":
+        offset = 0
+    else:
+        offset = n_objects*2 # offset for column selection in the df (first n_object*2 columns are pos values, rest is vel)
+
+
+    for i in range(n_objects):
+        coord_list_gt = normalize_points(df.ix[1:, 0].tolist())
+        coord_list_pred = normalize_points(df.ix[1:, 0].tolist())
+        gt_x = [i[0] for i in coord_list_gt]
+        gt_y = [i[1] for i in coord_list_gt]
+        gt_z = [i[2] for i in coord_list_gt]
+        pred_x = [i[0] for i in coord_list_pred]
+        pred_y = [i[1] for i in coord_list_pred]
+        pred_z = [i[2] for i in coord_list_pred]
+
     raise NotImplementedError
 
 def normalize_points(coordinate_list):

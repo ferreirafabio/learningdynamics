@@ -133,8 +133,8 @@ def create_latent_data_df(output_for_summary, config, prefix, gt_features, cur_b
     if export_df:
         export_latent_df(df=df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name,
                          cur_batch_it=cur_batch_it)
-    #if export_images:
-    #    export_latent_images(config, df, features_index=features_index, prefix=prefix, dir_name=dir_name, cur_batch_it=cur_batch_it)
+    if export_images:
+        export_latent_images(config, df, features=gt_features, features_index=features_index, prefix=prefix, dir_name=dir_name, cur_batch_it=cur_batch_it)
 
     return df
 
@@ -144,7 +144,7 @@ def generate_summaries(output, config, prefix, features, cur_batch_it, export_im
 
     if export_latent_data:
         _ = create_latent_data_df(output, config=config, prefix=prefix, gt_features=features, cur_batch_it=cur_batch_it,
-                                  export_df=True, dir_name=dir_name)
+                                  export_df=True, export_images=export_images, dir_name=dir_name)
 
     return summaries_dict_images
 
