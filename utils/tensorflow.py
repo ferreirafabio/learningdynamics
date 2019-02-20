@@ -138,6 +138,16 @@ def create_latent_data_df(output_for_summary, config, prefix, gt_features, cur_b
 
     return df
 
+def generate_summaries(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
+    summaries_dict_images = create_image_summary(output, config=self.config, prefix=prefix, features=features,
+                                                 cur_batch_it=cur_batch_it, export_images=export_images, dir_name=dir_name)
+
+    if export_latent_data:
+        _ = create_latent_data_df(output, config=config, prefix=prefix, gt_features=features, cur_batch_it=cur_batch_it,
+                                  export_df=True, dir_name=dir_name)
+
+    return summaries_dict_images
+
 def get_latent_target_data(features, features_index):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)

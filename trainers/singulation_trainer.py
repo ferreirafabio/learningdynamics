@@ -3,7 +3,7 @@ import tensorflow as tf
 import time
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts
-from utils.tensorflow import create_image_summary, create_latent_data_df
+from utils.tensorflow import generate_summaries
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -159,31 +159,22 @@ class SingulationTrainer(BaseTrain):
 
         if outputs_for_summary is not None:
             if self.config.parallel_batch_processing:
-                with parallel_backend('loky', n_jobs=-3):
-                    summaries_dict_images = Parallel()(delayed(create_image_summary)(output, self.config, prefix, features, cur_batch_it, export_images, sub_dir_name)
+                with parallel_backend('loky', n_jobs=-1):
+                    summaries_dict_images = Parallel()(delayed(generate_summaries)(output, self.config, prefix, features, cur_batch_it,
+                                                                                   export_images, export_latent_data, sub_dir_name)
                                                        for output in outputs_for_summary)
-                if export_latent_data:
-                    _ = create_latent_data_df(output, config=self.config, prefix=prefix, gt_features=features, cur_batch_it=cur_batch_it,
-                                              export_df=True, dir_name=sub_dir_name)
+
 
             else:
                 for output in outputs_for_summary:
-                    summaries_dict_images = create_image_summary(output,
-                                                                 config=self.config,
-                                                                 prefix=prefix,
-                                                                 features=features,
-                                                                 cur_batch_it=cur_batch_it,
-                                                                 export_images=export_images,
-                                                                 dir_name=sub_dir_name)
-                    if export_latent_data:
-                        _ = create_latent_data_df(output,
-                                                  config=self.config,
-                                                  prefix=prefix,
-                                                  gt_features=features,
-                                                  cur_batch_it=cur_batch_it,
-                                                  export_df=True,
-                                                  dir_name=sub_dir_name)
-
+                    summaries_dict_images = generate_summaries(output=output,
+                                                               config=self.config,
+                                                               prefix=prefix,
+                                                               features=features,
+                                                               cur_batch_it=cur_batch_it,
+                                                               export_images=export_images,
+                                                               export_latent_data=export_latent_data,
+                                                               dir_name=sub_dir_name)
 
 
             if summaries_dict_images is not None:
@@ -192,6 +183,9 @@ class SingulationTrainer(BaseTrain):
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
+
+
+
 
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
         loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
