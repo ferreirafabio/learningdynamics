@@ -481,6 +481,19 @@ def export_latent_df(df, features, features_index, prefix, dir_name, cur_batch_i
 def export_latent_images(config, df, features_index, prefix, dir_name, cur_batch_it):
     raise NotImplementedError
 
+def normalize_points(coordinate_list):
+    x_min = 0.344
+    y_min = -0.256
+    z_min = -0.149
+    x_max = 0.856
+    y_max = 0.256
+    z_max = -0.0307
+
+    x_norm = lambda x: (x - x_min) / (x_max - x_min)
+    y_norm = lambda y: (y - y_min) / (y_max - y_min)
+    z_norm = lambda z: (z - z_min) / (z_max - z_min)
+
+    return [np.asarray([x_norm(coords[0]), y_norm(coords[1]), z_norm(coords[2])]) for coords in coordinate_list]
 
 
 if __name__ == '__main__':
