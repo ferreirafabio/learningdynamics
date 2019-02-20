@@ -139,7 +139,7 @@ def create_latent_data_df(output_for_summary, config, prefix, gt_features, cur_b
     return df
 
 def generate_summaries(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
-    summaries_dict_images = create_image_summary(output, config=self.config, prefix=prefix, features=features,
+    summaries_dict_images = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it, export_images=export_images, dir_name=dir_name)
 
     if export_latent_data:
