@@ -131,8 +131,8 @@ class DataGenerator:
         objpos = tf.reshape(objpos, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
         # indices: 0=first object,...,2=third object
-        objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
-        objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
+        #objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
+        #objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
         if self.old_tfrecords:
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
@@ -145,7 +145,7 @@ class DataGenerator:
             'seg': seg,
             'gripperpos': gripperpos,
             'objpos': objpos,
-            'objvel': objvel, #*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+            'objvel': tf.identity(objpos, name="objvel")*240, #*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
             'object_segments': object_segments,
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
