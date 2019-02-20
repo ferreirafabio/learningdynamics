@@ -177,7 +177,10 @@ class SingulationTrainer(BaseTrain):
                                                                dir_name=sub_dir_name)
 
 
-            if summaries_dict_images is not None:
+            if summaries_dict_images:
+                if self.config.parallel_batch_processing:
+                    """ parallel mode returns list, just use first element as a summary for the logger """
+                    summaries_dict_images = summaries_dict_images[0]
                 summaries_dict = {**summaries_dict, **summaries_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
