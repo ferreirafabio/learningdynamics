@@ -12,6 +12,8 @@ import math
 from graph_nets import utils_tf
 from skimage import img_as_ubyte
 
+from eval import AnimateLatentData
+
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument('-c', '--config', metavar='C', default='None', help='The Configuration file')
@@ -454,8 +456,7 @@ def check_power(N, k):
     except Exception:
         return False
 
-
-def export_summary_images(config, summaries_dict_images, features, features_index, prefix, dir_name, cur_batch_it):
+def check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it):
     exp_id = features[features_index]['experiment_id']
     if dir_name is not None:
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
@@ -465,46 +466,39 @@ def export_summary_images(config, summaries_dict_images, features, features_inde
             return None
     else:
         dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
+    return dir_path
+
+def export_summary_images(config, summaries_dict_images, dir_path):
     save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts)
 
 
-def export_latent_df(df, features, features_index, prefix, dir_name, cur_batch_it):
-    exp_id = features[features_index]['experiment_id']
-    dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
-    dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
-    # if exists:
-    #     print("skipping df export for exp_id: {} (directory already exists)".format(exp_id))
-    #     return None
+def export_latent_df(df, dir_path):
     path_pkl = os.path.join(dir_path, "obj_pos_vel_dataframe.pkl")
     df.to_pickle(path_pkl)
     path_csv = os.path.join(dir_path, "obj_pos_vel_dataframe.csv")
     df.to_csv(path_csv)
 
 
-def export_latent_images(config, df, features, features_index, prefix, dir_name, cur_batch_it, mode="position"):
-    assert mode in ["position", "velocity"]
-    exp_id = features[features_index]['experiment_id']
+def export_latent_images(df, features, features_index, dir_path):
+    """ exports the images corresponding to the latent space such as velocity or position -- currently only implemented for position """
+    #assert mode in ["position", "velocity"]
     n_objects = features[features_index]['n_manipulable_objects']
 
-    if mode == "position":
-        offset = 0
-    else:
-        offset = n_objects*2 # offset for column selection in the df (first n_object*2 columns are pos values, rest is vel)
-
-
     for i in range(n_objects):
-        coord_list_gt = normalize_points(df.ix[1:, 0].tolist())
-        coord_list_pred = normalize_points(df.ix[1:, 0].tolist())
-        gt_x = [i[0] for i in coord_list_gt]
-        gt_y = [i[1] for i in coord_list_gt]
-        gt_z = [i[2] for i in coord_list_gt]
-        pred_x = [i[0] for i in coord_list_pred]
-        pred_y = [i[1] for i in coord_list_pred]
-        pred_z = [i[2] for i in coord_list_pred]
+        identifier_gt = "{}_obj_gt_pos".format(i)
+        identifier_pred = "{}_obj_pred_pos".format(i)
 
-    raise NotImplementedError
+        animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
+        title = 'Ground truth vs predicted centroid position of object {}'.format(i)
 
-def normalize_points(coordinate_list):
+        path_3d = os.path.join(dir_path, "3d_obj_pos_3d_object_", str(i), ".gif")
+        path_2d = os.path.join(dir_path, "2d_obj_pos_3d_object_", str(i), ".gif")
+        animate.store_3dplot(title=title, output_dir=path_3d)
+        animate.store_2dplot(title=title, output_dir=path_2d)
+
+
+def normalize_list(lst):
+    """ normalizes a list of 3-dim ndarrays x s.t. all x's contain values in (0,1) """
     x_min = 0.344
     y_min = -0.256
     z_min = -0.149
@@ -516,7 +510,50 @@ def normalize_points(coordinate_list):
     y_norm = lambda y: (y - y_min) / (y_max - y_min)
     z_norm = lambda z: (z - z_min) / (z_max - z_min)
 
-    return [np.asarray([x_norm(coords[0]), y_norm(coords[1]), z_norm(coords[2])]) for coords in coordinate_list]
+    return [np.asarray([x_norm(coords[0]), y_norm(coords[1]), z_norm(coords[2])]) for coords in lst]
+
+
+def normalize_df(df):
+    """ normalizes an entire pandas dataframe in which each cell c contains a 3-dim ndarray s.t. c only contains values in (0,1) """
+    x_min = 0.344
+    y_min = -0.256
+    z_min = -0.149
+    x_max = 0.856
+    y_max = 0.256
+    z_max = -0.0307
+
+    x_norm = lambda x: (x - x_min) / (x_max - x_min)
+    y_norm = lambda y: (y - y_min) / (y_max - y_min)
+    z_norm = lambda z: (z - z_min) / (z_max - z_min)
+
+    def _normalize_column(column):
+        for index, row_value in column.items():
+            column[index] = np.asarray([x_norm(row_value[0]), y_norm(row_value[1]), z_norm(row_value[2])])
+        return column
+
+    return df.apply(_normalize_column, axis=1)
+
+
+def normalize_df_column(df, column_name):
+    """ normalizes an entire pandas column (series) in which each row r contains a 3-dim ndarray s.t. all values of r in range (0,1) """
+    x_min = 0.344
+    y_min = -0.256
+    z_min = -0.149
+    x_max = 0.856
+    y_max = 0.256
+    z_max = -0.0307
+
+    x_norm = lambda x: (x - x_min) / (x_max - x_min)
+    y_norm = lambda y: (y - y_min) / (y_max - y_min)
+    z_norm = lambda z: (z - z_min) / (z_max - z_min)
+
+    def _normalize_row(row):
+        return np.asarray([x_norm(row[0]), y_norm(row[1]), z_norm(row[2])])
+
+    return df[column_name].apply(_normalize_row)
+
+
+
 
 
 if __name__ == '__main__':
