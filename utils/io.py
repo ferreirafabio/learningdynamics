@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt, animation as animation
 from moviepy import editor as mpy
 from skimage import img_as_ubyte
 
-from eval import AnimateLatentData
+from eval.AnimateLatentData import AnimateLatentData
 from utils.conversions import convert_dict_to_list
 
 
