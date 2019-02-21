@@ -8,7 +8,7 @@ from moviepy import editor as mpy
 from skimage import img_as_ubyte
 
 from eval import AnimateLatentData
-from utils.utils import convert_dict_to_list
+from utils.conversions import convert_dict_to_list
 
 
 def get_all_experiment_file_paths_from_dir(source_path, file_type=".npz", order=True):

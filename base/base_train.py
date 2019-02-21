@@ -1,6 +1,6 @@
 import tensorflow as tf
 from models.singulation_graph import create_placeholders
-from utils.utils import convert_dict_to_list_subdicts
+from utils.conversions import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
 from models.loss_functions import create_loss_ops
 
