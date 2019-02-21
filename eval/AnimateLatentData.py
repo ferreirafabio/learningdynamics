@@ -7,7 +7,7 @@ import matplotlib.animation
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.markers as mmarkers
 import numpy as np
-from utils.utils import normalize_df_column
+from utils.math_ops import normalize_df_column
 import pandas as pd
 
 
