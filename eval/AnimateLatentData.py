@@ -15,10 +15,11 @@ class AnimateLatentData():
     def __init__(self, df, identifier1, identifier2):
         #self.df = pd.read_pickle(path_to_df)
         self.df = df
-        # for now handle pred separately (normalization error --> divide by 240)
-        self.df[identifier_pred] = self.df[identifier_pred]/240
         self.id1 = identifier1
         self.id2 = identifier2
+        # for now handle pred separately (normalization error --> divide by 240)
+        self.df[self.id2] = self.df[self.id2]/240
+
         # cut the first value due to random initialization
         self.pos_gt = normalize_df_column(self.df, self.id1)[1:].to_frame()
         self.pos_pred = normalize_df_column(self.df, self.id2)[1:].to_frame()
