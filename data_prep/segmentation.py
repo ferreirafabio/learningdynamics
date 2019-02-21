@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.utils import get_experiment_image_data_from_dir, get_all_experiment_image_data_from_dir
-from utils.utils import get_all_experiment_image_data_from_dir, save_image_data_to_disk
+from utils.io import get_all_experiment_image_data_from_dir, get_experiment_image_data_from_dir, save_image_data_to_disk
+from utils.utils import get_all_experiment_image_data_from_dir
 from skimage import img_as_ubyte
 
 def get_segments_from_experiment_step(images, depth_data_provided=False):
