@@ -267,8 +267,8 @@ def export_latent_images(df, features, features_index, dir_path):
         animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
         title = 'Ground truth vs predicted centroid position of object {}'.format(i)
 
-        path_3d = os.path.join(dir_path, "3d_obj_pos_3d_object_", str(i), ".gif")
-        path_2d = os.path.join(dir_path, "2d_obj_pos_3d_object_", str(i), ".gif")
+        path_3d = os.path.join(dir_path, "3d_obj_pos_3d_object_" + str(i) + ".gif")
+        path_2d = os.path.join(dir_path, "2d_obj_pos_3d_object_" + str(i) + ".gif")
         print(path_3d, path_2d)
         animate.store_3dplot(title=title, output_dir=path_3d)
         animate.store_2dplot(title=title, output_dir=path_2d)
