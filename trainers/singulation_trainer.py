@@ -3,7 +3,7 @@ import tensorflow as tf
 import time
 from base.base_train import BaseTrain
 from utils.utils import convert_dict_to_list_subdicts
-from utils.tensorflow import generate_summaries
+from utils.tf_summaries import generate_results
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 
@@ -160,21 +160,21 @@ class SingulationTrainer(BaseTrain):
         if outputs_for_summary is not None:
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-1):
-                    summaries_dict_images = Parallel()(delayed(generate_summaries)(output, self.config, prefix, features, cur_batch_it,
-                                                                                   export_images, export_latent_data, sub_dir_name)
+                    summaries_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
+                                                                                 export_images, export_latent_data, sub_dir_name)
                                                        for output in outputs_for_summary)
 
 
             else:
                 for output in outputs_for_summary:
-                    summaries_dict_images = generate_summaries(output=output,
-                                                               config=self.config,
-                                                               prefix=prefix,
-                                                               features=features,
-                                                               cur_batch_it=cur_batch_it,
-                                                               export_images=export_images,
-                                                               export_latent_data=export_latent_data,
-                                                               dir_name=sub_dir_name)
+                    summaries_dict_images = generate_results(output=output,
+                                                             config=self.config,
+                                                             prefix=prefix,
+                                                             features=features,
+                                                             cur_batch_it=cur_batch_it,
+                                                             export_images=export_images,
+                                                             export_latent_data=export_latent_data,
+                                                             dir_name=sub_dir_name)
 
 
             if summaries_dict_images:

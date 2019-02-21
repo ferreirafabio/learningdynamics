@@ -2,7 +2,8 @@ import tensorflow as tf
 import numpy as np
 import os
 from skimage import img_as_uint
-from utils.utils import chunks, get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
+from utils.utils import chunks
+from utils.io import get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
 from data_prep.segmentation import get_segments_from_experiment_step
 from data_prep.segmentation import get_number_of_segment
 from sklearn.model_selection import train_test_split

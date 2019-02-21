@@ -3,7 +3,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from utils.utils import get_images_from_gn_output, export_summary_images, get_latent_from_gn_output, export_latent_df, export_latent_images, check_exp_folder_exists_and_create
+from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
+from utils.io import export_summary_images, export_latent_df, export_latent_images
 
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it):
@@ -79,7 +80,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, config, prefix, gt_features, dir_path, export_df=True, export_images=True):
+def create_latent_data_df(output_for_summary, gt_features):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
@@ -127,16 +128,12 @@ def create_latent_data_df(output_for_summary, config, prefix, gt_features, dir_p
         df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
         df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
-
-    if export_df:
-        export_latent_df(df=df, dir_path=dir_path)
-
-    if export_images:
-        export_latent_images(df=df, dir_path=dir_path)
+    return df
 
 
 
-def generate_summaries(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
+
+def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it, export_images=export_images, dir_name=dir_name)
 
@@ -146,7 +143,12 @@ def generate_summaries(output, config, prefix, features, cur_batch_it, export_im
         export_summary_images(config, summaries_dict_images, dir_path)
 
     if export_latent_data:
-        create_latent_data_df(output, config=config, prefix=prefix, gt_features=features, export_df=True, export_images=export_images, dir_path)
+        df = create_latent_data_df(output, gt_features=features)
+        export_latent_df(df=df, dir_path=dir_path)
+
+        if export_images:
+            export_latent_images(df=df, dir_path=dir_path)
+
 
     return summaries_dict_images
 

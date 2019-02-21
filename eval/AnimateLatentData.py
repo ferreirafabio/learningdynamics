@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('TkAgg') # in terminal change to 'Agg'
+matplotlib.use('Agg') # in terminal change to 'Agg'
 import matplotlib.lines as mlines
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
