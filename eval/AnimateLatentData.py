@@ -62,8 +62,8 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_3dplot, frames=1, repeat=False)
-        ani_static.save(output_dir, writer="imagemagick")
+        self._update_3d_graph(9)
+        self.fig.savefig(output_dir)
 
     def store_2dplot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
@@ -96,20 +96,8 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, init_func=self._init, frames=1, repeat=False, save_count=0)
-        ani_static.save(output_dir, writer="imagemagick")
-
-
-    def _init(self):
-        pass
-
-    def _store_final_3dplot(self, num):
-        self._update_3d_graph(num=9)
-
-    def _store_final_2dplot(self, num):
-        print(num)
-        self._update_2d_graph(num=9)
-
+        self._update_2d_graph(9)
+        self.fig.savefig(output_dir)
 
     def _update_3d_graph(self, num):
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])
@@ -151,9 +139,6 @@ class AnimateLatentData():
         self.graph.set_facecolors(np.concatenate([self.colors[:num + 1], self.colors[:num + 1]]))
         self.graph.set_edgecolors(np.concatenate([self.colors[:num + 1], self.colors[:num + 1]]))
         self.graph.set_offsets(np.hstack((y_updated[:, np.newaxis], x_updated[:, np.newaxis])))
-
-
-
 
 
 
