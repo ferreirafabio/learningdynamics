@@ -149,8 +149,8 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         if export_images:
             export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path)
 
-
     return summaries_dict_images
+
 
 def get_latent_target_data(features, features_index):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
