@@ -145,7 +145,7 @@ class DataGenerator:
             'seg': seg,
             'gripperpos': gripperpos,
             'objpos': objpos,
-            'objvel': tf.identity(objpos, name="objvel")*240, #*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+            'objvel': tf.Variable(objpos.initialized_value(), name="objvel")*240, #*240, # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
             'object_segments': object_segments,
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
