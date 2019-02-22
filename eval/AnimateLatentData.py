@@ -59,8 +59,8 @@ class AnimateLatentData():
 
         # store static final image
         base, filename = os.path.split(output_dir)
-        file, suffix = filename.split(".")
-        output_dir = os.path.join(base, file + "_final." + suffix)
+        file, _ = filename.split(".")
+        output_dir = os.path.join(base, file + "_final" + ".png")
         ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_3dplot, frames=1, repeat=False)
         ani_static.save(output_dir, writer="imagemagick")
 
@@ -93,8 +93,8 @@ class AnimateLatentData():
 
         # store static final image
         base, filename = os.path.split(output_dir)
-        file, suffix = filename.split(".")
-        output_dir = os.path.join(base, file + "_final." + suffix)
+        file, _ = filename.split(".")
+        output_dir = os.path.join(base, file + "_final" + ".png")
         ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, frames=1, repeat=False)
         ani_static.save(output_dir, writer="imagemagick")
 
