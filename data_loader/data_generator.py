@@ -130,7 +130,7 @@ class DataGenerator:
         objpos = tf.decode_raw(sequence['objpos'], out_type=tf.float64)
         objpos = tf.reshape(objpos, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
-        objvel = tf.Variable(0.0)
+        objvel = tf.Variable(0.0, dtype=tf.float64)
         # indices: 0=first object,...,2=third object
         #objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
         #objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
