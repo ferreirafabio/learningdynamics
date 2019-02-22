@@ -126,14 +126,14 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     for i in range(0, n_objects*2, 2):  # 2: each a column for pred and gt
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
         # don't consider the first position values for stats since it's off due to initialization
-        df['mean'+'('+column_name+')'] = [(df.ix[1:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+        df['mean'+'('+column_name+')'] = [(df.ix[1:, i] - df.ix[1:, i+1]).mean(axis=0)] * len(df.index)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[1:, i+1]).tolist(), axis=0)] * len(df.index)
 
     """ compute statistics of vel """
     for i in range(n_objects * 2, (n_objects * 2)*2, 2):
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
-        df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+        df['mean' + '(' + column_name + ')'] = [(df.ix[1:, i] - df.ix[1:, i + 1]).mean(axis=0)] * len(df.index)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[1:, i+1]).tolist(), axis=0)] * len(df.index)
 
     return df
 
