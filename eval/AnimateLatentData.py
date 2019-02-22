@@ -8,14 +8,16 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.markers as mmarkers
 import numpy as np
 from utils.math_ops import normalize_df_column
-
+import pandas as pd
+import os
 
 class AnimateLatentData():
-    def __init__(self, df, identifier1, identifier2):
+    def __init__(self, df, identifier1, identifier2, n_rollouts):
         #self.df = pd.read_pickle(path_to_df)
         self.df = df
         self.id1 = identifier1
         self.id2 = identifier2
+        self.n_rollouts = n_rollouts-1
         # for now handle pred separately (normalization error --> divide by 240)
         self.df[self.id2] = self.df[self.id2]/240
 
@@ -52,10 +54,15 @@ class AnimateLatentData():
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
         self.ax.view_init(70, 210)
+        ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_rollouts, interval=600, repeat_delay=5000, blit=False)
+        ani.save(output_dir, writer="imagemagick")
 
-        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=9, interval=600, repeat_delay=5000, blit=False)
-        self.ani.save(output_dir, writer="imagemagick")
-
+        # store static final image
+        base, filename = os.path.split(output_dir)
+        file, suffix = filename.split(".")
+        output_dir = os.path.join(base, file + "_final." + suffix)
+        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_3dplot, frames=1, repeat=False)
+        ani_static.save(output_dir, writer="imagemagick")
 
     def store_2dplot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
@@ -81,9 +88,21 @@ class AnimateLatentData():
         legend_handle_gt = mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=5)
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
-
-        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=9, interval=600, repeat_delay=5000, blit=False)
+        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=600, repeat_delay=5000, blit=False)
         self.ani.save(output_dir, writer="imagemagick")
+
+        # store static final image
+        base, filename = os.path.split(output_dir)
+        file, suffix = filename.split(".")
+        output_dir = os.path.join(base, file + "_final." + suffix)
+        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, frames=1, repeat=False)
+        ani_static.save(output_dir, writer="imagemagick")
+
+    def _store_final_3dplot(self):
+        self._update_3d_graph(num=self.n_rollouts-1)
+
+    def _store_final_2dplot(self):
+        self._update_2d_graph(num=self.n_rollouts - 1)
 
     def _update_3d_graph(self, num):
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])
@@ -138,9 +157,12 @@ if __name__ == '__main__':
     identifier_gt = "{}_obj_gt_pos".format(SELECTED_OBJECT_NUMBER)
     identifier_pred = "{}_obj_pred_pos".format(SELECTED_OBJECT_NUMBER)
 
-    out_dir = "../data/animation.gif"
-    animate = AnimateLatentData(path_to_df=PATH, identifier1=identifier_gt, identifier2=identifier_pred)
+    df = pd.read_pickle(PATH)
+    out_dir = "../data/"
+    animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
     title = 'Ground truth vs predicted centroid position of object {}'.format(SELECTED_OBJECT_NUMBER)
+    path_3d = out_dir + "/3d_obj_pos_3d_object_1" + ".gif"
+    path_3d = out_dir + "/2d_obj_pos_3d_object_" + ".gif"
     animate.store_3dplot(title=title, output_dir=out_dir)
     animate.store_2dplot(title=title, output_dir=out_dir+"2.gif")
 
