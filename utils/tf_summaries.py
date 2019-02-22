@@ -95,6 +95,9 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     if adjust_vel_pred_range:
         vel = [list(ary * norm_factor for ary in lst) for lst in vel]
 
+    features_index = output_for_summary[1]
+    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
+
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
     """ position header """
