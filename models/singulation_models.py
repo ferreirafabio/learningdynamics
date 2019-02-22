@@ -615,7 +615,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
 
 class NonVisualDecoder(snt.AbstractModule):
-    def __init__(self, visual_dec, name='NonVisualEncoder'):
+    def __init__(self, visual_dec, name='NonVisualDecoder'):
         super(NonVisualDecoder, self).__init__(name=name)
         self.visual_dec = visual_dec
         self._name = name

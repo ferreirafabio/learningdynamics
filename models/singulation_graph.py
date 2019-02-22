@@ -201,7 +201,7 @@ def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
     input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size, initial_pos_vel_known=initial_pos_vel_known)
 
     if not initial_pos_vel_known:
-        """ sanity checking one of the graphs """
+        """ sanity checking one of the graphs, [1] means access nodes in the nx graph"""
         for _, node_feature in input_graphs[1].nodes(data=True):
             assert not np.any(node_feature['features'][-6:])
 
