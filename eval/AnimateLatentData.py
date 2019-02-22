@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     df = pd.read_pickle(PATH)
     out_dir = "../data/"
-    animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
+    animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=10)
     title = 'Ground truth vs predicted centroid position of object {}'.format(SELECTED_OBJECT_NUMBER)
     path_3d = out_dir + "/3d_obj_pos_3d_object_1" + ".gif"
     path_3d = out_dir + "/2d_obj_pos_3d_object_" + ".gif"

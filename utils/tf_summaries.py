@@ -147,7 +147,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
-            export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path)
+            export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path, config=config)
 
     return summaries_dict_images
 

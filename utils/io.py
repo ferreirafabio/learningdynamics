@@ -255,7 +255,7 @@ def export_latent_df(df, dir_path):
     df.to_csv(path_csv)
 
 
-def export_latent_images(df, features, features_index, dir_path):
+def export_latent_images(df, features, features_index, dir_path, config=config):
     """ exports the images corresponding to the latent space such as velocity or position -- currently only implemented for position """
     #assert mode in ["position", "velocity"]
     n_objects = features[features_index]['n_manipulable_objects']
@@ -264,7 +264,7 @@ def export_latent_images(df, features, features_index, dir_path):
         identifier_gt = "{}_obj_gt_pos".format(i)
         identifier_pred = "{}_obj_pred_pos".format(i)
 
-        animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
+        animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=config.n_rollouts)
         title = 'Ground truth vs predicted centroid position of object {}'.format(i)
 
         path_3d = os.path.join(dir_path, "3d_obj_pos_3d_object_" + str(i) + ".gif")
