@@ -139,10 +139,10 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
 
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
-    if export_images:
+    if export_images and dir_path: # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
 
-    if export_latent_data:
+    if export_latent_data and dir_path:
         df = create_latent_data_df(output, gt_features=features)
         export_latent_df(df=df, dir_path=dir_path)
 

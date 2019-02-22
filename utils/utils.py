@@ -151,7 +151,7 @@ def check_exp_folder_exists_and_create(features, features_index, prefix, dir_nam
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), dir_name)
         dir_path, exists = create_dir(dir_path, "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
         if exists:
-            print("skipping image export for exp_id: {} (directory already exists)".format(exp_id))
+            print("skipping export for exp_id: {} (directory already exists)".format(exp_id))
             return None
     else:
         dir_path = create_dir(os.path.join("../experiments", prefix), "summary_images_batch_{}_exp_id_{}".format(cur_batch_it, exp_id))
