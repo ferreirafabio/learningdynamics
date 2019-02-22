@@ -80,14 +80,20 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features):
+def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=True, adjust_vel_pred_range=True, norm_factor=240):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
     0   [...], ..., [...]
     1
+
+    Adjustment parameters specified due to scale bug
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0]) # exclude the index
+    if adjust_pos_ped_range:
+        pos /= 240
+    if adjust_vel_pred_range:
+        vel *= 240
 
     features_index = output_for_summary[1]
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
@@ -119,8 +125,9 @@ def create_latent_data_df(output_for_summary, gt_features):
     """ compute statistics of pos """
     for i in range(0, n_objects*2, 2):  # 2: each a column for pred and gt
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
-        df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+        # don't consider the first position values for stats since it's off due to initialization
+        df['mean'+'('+column_name+')'] = [(df.ix[1:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
     """ compute statistics of vel """
     for i in range(n_objects * 2, (n_objects * 2)*2, 2):
@@ -139,11 +146,11 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
 
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
-    if export_images and dir_path: # skip if directory exists
+    if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
 
     if export_latent_data and dir_path:
-        df = create_latent_data_df(output, gt_features=features)
+        df = create_latent_data_df(output, gt_features=features, adjust_pos_ped_range=True, adjust_vel_pred_range=True)
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
