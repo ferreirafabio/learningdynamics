@@ -98,10 +98,10 @@ class AnimateLatentData():
         ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, frames=1, repeat=False)
         ani_static.save(output_dir, writer="imagemagick")
 
-    def _store_final_3dplot(self):
+    def _store_final_3dplot(self, num):
         self._update_3d_graph(num=self.n_rollouts-1)
 
-    def _store_final_2dplot(self):
+    def _store_final_2dplot(self, num):
         self._update_2d_graph(num=self.n_rollouts - 1)
 
     def _update_3d_graph(self, num):
