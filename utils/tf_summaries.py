@@ -91,12 +91,9 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0]) # exclude the index
     if adjust_pos_ped_range:
-        pos /= 240
+        pos = [list(ary/norm_factor for ary in lst) for lst in pos]
     if adjust_vel_pred_range:
-        vel *= 240
-
-    features_index = output_for_summary[1]
-    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
+        vel = [list(ary * norm_factor for ary in lst) for lst in vel]
 
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
