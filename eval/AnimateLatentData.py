@@ -24,9 +24,10 @@ class AnimateLatentData():
         # cut the first value due to random initialization
         self.pos_gt = normalize_df_column(self.df, self.id1)[1:].to_frame()
         self.pos_pred = normalize_df_column(self.df, self.id2)[1:].to_frame()
-        self.fig = plt.figure(dpi=200)
+
 
     def store_3dplot(self, title, output_dir):
+        self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.graph = self.ax.scatter([], [], [], s=70, marker="o")
         self.ax.set_xlim(0, 1)
@@ -53,8 +54,8 @@ class AnimateLatentData():
         legend_handle_gt = mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=5)
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
-        self.ax.view_init(70, 210)
-        ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_rollouts, interval=600, repeat_delay=5000, blit=False)
+        self.ax.view_init(20, 240)
+        ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         ani.save(output_dir, writer="imagemagick")
 
         # store static final image
@@ -88,21 +89,27 @@ class AnimateLatentData():
         legend_handle_gt = mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=5)
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
-        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=600, repeat_delay=5000, blit=False)
+        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         self.ani.save(output_dir, writer="imagemagick")
 
         # store static final image
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, frames=1, repeat=False)
+        ani_static = matplotlib.animation.FuncAnimation(self.fig, self._store_final_2dplot, init_func=self._init, frames=1, repeat=False, save_count=0)
         ani_static.save(output_dir, writer="imagemagick")
 
+
+    def _init(self):
+        pass
+
     def _store_final_3dplot(self, num):
-        self._update_3d_graph(num=self.n_rollouts-1)
+        self._update_3d_graph(num=9)
 
     def _store_final_2dplot(self, num):
-        self._update_2d_graph(num=self.n_rollouts - 1)
+        print(num)
+        self._update_2d_graph(num=9)
+
 
     def _update_3d_graph(self, num):
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])
@@ -161,8 +168,8 @@ if __name__ == '__main__':
     out_dir = "../data/"
     animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=10)
     title = 'Ground truth vs predicted centroid position of object {}'.format(SELECTED_OBJECT_NUMBER)
-    path_3d = out_dir + "/3d_obj_pos_3d_object_1" + ".gif"
-    path_3d = out_dir + "/2d_obj_pos_3d_object_" + ".gif"
-    animate.store_3dplot(title=title, output_dir=out_dir)
-    animate.store_2dplot(title=title, output_dir=out_dir+"2.gif")
+    path_3d = out_dir + "/3d_obj_pos_3d_object" + ".gif"
+    path_2d = out_dir + "/2d_obj_pos_3d_object" + ".gif"
+    animate.store_3dplot(title=title, output_dir=path_3d)
+    animate.store_2dplot(title=title, output_dir=path_2d)
 
