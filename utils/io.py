@@ -255,7 +255,7 @@ def export_latent_df(df, dir_path):
     df.to_csv(path_csv)
 
 
-def export_latent_images(df, features, features_index, dir_path, config=config):
+def export_latent_images(df, features, features_index, dir_path, config):
     """ exports the images corresponding to the latent space such as velocity or position -- currently only implemented for position """
     #assert mode in ["position", "velocity"]
     n_objects = features[features_index]['n_manipulable_objects']
