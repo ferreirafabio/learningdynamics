@@ -260,13 +260,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        noise = None
-        if EncodeProcessDecode.config.latent_state_noise:
-            noise += tf.random.normal(shape=EncodeProcessDecode.dimensions_latent_repr.get_shape(), mean=0.0,
-                                      stddev=EncodeProcessDecode.config.latent_state_noise, seed=21, dtype=tf.float32)
-
         return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.dimensions_latent_repr] * EncodeProcessDecode.n_layers, activate_final=True),
-                               snt.LayerNorm()]) + noise
+                               snt.LayerNorm()])
 
     @staticmethod
     # since edges are very low-dim, use different number of neurons and layers
@@ -669,7 +664,7 @@ class NonVisualEncoder(snt.AbstractModule):
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
-        #print("final decoder output shape", outputs.get_shape())
+        print("final decoder output shape", outputs.get_shape())
 
         if self.config.latent_state_noise:
             outputs += tf.random.normal(shape=outputs.get_shape(), mean=0.0, stddev=self.config.latent_state_noise, seed=21,
