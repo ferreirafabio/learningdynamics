@@ -89,7 +89,8 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
 
     Adjustment parameters specified due to scale bug
     """
-    pos, vel = get_latent_from_gn_output(output_for_summary[0]) # exclude the index
+    pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
+    # adjusting for a multiplicative factor for position and evelocity in the tfrecords
     if adjust_pos_ped_range:
         pos = [list(ary/norm_factor for ary in lst) for lst in pos]
     if adjust_vel_pred_range:
