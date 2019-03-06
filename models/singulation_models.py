@@ -138,6 +138,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_conv_filters = config.n_conv_filters
         EncodeProcessDecode.edge_output_size = config.edge_output_size
         EncodeProcessDecode.model_type = config.model_type
+        EncodeProcessDecode.latent_state_noise = config.latent_state_noise
+
 
         self.config = config
         # init the global step
@@ -172,9 +174,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
     def _build(self, input_op, num_processing_steps):
         latent = self._encoder(input_op)#, is_training)
-
-        if self.config.latent_state_noise:
-            latent += tf.random.normal(shape=latent.get_shape(), mean=0.0, stddev=self.config.latent_state_noise, seed=21, dtype=tf.float32)
 
         latent0 = latent
         output_ops = []
@@ -513,6 +512,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
 
+
         return visual_latent_output
 
 
@@ -664,7 +664,12 @@ class NonVisualEncoder(snt.AbstractModule):
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
-        #print("final decoder output shape", outputs.get_shape())
+        print("final decoder output shape", outputs.get_shape())
+
+        if EncodeProcessDecode.latent_state_noise:
+            outputs += tf.random.normal(shape=outputs.get_shape(), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise, seed=21,
+                                        dtype=tf.float32)
+
         return outputs
 
 
