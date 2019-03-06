@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Agg') # in terminal change to 'Agg'
+matplotlib.use('TkAgg') # in terminal change to 'Agg'
 import matplotlib.lines as mlines
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
@@ -30,6 +30,7 @@ class AnimateLatentData():
         self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.graph = self.ax.scatter([], [], [], s=70, marker="o")
+
         self.ax.set_xlim(0, 1)
         self.ax.set_ylim(0, 1)
         self.ax.set_zlim(0, 1)
@@ -40,6 +41,7 @@ class AnimateLatentData():
         self.ax.set_zlabel("z")
         self.graph.set_alpha(1)
         self.colors = cm.tab10(np.linspace(0, 1, len(self.pos_gt)))
+        self.lines = sum([self.ax.plot([], [], [], '-', c=c) for c in self.colors], []) # todo: remove
 
         self.pos_gt.loc[:, 'x'] = self.pos_gt[self.id1].apply(lambda row: row[0])
         self.pos_gt.loc[:, 'y'] = self.pos_gt[self.id1].apply(lambda row: row[1])
@@ -55,6 +57,7 @@ class AnimateLatentData():
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
         self.ax.view_init(20, 240)
+
         ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         ani.save(output_dir, writer="imagemagick")
 
@@ -62,15 +65,15 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        self._update_3d_graph(9)
-        self.fig.savefig(output_dir)
+        self.fig.savefig(output_dir, writer="imagemagick")
 
     def store_2dplot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111)
-        self.graph = self.ax.scatter([], [], s=70, marker="o", animated=True)
+        self.graph = self.ax.scatter([], [], s=70, marker="o" , animated=True)
         self.ax.set_xlim(0, 1)
         self.ax.set_ylim(0, 1)
+
 
         plt.gca().invert_yaxis()
         #plt.gca().invert_xaxis()
@@ -89,6 +92,7 @@ class AnimateLatentData():
         legend_handle_gt = mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=5)
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
+
         self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         self.ani.save(output_dir, writer="imagemagick")
 
@@ -96,8 +100,9 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        self._update_2d_graph(9)
-        self.fig.savefig(output_dir)
+
+        plt.show()
+        self.fig.savefig(output_dir, writer="imagemagick")
 
     def _update_3d_graph(self, num):
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])

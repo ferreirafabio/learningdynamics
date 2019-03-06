@@ -184,6 +184,7 @@ class SingulationTrainer(BaseTrain):
                 summaries_dict = {**summaries_dict, **summaries_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
+                del summaries_dict
 
         return batch_loss, pos_vel_batch_loss, cur_batch_it
 

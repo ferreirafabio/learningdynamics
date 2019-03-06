@@ -31,7 +31,8 @@ def main():
             print("overwriting tfrecord dir in config file")
             config.mode = args.mode
 
-
+        if hasattr(config, 'latent_state_noise'):
+            config.latent_state_noise = False
 
 
     except Exception as e:
@@ -66,6 +67,7 @@ def main():
     elif config.mode == "test":
         print("--- Running TEST MODE ---")
         trainer.test_rollouts()
+
 
 if __name__ == '__main__':
     main()
