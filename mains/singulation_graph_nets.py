@@ -31,7 +31,7 @@ def main():
             print("overwriting tfrecord dir in config file")
             config.mode = args.mode
 
-        if hasattr(config, 'latent_state_noise'):
+        if not hasattr(config, 'latent_state_noise'):
             config.latent_state_noise = False
 
 
