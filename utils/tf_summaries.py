@@ -91,6 +91,7 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
     # unresolved bug: velocity ground truth is scaled by a factor of "norm_factor" (as expected) but the predicted vel is not scaled
+    # vice-versa for ground truth
     if adjust_pos_ped_range:
         pos = [list(ary/norm_factor for ary in lst) for lst in pos]
     if adjust_vel_pred_range:
@@ -151,7 +152,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
 
     if export_latent_data and dir_path:
-        df = create_latent_data_df(output, gt_features=features, adjust_pos_ped_range=False, adjust_vel_pred_range=True)
+        df = create_latent_data_df(output, gt_features=features, adjust_pos_ped_range=True, adjust_vel_pred_range=True)
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
