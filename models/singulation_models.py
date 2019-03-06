@@ -260,13 +260,13 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        noise = None
-        if EncodeProcessDecode.latent_state_noise:
-            noise += tf.random.normal(shape=tf.shape(EncodeProcessDecode.dimensions_latent_repr), mean=0.0,
-                                      stddev=EncodeProcessDecode.latent_state_noise, seed=21, dtype=tf.float32)
+        output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.dimensions_latent_repr] * EncodeProcessDecode.n_layers, activate_final=True),
+                               snt.LayerNorm()])
 
-        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.dimensions_latent_repr] * EncodeProcessDecode.n_layers, activate_final=True),
-                               snt.LayerNorm()]) + noise
+        if EncodeProcessDecode.latent_state_noise:
+            output += tf.random.normal(shape=tf.shape(output), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise,
+                                       seed=21, dtype=tf.float32)
+        return output
 
     @staticmethod
     # since edges are very low-dim, use different number of neurons and layers
@@ -279,13 +279,14 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        noise = None
-        if EncodeProcessDecode.latent_state_noise:
-            noise += tf.random.normal(shape=tf.shape(EncodeProcessDecode.dimensions_latent_repr), mean=0.0,
-                                      stddev=EncodeProcessDecode.latent_state_noise, seed=21, dtype=tf.float32)
+        output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
+                               snt.LayerNorm()])
 
-        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
-                               snt.LayerNorm()]) + noise
+        if EncodeProcessDecode.latent_state_noise:
+            output += tf.random.normal(shape=tf.shape(output), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise,
+                                       seed=21, dtype=tf.float32)
+        return output
+
 
     @staticmethod
     def make_mlp_model_edges_decode():
