@@ -666,8 +666,8 @@ class NonVisualEncoder(snt.AbstractModule):
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
         print("final decoder output shape", outputs.get_shape())
 
-        if EncodeProcessDecode.config.latent_state_noise:
-            outputs += tf.random.normal(shape=outputs.get_shape(), mean=0.0, stddev=EncodeProcessDecode.config.latent_state_noise, seed=21,
+        if EncodeProcessDecode.latent_state_noise:
+            outputs += tf.random.normal(shape=outputs.get_shape(), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise, seed=21,
                                         dtype=tf.float32)
 
         return outputs
