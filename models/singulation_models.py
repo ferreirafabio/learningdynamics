@@ -174,7 +174,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         latent = self._encoder(input_op)#, is_training)
 
         if self.config.latent_state_noise:
-            latent += tf.random.normal(mean=0.0, stdddev=self.config.latent_state_noise, seed=21)
+            latent += tf.random.normal(mean=0.0, stddev=self.config.latent_state_noise, seed=21)
 
         latent0 = latent
         output_ops = []
