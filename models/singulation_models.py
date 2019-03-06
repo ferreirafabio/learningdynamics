@@ -138,7 +138,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_conv_filters = config.n_conv_filters
         EncodeProcessDecode.edge_output_size = config.edge_output_size
         EncodeProcessDecode.model_type = config.model_type
-        EncodeProcessDecode.noise = config.latent_state_noise
+        EncodeProcessDecode.latent_state_noise = config.latent_state_noise
 
 
         self.config = config
