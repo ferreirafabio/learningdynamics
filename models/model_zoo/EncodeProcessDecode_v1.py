@@ -168,7 +168,7 @@ class EncodeProcessDecode_v1(snt.AbstractModule, BaseModel):
 
         self.init_transform()
 
-    def _build(self, input_op, num_processing_steps):
+    def _build(self, input_op, num_processing_steps, is_training, sess):
         latent = self._encoder(input_op)#, is_training)
 
         latent0 = latent
