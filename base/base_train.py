@@ -13,7 +13,7 @@ class BaseTrain:
         self.sess = sess
         self.train_data = train_data
         self.test_data = test_data
-        self.is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
+        #self.is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
         self.initialize_train_model()
         self.initialize_test_model()
@@ -64,7 +64,8 @@ class BaseTrain:
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
 
-        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts)#, self.is_training) # todo
+        self.model.is_training = True
+        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)#, self.is_training) # todo
         loss_ops_train, pos_vel_loss_ops_train = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
         self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)  # just for summary, is already included in loss_op_train
@@ -74,7 +75,8 @@ class BaseTrain:
         assert self.model.input_ph is not None, "initialize model for training first"
         assert self.model.target_ph is not None, "initialize model for training first"
 
-        self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts)#, self.is_training) # todo
+        self.model.is_training = False
+        self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)#, self.is_training) # todo
         loss_ops_test, pos_vel_loss_ops_test = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_test)
         self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
         self.model.pos_vel_loss_ops_test = tf.reduce_mean(pos_vel_loss_ops_test)

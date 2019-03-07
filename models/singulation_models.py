@@ -66,8 +66,24 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
               global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_global")
             )
 
-    def _build(self, inputs):
-        return self._network(inputs)
+    def _build(self, inputs, is_training, sess):
+        out = self._network(inputs)
+
+        # modify is_training flags accordingly
+        with sess.as_default():
+            for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
+                if "is_training" in v.name:
+                    assign_op = v.assign(is_training)
+                    sess.run(assign_op)
+                    assert v.eval() == is_training
+
+            # check if it is necessary to call _network(inputs) again
+            variables = out[0].graph.get_collection("variables")
+            for v in variables:
+                if "is_training" in v.name:
+                    assert v.eval() == is_training
+
+        return out
 
 
 class CNNDecoderGraphIndependent(snt.AbstractModule):
@@ -137,9 +153,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         EncodeProcessDecode.n_neurons_mlp_nonvisual = config.n_neurons_mlp_nonvisual
         EncodeProcessDecode.n_conv_filters = config.n_conv_filters
         EncodeProcessDecode.edge_output_size = config.edge_output_size
-        EncodeProcessDecode.model_type = config.model_type
+        EncodeProcessDecode.model_id = config.model_type
         EncodeProcessDecode.latent_state_noise = config.latent_state_noise
-
 
         self.config = config
         # init the global step
@@ -148,8 +163,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         self.init_cur_epoch()
         # init the batch counter
         self.init_batch_step()
-
-        self.is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
         self.use_cnn = self.config.node_and_global_as_cnn
 
@@ -172,15 +185,15 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
 
         self.init_transform()
 
-    def _build(self, input_op, num_processing_steps):
-        latent = self._encoder(input_op)#, is_training)
+    def _build(self, input_op, num_processing_steps, is_training, sess):
+        latent = self._encoder(input_op, is_training, sess)
 
         latent0 = latent
         output_ops = []
         for _ in range(num_processing_steps):
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
-            decoded_op = self._decoder(latent)#, is_training)
+            decoded_op = self._decoder(latent)
             #output_ops.append(self._output_transform(decoded_op))
             output_ops.append(decoded_op)
 
@@ -262,10 +275,6 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         """
         output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.dimensions_latent_repr] * EncodeProcessDecode.n_layers, activate_final=True),
                                snt.LayerNorm()])
-
-        if EncodeProcessDecode.latent_state_noise:
-            output += tf.random.normal(shape=tf.shape(output), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise,
-                                       seed=21, dtype=tf.float32)
         return output
 
     @staticmethod
@@ -279,12 +288,29 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True),
-                               snt.LayerNorm()])
 
-        if EncodeProcessDecode.latent_state_noise:
-            output += tf.random.normal(shape=tf.shape(output), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise,
-                                       seed=21, dtype=tf.float32)
+        # class AdditiveGaussianModule(snt.AbstractModule):
+        #     def __init__(self, name="additive_gaussian_module"):
+        #         super(AdditiveGaussianModule, self).__init__(name=name)
+        #         self.is_training = False
+        #
+        #     def _build(self, inputs, verbose=False):
+        #
+        #         if self.is_training:
+        #             inputs += tf.random.normal(shape=tf.shape(inputs), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise,
+        #                                     seed=21, dtype=tf.float32, name="edge_noise")
+        #             if verbose:
+        #                 print("Additive Gaussian noise added to edge encoding")
+        #
+        #         return inputs
+
+
+        net = snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True)
+        # if EncodeProcessDecode.latent_state_noise:
+        #     output = snt.Sequential([net, snt.LayerNorm(), AdditiveGaussianModule()])
+        # else:
+        output = snt.Sequential([net, snt.LayerNorm()])
+
         return output
 
 
@@ -299,7 +325,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
           A Sonnet module which contains the MLP and LayerNorm.
         """
         net = snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True)
-        return snt.Sequential([net, snt.Linear(EncodeProcessDecode.edge_output_size, name="edge_output")])
+        return snt.Sequential([net, snt.Linear(EncodeProcessDecode.edge_output_size)])
 
 
 class Encoder5LayerConvNet1D(snt.AbstractModule):
@@ -543,6 +569,8 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         else:
             n_non_visual_elements = 6
 
+        is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
+        #is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
         filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
 
@@ -649,7 +677,7 @@ class NonVisualDecoder(snt.AbstractModule):
         """ map latent position/velocity (nodes) or position/gravity/time-step (global) from 32d to original 5d/6d space """
         non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_nonvisual, n_non_visual_elements], activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
 
-        outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
+        outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1, name="edge_output")
         #print("final decoder output shape after including non-visual data", outputs.get_shape())
 
         return outputs
@@ -661,7 +689,7 @@ class NonVisualEncoder(snt.AbstractModule):
         self._visual_enc = visual_enc
         self._name = name
 
-    def _build(self, inputs, is_training=True):
+    def _build(self, inputs):
 
         visual_latent_output = self._visual_enc(inputs, name=self._name)
 
@@ -674,79 +702,16 @@ class NonVisualEncoder(snt.AbstractModule):
 
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
-        outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
+        outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1, name="enc_output")
+        # todo: add noise to latent vector, fix issue with passing is_training flag
         #print("final decoder output shape", outputs.get_shape())
 
-        if EncodeProcessDecode.latent_state_noise:
-            outputs += tf.random.normal(shape=tf.shape(outputs), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise, seed=21,
-                                        dtype=tf.float32)
+        #if EncodeProcessDecode.latent_state_noise and self.is_training:
+        #    outputs += tf.random.normal(shape=tf.shape(outputs), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise, seed=21,
+        #                                dtype=tf.float32)
 
         return outputs
 
-
-# class ResNet50Encoder(snt.AbstractModule):
-#     def __init__(self, name='resnet50encoder'):
-#         super(ResNet50Encoder, self).__init__(name=name)
-#
-#     def _build(self, inputs, is_training=True):
-#         """
-#         Extracts ResNet50 features from the given images and concatenates them into one large latent vector. If 3 image types are used
-#         (RGB, Segmentation and Depth), a vector of dimensionality (batch_size, config.n_neurons * 3 large + 6 (position+velocity)) is
-#         returned. The pre-trained ResNet50 on ImageNet is used and as features, a new fully connected layer is learned.
-#         :param inputs:
-#         :param is_training:
-#         :return:
-#         """
-#         img_data = inputs[:, :-6] # shape: (batch_size, features)
-#         img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
-#
-#         img_data = tf.reshape(img_data, [-1, *img_shape]) #-1 means "all", i.e. batch dimension
-#         input_rgb = img_data[..., :3]
-#         input_seg = img_data[..., 4]
-#
-#         with self._enter_variable_scope():
-#             #with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-#             base_model = VGG16(weights='imagenet', pooling='max', include_top=False, input_shape=(120, 160, 3))
-#
-#             """ prepare ResNet-50 model for fine-tuning: freeze all layers, add one to-be-learned fc-layer """
-#             base_model.layers.pop()
-#             for layer in base_model.layers:
-#                layer.trainable = False
-#             last = base_model.layers[-1].output  # pool 5 output
-#             last = Flatten()(last)
-#             output = Dense(512, activation='relu')(last)
-#
-#             finetuned_model = Model(inputs=base_model.input, outputs=output)
-#             #finetuned_model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='mse') # todo: check if this line is necessary
-#
-#             x = preprocess_input(input_rgb)  # ResNet requires data to be centered
-#             features_rgb = finetuned_model(x)
-#
-#             input_seg = tf.stack([input_seg]*3, axis=-1)
-#             x = preprocess_input(input_seg)
-#             features_seg = finetuned_model(x)
-#
-#             if EncodeProcessDecode.depth_data_provided:
-#                 input_depth = img_data[..., -3:]
-#                 x = preprocess_input(input_depth)
-#                 features_depth = finetuned_model(x)
-#
-#             """ map velocity and map into a latent space """
-#             vel_pos = inputs[:, -6:]
-#             vel_pos_output = snt.Sequential([snt.nets.MLP([6, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(vel_pos)
-#             #vel_pos_output = make_pos_vel_encoder_model(vel_pos)
-#
-#             outputs = keras.layers.concatenate([features_rgb, features_seg, features_depth, vel_pos_output], axis=1)
-#
-#             # todo: save ResNet weights
-#             # https://github.com/sebastianbk/finetuned-resnet50-keras/blob/master/resnet50_train.py
-#
-#             #outputs = snt.BatchFlatten()(outputs)
-#             #print("Encoder Output Shape", outputs.get_shape())
-#             outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
-#             #outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(features_rgb)
-#             return outputs
-#
 
 def get_model_from_config(model_id, model_type="encoder"):
     """ cnn2d case """
