@@ -305,11 +305,12 @@ class EncodeProcessDecode_v2(snt.AbstractModule, BaseModel):
         #         return inputs
 
 
-        net = snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True)
+        #net = snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True)
         # if EncodeProcessDecode.latent_state_noise:
         #     output = snt.Sequential([net, snt.LayerNorm(), AdditiveGaussianModule()])
         # else:
-        output = snt.Sequential([net, snt.LayerNorm()])
+        return snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True),
+                               snt.LayerNorm()])
 
         return output
 
