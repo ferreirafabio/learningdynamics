@@ -35,5 +35,6 @@
   "use_tfrecord_compression": true,
   "mode": "test_rollouts",
   "initial_pos_vel_known": false,
-  "loss_type": "mse"
+  "loss_type": "mse",
+  "model_zoo_file": "EncodeProcessDecode_v1"
 }

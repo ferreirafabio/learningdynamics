@@ -68,8 +68,8 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
 
     def _build(self, inputs, is_training, sess):
         out = self._network(inputs)
-
         # modify is_training flags accordingly
+
         with sess.as_default():
             for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
                 if "is_training" in v.name:

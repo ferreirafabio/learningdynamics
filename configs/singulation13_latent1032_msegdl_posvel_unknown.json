@@ -35,5 +35,6 @@
   "use_tfrecord_compression": true,
   "mode": "train_test",
   "initial_pos_vel_known": false,
-  "loss_type": "mse_gdl"
+  "loss_type": "mse_gdl",
+  "model_zoo_file": "EncodeProcessDecode_v1"
 }

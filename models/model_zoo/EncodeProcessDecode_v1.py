@@ -66,8 +66,24 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
               global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_global")
             )
 
-    def _build(self, inputs):
-        return self._network(inputs)
+    def _build(self, inputs, is_training, sess):
+        out = self._network(inputs)
+        # modify is_training flags accordingly
+
+        with sess.as_default():
+            for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
+                if "is_training" in v.name:
+                    assign_op = v.assign(is_training)
+                    sess.run(assign_op)
+                    assert v.eval() == is_training
+
+            # check if it is necessary to call _network(inputs) again
+            variables = out[0].graph.get_collection("variables")
+            for v in variables:
+                if "is_training" in v.name:
+                    assert v.eval() == is_training
+
+        return out
 
 
 class CNNDecoderGraphIndependent(snt.AbstractModule):
@@ -169,7 +185,7 @@ class EncodeProcessDecode_v1(snt.AbstractModule, BaseModel):
         self.init_transform()
 
     def _build(self, input_op, num_processing_steps, is_training, sess):
-        latent = self._encoder(input_op)#, is_training)
+        latent = self._encoder(input_op, is_training, sess)
 
         latent0 = latent
         output_ops = []
