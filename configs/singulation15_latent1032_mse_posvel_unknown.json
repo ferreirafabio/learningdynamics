@@ -7,7 +7,7 @@
   "depth_data_provided": true,
   "dimensions_latent_repr": 1082,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent1032_mse_posvel_unknown_noise",
+  "exp_name": "singulation15_latent1032_mse_posvel_unknown",
   "export_test_images": true,
   "global_output_size": 134405,
   "gripper_as_global": true,
@@ -36,5 +36,5 @@
   "mode": "train_test",
   "initial_pos_vel_known": false,
   "loss_type": "mse",
-  "latent_state_noise": 0.01 
+  "model_zoo_file": "EncodeProcessDecode_v2"
 }

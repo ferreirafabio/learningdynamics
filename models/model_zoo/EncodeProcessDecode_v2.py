@@ -42,9 +42,9 @@ class MLPGraphIndependent(snt.AbstractModule):
         super(MLPGraphIndependent, self).__init__(name=name)
         with self._enter_variable_scope():
             self._network = modules.GraphIndependent(
-                edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
-                node_model_fn=EncodeProcessDecode.make_mlp_model,
-                global_model_fn=EncodeProcessDecode.make_mlp_model
+                edge_model_fn=EncodeProcessDecode_v2.make_mlp_model_edges,
+                node_model_fn=EncodeProcessDecode_v2.make_mlp_model,
+                global_model_fn=EncodeProcessDecode_v2.make_mlp_model
             )
 
     def _build(self, inputs):
@@ -61,7 +61,7 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
             """ we want to re-use the cnn encoder for both nodes and global attributes """
             visual_encoder = get_model_from_config(model_id, model_type="visual_encoder")(name="visual_encoder")
             self._network = modules.GraphIndependent(
-              edge_model_fn=EncodeProcessDecode.make_mlp_model_edges,
+              edge_model_fn=EncodeProcessDecode_v2.make_mlp_model_edges,
               node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_node"),
               global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_encoder")(visual_encoder, name="non_visual_enc_global")
             )
@@ -95,7 +95,7 @@ class CNNDecoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             visual_decoder = get_model_from_config(model_id, model_type="visual_decoder")(name="visual_decoder")
             self._network = modules.GraphIndependent(
-                edge_model_fn=EncodeProcessDecode.make_mlp_model_edges_decode,
+                edge_model_fn=EncodeProcessDecode_v2.make_mlp_model_edges_decode,
                 node_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_node"),
                 global_model_fn=lambda: get_model_from_config(model_id, model_type="non_visual_decoder")(visual_decoder, name="non_visual_dec_global"),
             )
@@ -110,15 +110,15 @@ class MLPGraphNetwork(snt.AbstractModule):
     def __init__(self, name="MLPGraphNetwork"):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
-          self._network = modules.GraphNetwork(EncodeProcessDecode.make_mlp_model_edges,
-                                               EncodeProcessDecode.make_mlp_model,
-                                               EncodeProcessDecode.make_mlp_model)
+          self._network = modules.GraphNetwork(EncodeProcessDecode_v2.make_mlp_model_edges,
+                                               EncodeProcessDecode_v2.make_mlp_model,
+                                               EncodeProcessDecode_v2.make_mlp_model)
 
     def _build(self, inputs):
         return self._network(inputs)
 
 
-class EncodeProcessDecode(snt.AbstractModule, BaseModel):
+class EncodeProcessDecode_v2(snt.AbstractModule, BaseModel):
     """Full encode-process-decode model.
 
     The model we explore includes three components:
@@ -142,19 +142,19 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
     """
     def __init__(self, config, name="EncodeProcessDecode"):
 
-        super(EncodeProcessDecode, self).__init__(name=name)
-        EncodeProcessDecode.n_layers = config.n_layers
-        EncodeProcessDecode.dimensions_latent_repr = config.dimensions_latent_repr
-        EncodeProcessDecode.n_neurons_edges = config.n_neurons_edges
-        EncodeProcessDecode.n_layers_edges = config.n_layers_edges
-        EncodeProcessDecode.convnet_pooling = config.convnet_pooling
-        EncodeProcessDecode.convnet_tanh = config.convnet_tanh
-        EncodeProcessDecode.depth_data_provided = config.depth_data_provided
-        EncodeProcessDecode.n_neurons_mlp_nonvisual = config.n_neurons_mlp_nonvisual
-        EncodeProcessDecode.n_conv_filters = config.n_conv_filters
-        EncodeProcessDecode.edge_output_size = config.edge_output_size
-        EncodeProcessDecode.model_id = config.model_type
-        EncodeProcessDecode.latent_state_noise = config.latent_state_noise
+        super(EncodeProcessDecode_v2, self).__init__(name=name)
+        EncodeProcessDecode_v2.n_layers = config.n_layers
+        EncodeProcessDecode_v2.dimensions_latent_repr = config.dimensions_latent_repr
+        EncodeProcessDecode_v2.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v2.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode_v2.convnet_pooling = config.convnet_pooling
+        EncodeProcessDecode_v2.convnet_tanh = config.convnet_tanh
+        EncodeProcessDecode_v2.depth_data_provided = config.depth_data_provided
+        EncodeProcessDecode_v2.n_neurons_mlp_nonvisual = config.n_neurons_mlp_nonvisual
+        EncodeProcessDecode_v2.n_conv_filters = config.n_conv_filters
+        EncodeProcessDecode_v2.edge_output_size = config.edge_output_size
+        EncodeProcessDecode_v2.model_id = config.model_type
+        EncodeProcessDecode_v2.latent_state_noise = config.latent_state_noise
 
         self.config = config
         # init the global step
@@ -273,7 +273,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.dimensions_latent_repr] * EncodeProcessDecode.n_layers, activate_final=True),
+        output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v2.dimensions_latent_repr] * EncodeProcessDecode_v2.n_layers, activate_final=True),
                                snt.LayerNorm()])
         return output
 
@@ -305,7 +305,7 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         #         return inputs
 
 
-        net = snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True)
+        net = snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True)
         # if EncodeProcessDecode.latent_state_noise:
         #     output = snt.Sequential([net, snt.LayerNorm(), AdditiveGaussianModule()])
         # else:
@@ -324,8 +324,8 @@ class EncodeProcessDecode(snt.AbstractModule, BaseModel):
         Returns:
           A Sonnet module which contains the MLP and LayerNorm.
         """
-        net = snt.nets.MLP([EncodeProcessDecode.n_neurons_edges] * EncodeProcessDecode.n_layers_edges, activate_final=True)
-        return snt.Sequential([net, snt.Linear(EncodeProcessDecode.edge_output_size)])
+        net = snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True)
+        return snt.Sequential([net, snt.Linear(EncodeProcessDecode_v2.edge_output_size)])
 
 
 class Encoder5LayerConvNet1D(snt.AbstractModule):
@@ -333,7 +333,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         super(Encoder5LayerConvNet1D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True):
-        if EncodeProcessDecode.convnet_tanh:
+        if EncodeProcessDecode_v2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -344,7 +344,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
                              kernel_shape=10, stride=2)(inputs)
 
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -353,7 +353,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=12,
                              kernel_shape=10, stride=2)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -362,7 +362,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=12,
                              kernel_shape=10, stride=2)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -371,7 +371,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         outputs = snt.Conv1D(output_channels=12,
                              kernel_shape=10, stride=2)(outputs)
         outputs = snt.BatchNorm()(outputs, is_training=is_training)  # todo: deal with train/test time
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling1d(outputs, 2, 2)
         outputs = activation(outputs)
         #print(outputs.get_shape())
@@ -379,7 +379,7 @@ class Encoder5LayerConvNet1D(snt.AbstractModule):
         ''' layer 5'''
         outputs = snt.BatchFlatten()(outputs)
         #outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-        outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
+        outputs = snt.Linear(output_size=EncodeProcessDecode_v2.dimensions_latent_repr)(outputs)
         #print(outputs.get_shape())
         return outputs
 
@@ -389,7 +389,7 @@ class Decoder5LayerConvNet1D(snt.AbstractModule):
         super(Decoder5LayerConvNet1D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True):
-        if EncodeProcessDecode.convnet_tanh:
+        if EncodeProcessDecode_v2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -425,7 +425,7 @@ class Decoder5LayerConvNet1D(snt.AbstractModule):
         ''' layer 5'''
         outputs = snt.BatchFlatten()(outputs)
         # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-        outputs = snt.Linear(output_size=EncodeProcessDecode.dimensions_latent_repr)(outputs)
+        outputs = snt.Linear(output_size=EncodeProcessDecode_v2.dimensions_latent_repr)(outputs)
         #print(outputs.get_shape())
 
         return outputs
@@ -436,19 +436,19 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
     def _build(self, inputs, is_training=True, verbose=False):
-        filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v2.n_conv_filters, EncodeProcessDecode_v2.n_conv_filters * 2]
 
-        if EncodeProcessDecode.convnet_tanh:
+        if EncodeProcessDecode_v2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
-        img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode.depth_data_provided)
+        img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v2.depth_data_provided)
 
         """ get image data, get everything >except< last n elements which are non-visual """
-        image_data = inputs[:, :-EncodeProcessDecode.n_neurons_mlp_nonvisual]
+        image_data = inputs[:, :-EncodeProcessDecode_v2.n_neurons_mlp_nonvisual]
 
-        visual_latent_space_dim = EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual
+        visual_latent_space_dim = EncodeProcessDecode_v2.dimensions_latent_repr - EncodeProcessDecode_v2.n_neurons_mlp_nonvisual
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
@@ -559,7 +559,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
     def _build(self, inputs, name, is_training=True, verbose=False):
 
-        if EncodeProcessDecode.convnet_tanh:
+        if EncodeProcessDecode_v2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -572,10 +572,10 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
         #is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
-        filter_sizes = [EncodeProcessDecode.n_conv_filters, EncodeProcessDecode.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v2.n_conv_filters, EncodeProcessDecode_v2.n_conv_filters * 2]
 
         img_data = inputs[:, :-n_non_visual_elements]  # shape: (batch_size, features)
-        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode.depth_data_provided)
+        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode_v2.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' layer 1'''
@@ -591,7 +591,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l2_shape = outputs.get_shape()
 
         ''' layer 3'''
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -602,7 +602,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l4_shape = outputs.get_shape()
 
         ''' layer 5'''
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l5_shape = outputs.get_shape()
 
@@ -614,7 +614,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l6_shape = outputs.get_shape()
 
         ''' layer 7'''
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l7_shape = outputs.get_shape()
 
@@ -630,7 +630,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l9_shape = outputs.get_shape()
 
         ''' layer 10'''
-        if EncodeProcessDecode.convnet_pooling:
+        if EncodeProcessDecode_v2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l10_shape = outputs.get_shape()
 
@@ -652,7 +652,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         visual_latent_output = tf.layers.flatten(outputs)
 
         ''' layer 11'''
-        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode.dimensions_latent_repr - EncodeProcessDecode.n_neurons_mlp_nonvisual)
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v2.dimensions_latent_repr - EncodeProcessDecode_v2.n_neurons_mlp_nonvisual)
         return visual_latent_output
 
 
@@ -675,9 +675,9 @@ class NonVisualDecoder(snt.AbstractModule):
             non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         """ map latent position/velocity (nodes) or position/gravity/time-step (global) from 32d to original 5d/6d space """
-        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode.n_neurons_mlp_nonvisual, n_non_visual_elements], activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
+        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_mlp_nonvisual, n_non_visual_elements], activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
 
-        outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1, name="edge_output")
+        outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
         #print("final decoder output shape after including non-visual data", outputs.get_shape())
 
         return outputs
@@ -701,8 +701,8 @@ class NonVisualEncoder(snt.AbstractModule):
             non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
-        non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
-        outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1, name="enc_output")
+        non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode_v2.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
+        outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
         # todo: add noise to latent vector, fix issue with passing is_training flag
         #print("final decoder output shape", outputs.get_shape())
 

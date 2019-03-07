@@ -1,5 +1,4 @@
 import tensorflow as tf
-import argparse
 
 from data_loader.data_generator import DataGenerator
 from trainers.singulation_trainer import SingulationTrainer
@@ -7,7 +6,14 @@ from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
 from utils.utils import get_args
-from models.singulation_models import EncodeProcessDecode
+from pydoc import locate
+
+# def import_class_by_string(name):
+#     components = name.split('.')
+#     mod = __import__(components[0])
+#     for comp in components[1:]:
+#         mod = getattr(mod, comp)
+#     return mod
 
 
 def main():
@@ -34,6 +40,8 @@ def main():
         if not hasattr(config, 'latent_state_noise'):
             config.latent_state_noise = False
 
+        # model = import_class_by_string("models.model_zoo." + config.model_zoo_file)
+        model = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
 
     except Exception as e:
         print("An error occurred during processing the configuration file")
@@ -50,7 +58,7 @@ def main():
     train_data = DataGenerator(config, sess, train=True)
     test_data = DataGenerator(config, sess, train=False)
 
-    model = EncodeProcessDecode(config)
+    model = model(config)
 
     # create tensorboard logger
     logger = Logger(sess, config)
