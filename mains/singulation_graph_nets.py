@@ -41,7 +41,7 @@ def main():
             config.latent_state_noise = False
 
         # model = import_class_by_string("models.model_zoo." + config.model_zoo_file)
-        model = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
+        model_class = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
 
     except Exception as e:
         print("An error occurred during processing the configuration file")
@@ -58,7 +58,7 @@ def main():
     train_data = DataGenerator(config, sess, train=True)
     test_data = DataGenerator(config, sess, train=False)
 
-    model = model(config)
+    model = model_class(config)
 
     # create tensorboard logger
     logger = Logger(sess, config)
