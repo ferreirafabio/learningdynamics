@@ -7,7 +7,7 @@ from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
 from utils.utils import get_args
-from models.singulation_models import EncodeProcessDecode
+from models.model_zoo.EncodeProcessDecode_v2 import EncodeProcessDecode_v2
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
     train_data = DataGenerator(config, sess, old_tfrecords=config.old_tfrecords, train=True)
     test_data = DataGenerator(config, sess, old_tfrecords=config.old_tfrecords, train=False)
 
-    model = EncodeProcessDecode(config)
+    model = EncodeProcessDecode_v2(config)
 
     # create tensorboard logger
     logger = Logger(sess, config)
