@@ -95,7 +95,7 @@ class AnimateLatentData():
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
 
-        self.ax.text(0.0, 0.2, "mean diff per dim: " + str(self.mean_stats) + "\n" + "stddev per dim: " + str(self.std_stats), fontsize=6)
+        self.ax.text(0.0, 0.0, "mean diff per dim: " + str(self.mean_stats) + "\n" + "stddev per dim: " + str(self.std_stats), fontsize=6)
 
         self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         self.ani.save(output_dir, writer="imagemagick")

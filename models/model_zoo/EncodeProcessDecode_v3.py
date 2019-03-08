@@ -16,11 +16,12 @@
 
 
 """ 
-
+Description
+============================================================================
     ### DESCRIPTION ###
     as opposed to v2, this model file assumes global attributes to be only the gripper position
     (instead of position and depth/seg/rgb images) 
-
+============================================================================
 """
 
 from __future__ import absolute_import

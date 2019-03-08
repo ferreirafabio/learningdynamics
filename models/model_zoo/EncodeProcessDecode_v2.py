@@ -27,10 +27,12 @@ import sonnet as snt
 import tensorflow as tf
 
 
-""" 
-    ### DESCRIPTION ###
+"""
+Description
+============================================================================  
     as opposed to v1, this model file uses a training_flag to distinguish training/testing cycles in the visual encoder 
     (by manuallay setting tf.Variables to True/False in the CNNEncoderGraphIndependent _build function)
+============================================================================
 """
 
 class MLPGraphIndependent(snt.AbstractModule):
