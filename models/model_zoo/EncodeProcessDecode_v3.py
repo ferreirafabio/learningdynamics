@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
     """
