@@ -129,7 +129,6 @@ class EncodeProcessDecode_v1(snt.AbstractModule, BaseModel):
             *---------*     *------*     *---------*
     """
     def __init__(self, config, name="EncodeProcessDecode"):
-
         super(EncodeProcessDecode_v1, self).__init__(name=name)
         EncodeProcessDecode_v1.n_layers = config.n_layers
         EncodeProcessDecode_v1.dimensions_latent_repr = config.dimensions_latent_repr
@@ -175,6 +174,7 @@ class EncodeProcessDecode_v1(snt.AbstractModule, BaseModel):
         self.init_transform()
 
     def _build(self, input_op, num_processing_steps, is_training, sess):
+        print("EncodeProcessDecode is running in mode: full global data")
         latent = self._encoder(input_op)
 
         latent0 = latent
