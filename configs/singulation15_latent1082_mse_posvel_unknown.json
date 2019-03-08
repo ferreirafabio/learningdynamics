@@ -7,7 +7,7 @@
   "depth_data_provided": true,
   "n_neurons_nodes_total_dim": 1082,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent1032_mse_posvel_unknown_global_without_visual",
+  "exp_name": "singulation15_latent1082_mse_posvel_unknown_global_without_visual",
   "export_test_images": true,
   "global_output_size": 5,
   "gripper_as_global": true,
