@@ -257,7 +257,6 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
             variables = out[0].graph.get_collection("variables")
             for v in variables:
                 if "is_training_enc" in v.name:
-                    print(v.name)
                     assert v.eval() == is_training
 
         return out
