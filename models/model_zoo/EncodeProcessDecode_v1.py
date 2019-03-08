@@ -32,13 +32,13 @@ from utils.utils import get_correct_image_shape
 import sonnet as snt
 import tensorflow as tf
 
-"""
-Description
-============================================================================ 
-    the standard EncoderCoreDecoder model from the DeepMind examples adjusted to process visual data input.
-    Does not yet use "is_training" flags to distinguish train/test cycles in the CNNs.
-============================================================================
-"""
+###
+# Description
+#============================================================================
+#    the standard EncoderCoreDecoder model from the DeepMind examples adjusted to process visual data input.
+#    Does not yet use "is_training" flags to distinguish train/test cycles in the CNNs.
+#============================================================================
+###
 
 
 class MLPGraphIndependent(snt.AbstractModule):

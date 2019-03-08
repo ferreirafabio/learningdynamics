@@ -27,13 +27,13 @@ import sonnet as snt
 import tensorflow as tf
 
 
-"""
-Description
-============================================================================  
-    as opposed to v1, this model file uses a training_flag to distinguish training/testing cycles in the visual encoder 
-    (by manuallay setting tf.Variables to True/False in the CNNEncoderGraphIndependent _build function)
-============================================================================
-"""
+###
+# Description
+#============================================================================
+#    as opposed to v1, this model file uses a training_flag to distinguish training/testing cycles in the visual encoder
+#    (by manuallay setting tf.Variables to True/False in the CNNEncoderGraphIndependent _build function)
+#============================================================================
+###
 
 class MLPGraphIndependent(snt.AbstractModule):
     """GraphIndependent with MLP edge, node, and global models."""
@@ -436,13 +436,15 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, is_training=True, verbose=False):
+    def _build(self, inputs, verbose=False):
         filter_sizes = [EncodeProcessDecode_v2.n_conv_filters, EncodeProcessDecode_v2.n_conv_filters * 2]
 
         if EncodeProcessDecode_v2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
+
+        is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v2.depth_data_provided)
 
