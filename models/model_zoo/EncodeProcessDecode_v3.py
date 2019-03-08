@@ -82,7 +82,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         EncodeProcessDecode_v3.n_neurons_edges = config.n_neurons_edges
         EncodeProcessDecode_v3.n_neurons_globals = config.n_neurons_globals
         EncodeProcessDecode_v3.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
-        EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual = config.n_neurons_nodes_visual_non_visual
+        EncodeProcessDecode_v3.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
 
 
         self.config = config
@@ -323,7 +323,7 @@ class MLPGraphNetwork(snt.AbstractModule):
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual,
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_nodes_total_dim,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_nodes,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
@@ -357,9 +357,9 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v3.depth_data_provided)
 
         """ get image data, get everything >except< last n elements which are non-visual (position and velocity) """
-        image_data = inputs[:, :-EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual]
+        image_data = inputs[:, :-EncodeProcessDecode_v3.n_neurons_nodes_non_visual]
 
-        #visual_latent_space_dim = EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual - EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual
+        #visual_latent_space_dim = EncodeProcessDecode_v3.n_neurons_nodes_total_dim - EncodeProcessDecode_v3.n_neurons_nodes_total_dim
 
         """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
@@ -367,7 +367,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         #assert is_square(visual_latent_space_dim), "dimension of visual latent space vector (dimensions of latent representation: ({}) - " \
         #                                           "dimensions of non visual latent representation({})) must be square".format(
-        #    EncodeProcessDecode.n_neurons_nodes_visual_non_visual, EncodeProcessDecode.n_neurons_globals)
+        #    EncodeProcessDecode.n_neurons_nodes_total_dim, EncodeProcessDecode.n_neurons_globals)
 
         #image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
         #image_data = tf.reshape(image_data, (-1, 7, 10, 5))
@@ -556,11 +556,11 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             print("Layer8 encoder output shape", l9_shape)
             print("Layer9 encoder output shape", l10_shape)
 
-        ' shape (?, 7, 10, 32) -> (?, n_neurons_nodes_visual_non_visual-n_neurons_nodes_non_visual) '
+        ' shape (?, 7, 10, 32) -> (?, n_neurons_nodes_total_dim-n_neurons_nodes_non_visual) '
         visual_latent_output = tf.layers.flatten(outputs)
 
         ''' layer 11'''
-        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual - EncodeProcessDecode_v3.n_neurons_nodes_non_visual)
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v3.n_neurons_nodes_total_dim - EncodeProcessDecode_v3.n_neurons_nodes_non_visual)
         return visual_latent_output
 
 
@@ -583,7 +583,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual, n_non_visual_elements],
+        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v3.n_neurons_nodes_total_dim, n_non_visual_elements],
                                                                  activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
 
         outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
