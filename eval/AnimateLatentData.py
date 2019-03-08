@@ -18,12 +18,14 @@ class AnimateLatentData():
         self.id1 = identifier1
         self.id2 = identifier2
         self.n_rollouts = n_rollouts-1
-        # for now handle pred separately (normalization error --> divide by 240)
-        self.df[self.id2] = self.df[self.id2]/240
 
         # cut the first value due to random initialization
         self.pos_gt = normalize_df_column(self.df, self.id1)[1:].to_frame()
         self.pos_pred = normalize_df_column(self.df, self.id2)[1:].to_frame()
+        mean_col_name = "mean(" + self.id1 + "-" + self.id2 + ")"
+        std_col_name = "std(" + self.id1 + "-" + self.id2 + ")"
+        self.mean_stats = self.df[mean_col_name].iloc[0]
+        self.std_stats = self.df[std_col_name].iloc[0]
 
 
     def store_3dplot(self, title, output_dir):
@@ -92,6 +94,8 @@ class AnimateLatentData():
         legend_handle_gt = mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=5)
         legend_handle_pred = mlines.Line2D([], [], color='black', marker='x', linestyle='None', markersize=5)
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
+
+        self.ax.text(0.0, 0.2, "mean diff per dim: " + str(self.mean_stats) + "\n" + "stddev per dim: " + str(self.std_stats), fontsize=6)
 
         self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
         self.ani.save(output_dir, writer="imagemagick")
