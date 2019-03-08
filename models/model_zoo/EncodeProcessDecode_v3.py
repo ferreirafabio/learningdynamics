@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-
+VERBOSITY = True
 
 class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
     """
@@ -114,6 +114,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         self.init_transform()
 
     def _build(self, input_op, num_processing_steps, is_training, sess):
+        print("EncodeProcessDecode mode: global position only")
         latent = self._encoder(input_op, is_training, sess)
 
         latent0 = latent
@@ -121,7 +122,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         for _ in range(num_processing_steps):
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
-            decoded_op = self._decoder(latent)
+            decoded_op = self._decoder(latent, is_training, sess)
             output_ops.append(decoded_op)
 
         return output_ops
@@ -192,20 +193,20 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
 
 
 class MLP_model(snt.AbstractModule):
-    def __init__(self, n_neurons, n_layers, output_size, type="mlp_layer_norm", name="MLP_model"):
+    def __init__(self, n_neurons, n_layers, output_size, typ="mlp_layer_norm", name="MLP_model"):
         super(MLP_model, self).__init__(name=name)
-        assert type in ["mlp_layer_norm", "mlp_transform"]
+        assert typ in ["mlp_layer_norm", "mlp_transform"]
         self.n_neurons = n_neurons
         self.n_layers = n_layers
         self.output_size = output_size
-        self.type = type
+        self.typ = typ
 
     def _build(self, inputs):
-        if self.type == "mlp_transform":
-            # Transforms the outputs into the appropriate shapes.
+        if self.typ == "mlp_transform":
+            # Transforms the outputs into the appropriate shape.
             net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
             seq = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(inputs)
-        elif self.type == "mlp_layer_norm":
+        elif self.typ == "mlp_layer_norm":
             net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
             seq = snt.Sequential([net, snt.LayerNorm()])(inputs)
         return seq
@@ -220,31 +221,34 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
         with self._enter_variable_scope():
             """ we want to re-use the cnn encoder for both nodes and global attributes """
             visual_encoder = get_model_from_config(model_id, model_type="visual_encoder")(name="visual_encoder")
+
             """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
             self._network = modules.GraphIndependent(
-                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_edges,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_edges,
-                                                                                        output_size = EncodeProcessDecode_v3.edge_output_size,
-                                                                                        type="mlp_layer_norm",
-                                                                                        name="edge_encoder"),
+                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_edges,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
+                                                                                        name="mlp_encoder_edge"),
 
                 node_model_fn=lambda: get_model_from_config(model_id, model_type="visual_and_latent_encoder")(visual_encoder,
-                                                                                                              name="visual_and_latent_encoder_node"),
+                                                                                                              name="visual_and_latent_node_encoder"),
 
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_globals,
-                                                                                        output_size = EncodeProcessDecode_v3.global_output_size,
-                                                                                        type="mlp_layer_norm",
-                                                                                        name="global_encoder"),
+                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
+                                                                                        name="mlp_encoder_global"),
             )
 
-    def _build(self, inputs, is_training, sess):
+    def _build(self, inputs, is_training, sess, verbose=VERBOSITY):
         out = self._network(inputs)
-        # modify is_training flags accordingly
 
+        # modify is_training flags accordingly
         with sess.as_default():
             for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
-                if "is_training" in v.name:
+                if "is_training_enc" in v.name:
+                    if verbose:
+                        print("tf variable changed: ", v.name, "to: ", str(is_training))
                     assign_op = v.assign(is_training)
                     sess.run(assign_op)
                     assert v.eval() == is_training
@@ -252,7 +256,8 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
             # check if it is necessary to call _network(inputs) again
             variables = out[0].graph.get_collection("variables")
             for v in variables:
-                if "is_training" in v.name:
+                if "is_training_enc" in v.name:
+                    print(v.name)
                     assert v.eval() == is_training
 
         return out
@@ -266,22 +271,44 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
 
         with self._enter_variable_scope():
             visual_decoder = get_model_from_config(model_id, model_type="visual_decoder")(name="visual_decoder")
+
             self._network = modules.GraphIndependent(
-                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_edges,
-                                                                                       n_layers = EncodeProcessDecode_v3.n_layers_edges,
-                                                                                       output_size = EncodeProcessDecode_v3.edge_output_size,
-                                                                                       type="mlp_transform"),
+                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_edges,
+                                                                                        output_size=EncodeProcessDecode_v3.edge_output_size,
+                                                                                        typ="mlp_transform",
+                                                                                        name="mlp_decoder_edge"),
 
-                node_model_fn=lambda: get_model_from_config(model_id, model_type="visual_and_latent_decoder")(visual_decoder, name="non_visual_dec_node"),
+                node_model_fn=lambda: get_model_from_config(model_id, model_type="visual_and_latent_decoder")(visual_decoder,
+                                                                                                              name="visual_and_latent_node_decoder"),
 
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_globals,
-                                                                                        output_size = EncodeProcessDecode_v3.global_output_size,
-                                                                                        type="mlp_transform"),
+                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                        output_size=EncodeProcessDecode_v3.global_output_size,
+                                                                                        typ="mlp_transform",
+                                                                                        name="mlp_decoder_global"),
             )
 
-    def _build(self, inputs):
-        return self._network(inputs)
+    def _build(self, inputs, is_training, sess, verbose=VERBOSITY):
+        out = self._network(inputs)
+
+        # modify is_training flags accordingly
+        with sess.as_default():
+            for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
+                if "is_training_dec" in v.name:
+                    if verbose:
+                        print("tf variable changed: ", v.name, "to:", str(is_training))
+                    assign_op = v.assign(is_training)
+                    sess.run(assign_op)
+                    assert v.eval() == is_training
+
+            # check if it is necessary to call _network(inputs) again
+            variables = out[0].graph.get_collection("variables")
+            for v in variables:
+                if "is_training_dec" in v.name:
+                    assert v.eval() == is_training
+
+        return out
 
 
 class MLPGraphNetwork(snt.AbstractModule):
@@ -291,20 +318,20 @@ class MLPGraphNetwork(snt.AbstractModule):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
           self._network = modules.GraphNetwork(
-              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_edges,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_edges,
-                                                                                        output_size = EncodeProcessDecode_v3.edge_output_size,
-                                                                                        type="mlp_transform",
+              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_edges,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
                                                                                         name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_edges,
-                                                                                        output_size = EncodeProcessDecode_v3.node_output_size,
-                                                                                        type="mlp_transform",
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_nodes_visual_non_visual,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_nodes,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
                                                                                         name="mlp_core_node"),
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons = EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                        n_layers = EncodeProcessDecode_v3.n_layers_globals,
-                                                                                        output_size = EncodeProcessDecode_v3.global_output_size,
-                                                                                        type="mlp_transform",
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
                                                                                         name="mlp_core_global")
           )
 
@@ -317,7 +344,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, verbose=True):
+    def _build(self, inputs, name, verbose=VERBOSITY):
         filter_sizes = [EncodeProcessDecode_v3.n_conv_filters, EncodeProcessDecode_v3.n_conv_filters * 2]
 
         if EncodeProcessDecode_v3.convnet_tanh:
@@ -325,7 +352,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         else:
             activation = tf.nn.relu
 
-        is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
+        is_training = tf.get_variable("is_training_dec", shape=(), dtype=tf.bool, trainable=False)
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v3.depth_data_provided)
 
@@ -441,20 +468,17 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, name, is_training=True, verbose=True):
+    def _build(self, inputs, name, verbose=VERBOSITY):
 
         if EncodeProcessDecode_v3.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
-        if "global" in name:
-            n_non_visual_elements = 5
-        else:
-            n_non_visual_elements = 6
 
-        is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
-        #is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
+        n_non_visual_elements = 6 # velocity (x,y,z) and position (x,y,z)
+
+        is_training = tf.get_variable("is_training_enc", shape=(), dtype=tf.bool, trainable=False)
 
         filter_sizes = [EncodeProcessDecode_v3.n_conv_filters, EncodeProcessDecode_v3.n_conv_filters * 2]
 
@@ -546,9 +570,9 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         self.visual_dec = visual_dec
         self._name = name
 
-    def _build(self, inputs, is_training=True, verbose=False):
+    def _build(self, inputs, is_training=True, verbose=VERBOSITY):
 
-        visual_decoded_output = self.visual_dec(inputs)
+        visual_decoded_output = self.visual_dec(inputs, name=self._name)
 
         # if "global" in self._name:
         #     n_non_visual_elements = 5
@@ -576,7 +600,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         self._visual_enc = visual_enc
         self._name = name
 
-    def _build(self, inputs, verbose=False):
+    def _build(self, inputs, verbose=VERBOSITY):
 
         visual_latent_output = self._visual_enc(inputs, name=self._name)
         #
@@ -595,7 +619,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
 
 
         if verbose:
-            print("final decoder output shape", outputs.get_shape())
+            print("final encoder output shape", outputs.get_shape())
 
         # todo: add noise to latent vector, fix issue with passing is_training flag
         #if EncodeProcessDecode.latent_state_noise and self.is_training:
@@ -617,4 +641,6 @@ def get_model_from_config(model_id, model_type="mlp"):
         return VisualAndLatentDecoder
     if "cnn2d" in model_id and model_type == "mlp":
         return MLP_model
+
+
 

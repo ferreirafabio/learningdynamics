@@ -67,9 +67,10 @@ class CNNEncoderGraphIndependent(snt.AbstractModule):
             )
 
     def _build(self, inputs, is_training, sess):
-        out = self._network(inputs)
-        # modify is_training flags accordingly
 
+        out = self._network(inputs)
+
+        # modify is_training flags accordingly
         with sess.as_default():
             for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
                 if "is_training" in v.name:
@@ -186,6 +187,7 @@ class EncodeProcessDecode_v2(snt.AbstractModule, BaseModel):
         self.init_transform()
 
     def _build(self, input_op, num_processing_steps, is_training, sess):
+        print("EncodeProcessDecode is running in mode: full global data")
         latent = self._encoder(input_op, is_training, sess)
 
         latent0 = latent
@@ -312,8 +314,6 @@ class EncodeProcessDecode_v2(snt.AbstractModule, BaseModel):
         return snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v2.n_neurons_edges] * EncodeProcessDecode_v2.n_layers_edges, activate_final=True),
                                snt.LayerNorm()])
 
-        return output
-
 
     @staticmethod
     def make_mlp_model_edges_decode():
@@ -436,7 +436,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
 
-    def _build(self, inputs, verbose=False):
+    def _build(self, inputs, is_training=True, verbose=False):
         filter_sizes = [EncodeProcessDecode_v2.n_conv_filters, EncodeProcessDecode_v2.n_conv_filters * 2]
 
         if EncodeProcessDecode_v2.convnet_tanh:
@@ -444,7 +444,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         else:
             activation = tf.nn.relu
 
-        is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
+        #is_training = tf.get_variable("is_training", shape=(), dtype=tf.bool, trainable=False)
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v2.depth_data_provided)
 
@@ -707,7 +707,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode_v2.n_neurons_mlp_nonvisual], activate_final=True), snt.LayerNorm()])(non_visual_elements)
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
         # todo: add noise to latent vector, fix issue with passing is_training flag
-        #print("final decoder output shape", outputs.get_shape())
+        #print("final encoder output shape", outputs.get_shape())
 
         #if EncodeProcessDecode.latent_state_noise and self.is_training:
         #    outputs += tf.random.normal(shape=tf.shape(outputs), mean=0.0, stddev=EncodeProcessDecode.latent_state_noise, seed=21,
