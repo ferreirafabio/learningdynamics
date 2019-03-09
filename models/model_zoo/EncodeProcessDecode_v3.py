@@ -107,11 +107,10 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
 
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
-        self.global_output_size = config.global_output_size  # note: changed from 134405 to 3
+        self.global_output_size = config.global_output_size  # note: changed from 134405 to 5
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
-        self.init_transform()
 
     def _build(self, input_op, num_processing_steps, is_training, sess):
         print("EncodeProcessDecode mode: global position only")
@@ -171,25 +170,6 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
 
         self.pos_vel_loss_ops_test = None
         self.pos_vel_loss_ops_train = None
-
-    def init_transform(self):
-        # Transforms the outputs into the appropriate shapes.
-        if self.edge_output_size is None:
-          edge_fn = None
-        else:
-          edge_fn = lambda: snt.Linear(self.edge_output_size, name="edge_output")
-        if self.node_output_size is None:
-          node_fn = None
-        else:
-          node_fn = lambda: snt.Linear(self.node_output_size, name="node_output")
-        if self.global_output_size is None:
-          global_fn = None
-        else:
-          global_fn = lambda: snt.Linear(self.global_output_size, name="global_output")
-
-        with self._enter_variable_scope():
-          self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn)
-
 
 
 class MLP_model(snt.AbstractModule):
