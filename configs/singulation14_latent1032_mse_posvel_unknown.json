@@ -28,7 +28,7 @@
   "num_iter_per_epoch": 10,
   "parallel_batch_processing": true,
   "test_batch_size": 5,
-  "test_interval": 100,
+  "test_interval": 300,
   "tfrecords_dir": "../data/destination_10_rollouts",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,

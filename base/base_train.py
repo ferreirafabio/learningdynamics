@@ -65,18 +65,23 @@ class BaseTrain:
         self.model.target_ph = target_ph
 
         self.model.is_training = True
-        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)#, self.is_training) # todo
-        loss_ops_train, pos_vel_loss_ops_train = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
-        self.model.loss_op_train = tf.reduce_mean(loss_ops_train)
-        self.model.pos_vel_loss_ops_train = tf.reduce_mean(pos_vel_loss_ops_train)  # just for summary, is already included in loss_op_train
-        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train, global_step=self.model.global_step_tensor)
+        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)
+        total_loss_ops, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
+        self.model.loss_op_train_total = tf.reduce_mean(total_loss_ops)
+        self.model.loss_ops_train_velocity = tf.reduce_mean(loss_ops_velocity)  # just for summary, is already included in loss_op_train
+        self.model.loss_ops_train_position = tf.reduce_mean(loss_ops_position)
+        self.model.loss_ops_train_distance = tf.reduce_mean(loss_ops_distance)
+
+        self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train_total, global_step=self.model.global_step_tensor)
 
     def initialize_test_model(self):
         assert self.model.input_ph is not None, "initialize model for training first"
         assert self.model.target_ph is not None, "initialize model for training first"
 
         self.model.is_training = False
-        self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)#, self.is_training) # todo
-        loss_ops_test, pos_vel_loss_ops_test = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_test)
-        self.model.loss_op_test = tf.reduce_mean(loss_ops_test)
-        self.model.pos_vel_loss_ops_test = tf.reduce_mean(pos_vel_loss_ops_test)
+        self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)
+        total_loss_ops_test, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_test)
+        self.model.loss_op_test_total = tf.reduce_mean(total_loss_ops_test)
+        self.model.loss_ops_test_velocity = tf.reduce_mean(loss_ops_test_velocity)  # just for summary, is already included in loss_op_train
+        self.model.loss_ops_test_position = tf.reduce_mean(loss_ops_test_position)
+        self.model.loss_ops_test_distance = tf.reduce_mean(loss_ops_test_distance)
