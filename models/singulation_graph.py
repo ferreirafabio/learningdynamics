@@ -96,6 +96,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             return res
 
         elif "manipulable" in attr['type_name']:
+            """ we assume shape (image features, vel(3dim), pos(3dim)) """
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
             # obj_seg will have data as following: (rgb, seg, optionally: depth)

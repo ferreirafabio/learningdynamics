@@ -1,5 +1,4 @@
 import tensorflow as tf
-
 from data_loader.data_generator import DataGenerator
 from trainers.singulation_trainer import SingulationTrainer
 from utils.config import process_config
@@ -7,13 +6,6 @@ from utils.dirs import create_dirs
 from utils.logger import Logger
 from utils.utils import get_args
 from pydoc import locate
-
-# def import_class_by_string(name):
-#     components = name.split('.')
-#     mod = __import__(components[0])
-#     for comp in components[1:]:
-#         mod = getattr(mod, comp)
-#     return mod
 
 
 def main():

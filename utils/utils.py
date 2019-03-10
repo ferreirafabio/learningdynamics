@@ -73,7 +73,7 @@ def get_images_from_gn_output(outputs, depth=True):
         seg = []
         depth_lst = []
         for data_t in outputs:
-            image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without pos+vel
+            image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without vel+pos
             rgb.append(image[:, :, :3])
             seg.append(np.expand_dims(image[:, :, 3], axis=2))
             if depth:
@@ -96,8 +96,8 @@ def get_latent_from_gn_output(outputs):
         vel = []
         pos = []
         for data_t in outputs:
-            obj_vel = data_t[0][n][-3:]
-            obj_pos = data_t[0][n][-6:-3]
+            obj_vel = data_t[0][n][-6:-3]
+            obj_pos = data_t[0][n][-3:]
             pos.append(obj_pos)
             vel.append(obj_vel)
         velocities.append(vel)
