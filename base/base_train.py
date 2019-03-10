@@ -13,7 +13,6 @@ class BaseTrain:
         self.sess = sess
         self.train_data = train_data
         self.test_data = test_data
-        #self.is_training = tf.placeholder(tf.bool, shape=(), name='is_training')
 
         self.initialize_train_model()
         self.initialize_test_model()
@@ -82,8 +81,8 @@ class BaseTrain:
         self.model.is_training = False
         self.model.output_ops_test = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)
         total_loss_ops_test, loss_ops_test_img, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_test)
-        self.model.loss_op_test_total = tf.reduce_mean(total_loss_ops_test)
-        self.model.loss_ops_test_img = tf.reduce_mean(loss_ops_test_img) # just for summary, is already included in loss_op_train
+        self.model.loss_op_test_total = tf.reduce_mean(total_loss_ops_test) # just for summary, is already included in loss_op_train
+        self.model.loss_ops_test_img = tf.reduce_mean(loss_ops_test_img)
         self.model.loss_ops_test_velocity = tf.reduce_mean(loss_ops_test_velocity)
         self.model.loss_ops_test_position = tf.reduce_mean(loss_ops_test_position)
         self.model.loss_ops_test_distance = tf.reduce_mean(loss_ops_test_distance)

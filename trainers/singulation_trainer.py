@@ -97,8 +97,10 @@ class SingulationTrainer(BaseTrain):
                                                                                     features[i], losses) for i in range(self.config.train_batch_size))
         else:
             for i in range(self.config.train_batch_size):
-                total_loss, _, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i],
-                                                                                          features[i])
+                #total_loss, _, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i], target_graphs_all_exp[i],
+                #                                                                          features[i])
+                total_loss, _, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp,
+                                                                                                    target_graphs_all_exp, features)
                 if total_loss is not None:
                     losses.append(total_loss)
                     losses_img.append(loss_img)
