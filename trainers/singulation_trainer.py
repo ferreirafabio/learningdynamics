@@ -54,7 +54,6 @@ class SingulationTrainer(BaseTrain):
 
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_velocity'], data['loss_position'], data['loss_distance']
 
-
     def test_rollouts(self):
         if self.config.n_epochs == 1:
             print("test mode --> n_epochs will be set to 1")
@@ -93,7 +92,7 @@ class SingulationTrainer(BaseTrain):
         last_log_time = start_time
 
         if self.config.parallel_batch_processing:
-            with parallel_backend('threading', n_jobs=-3):
+            with parallel_backend('threading', n_jobs=-2):
                 losses, pos_vel_losses = Parallel()(delayed(self._do_step_parallel)(input_graphs_all_exp[i], target_graphs_all_exp[i],
                                                                                     features[i], losses) for i in range(self.config.train_batch_size))
         else:
