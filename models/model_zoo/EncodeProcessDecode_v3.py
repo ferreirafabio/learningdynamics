@@ -136,7 +136,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
     def load(self, sess):
         latest_checkpoint = tf.train.latest_checkpoint(self.config.checkpoint_dir)
         if latest_checkpoint:
-            print("Loading model checkpoint {} ...\n".format(latest_checkpoint))
+            print("Loading model checkpoint {} ...".format(latest_checkpoint))
             self.saver.restore(sess, latest_checkpoint)
             print("Model loaded")
 
