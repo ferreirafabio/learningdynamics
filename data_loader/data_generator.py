@@ -131,10 +131,13 @@ class DataGenerator:
         objpos = tf.decode_raw(sequence['objpos'], out_type=tf.float64)
         objpos = tf.reshape(objpos, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
+        # the following yields [240,240,240] to broadcast with shape (experiment_length, n_manipulable_objects, 3)
+        vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
+        objvel = tf.identity(objpos, name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+
         # indices: 0=first object,...,2=third object
         #objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
         #objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
-
 
         if self.old_tfrecords:
             img_type = tf.uint8
@@ -147,20 +150,23 @@ class DataGenerator:
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         if normalize:
-            mult = tf.stack([experiment_length])
-            image_range_tensor = tf.reshape(tf.tile(image_range, mult), [mult[0], tf.shape(image_range)[0]])
+            img_shape = img.get_shape()[-3:]
+            seg_shape = seg.get_shape()[-2:]
+            object_seg_shape = object_segments.get_shape()[-3:]
+            gripperpos_shape = gripperpos.get_shape()[-1:]
+            objpos_shape = objpos.get_shape()[-1:]
+            img = _normalize_fixed(img, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=img_shape)
+            seg = _normalize_fixed(seg, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=seg_shape)
 
-            shape = [1] * len(img.get_shape())
-            shape[0] = -1
+            if self.depth_data_provided:
+                depth_shape = depth.get_shape()[-3:]
+                depth = _normalize_fixed(depth, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=depth_shape)
+            object_segments = _normalize_fixed(object_segments, range_min=image_range[0], range_max=image_range[1], normed_min=0,
+                                               normed_max=1, shape=object_seg_shape)
 
-            img = _normalize_fixed(img, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
-            seg = _normalize_fixed(seg, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
-
-            shape = [1] * len(object_segments.get_shape())
-            shape[0] = -1
-            shape[1] = -1
-            object_segments = _normalize_fixed(object_segments, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
-
+            gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
+            objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
+            objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objpos_shape, scaling_factor=240.0)
 
 
         return_dict = {
@@ -168,7 +174,7 @@ class DataGenerator:
             'seg': seg,
             'gripperpos': gripperpos,
             'objpos': objpos,
-            'objvel': tf.identity(objpos, name="objvel") * 240,  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+            'objvel': objvel,
             'object_segments': object_segments,
 
             'experiment_length': experiment_length,
@@ -186,20 +192,50 @@ class DataGenerator:
         return self.iterator.get_next()
 
 
-def _normalize_fixed(x, current_range, normed_range, shape):
-    normed_range = np.asarray(normed_range)
-    # subtract over first dimension
+def _normalize_fixed(x, range_min, range_max, normed_min, normed_max, shape):
+    """ this function uses broadcasting to operate over the unspecified dimensions (e.g. experiment_length),
+    shape provides the known dimensions over which this function should operate """
 
-    """ generates the min and max tensors of shape (?,) while "?" typically being e.g. the experiment length """
-    current_min, current_max = tf.expand_dims(current_range[:, 0], 1), tf.expand_dims(current_range[:, 1], 1)
-    normed_min, normed_max = tf.expand_dims(normed_range[:, 0], 1), tf.expand_dims(normed_range[:, 1], 1)
-    current_min, current_max = tf.cast(current_min, x.dtype), tf.cast(current_max, x.dtype)
+    current_min_tensor = tf.fill(shape, tf.cast(range_min, x.dtype))
+    current_max_tensor = tf.fill(shape, tf.cast(range_max, x.dtype))
 
-    """ reshape from (?,1) to (?, (-1, n))) while n = number of dimensions of x minus 1 """
-    current_min, current_max = tf.reshape(current_min, shape), tf.reshape(current_max, shape)
-    normed_min, normed_max = tf.reshape(normed_min, shape), tf.reshape(normed_max, shape)
+    # using broadcasting, e.g. shape (5,10,120,160,3) subtracted by shape (120,160,3) yields (5,10,120,160,3)
+    x_normed = (x - current_min_tensor) / (current_max_tensor - current_min_tensor)
 
-    x_normed = (x - current_min) / (current_max - current_min)
-    normed_min, normed_max = tf.cast(normed_min, x_normed.dtype), tf.cast(normed_max, x_normed.dtype)
-    x_normed = x_normed * (normed_max - normed_min) + normed_min
+    normed_min_tensor = tf.fill(shape, tf.cast(normed_min, x_normed.dtype))
+    normed_max_tensor = tf.fill(shape, tf.cast(normed_max, x_normed.dtype))
+
+    x_normed = x_normed * (normed_max_tensor - normed_min_tensor) + normed_min_tensor
+
+    return x_normed
+
+
+def _normalize_fixed_pos_vel_data(x_inp, normed_min, normed_max, shape, scaling_factor=1.0):
+    """ normalizes position and velocity data to a range (normed_min, normed_max).
+    The scaling_factor can be used when position data is to be converted into velocity data """
+    x_min = 0.344*scaling_factor
+    y_min = -0.256*scaling_factor
+    z_min = -0.149*scaling_factor
+    x_max = 0.856*scaling_factor
+    y_max = 0.256*scaling_factor
+    z_max = -0.0307*scaling_factor
+
+    if len(x_inp.get_shape()) == 2:
+        x = (x_inp[:, 0] - x_min) / (x_max - x_min)
+        y = (x_inp[:, 1] - y_min) / (y_max - y_min)
+        z = (x_inp[:, 2] - z_min) / (z_max - z_min)
+        x_normed = tf.stack([x, y, z], axis=1)
+    elif len(x_inp.get_shape()) == 3:
+        x = (x_inp[:, :, 0] - x_min) / (x_max - x_min)
+        y = (x_inp[:, :, 1] - y_min) / (y_max - y_min)
+        z = (x_inp[:, :, 2] - z_min) / (z_max - z_min)
+        x_normed = tf.stack([x, y, z], axis=2)
+    else:
+        raise ValueError("parsing dataset failed because position samples have unexpected shapes")
+
+    normed_min_tensor = tf.fill(shape, tf.cast(normed_min, x_normed.dtype))
+    normed_max_tensor = tf.fill(shape, tf.cast(normed_max, x_normed.dtype))
+
+    x_normed = x_normed * (normed_max_tensor - normed_min_tensor) + normed_min_tensor
+
     return x_normed
