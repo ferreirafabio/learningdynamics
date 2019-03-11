@@ -138,19 +138,30 @@ class DataGenerator:
 
         if self.old_tfrecords:
             img_type = tf.uint8
-            fixed_range = [np.iinfo(np.uint8).min, np.iinfo(np.uint8).max]
+            image_range = [np.iinfo(np.uint8).min, np.iinfo(np.uint8).max]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             img_type = tf.int16
-            fixed_range = [np.iinfo(np.int16).min, np.iinfo(np.int16).max]
+            image_range = [np.iinfo(np.int16).min, np.iinfo(np.int16).max]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         if normalize:
             mult = tf.stack([experiment_length])
-            fixed_range_tensor = tf.reshape(tf.tile(fixed_range, mult), [mult[0], tf.shape(fixed_range)[0]])
-            #print(fixed_range_tensor.get_shape())
-            img = _normalize_fixed(img, current_range=fixed_range_tensor, normed_range=[[0, 1]])
+            image_range_tensor = tf.reshape(tf.tile(image_range, mult), [mult[0], tf.shape(image_range)[0]])
+
+            shape = [1] * len(img.get_shape())
+            shape[0] = -1
+
+            img = _normalize_fixed(img, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
+            seg = _normalize_fixed(seg, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
+
+            shape = [1] * len(object_segments.get_shape())
+            shape[0] = -1
+            shape[1] = -1
+            object_segments = _normalize_fixed(object_segments, current_range=image_range_tensor, normed_range=[[0, 1]], shape=shape)
+
+
 
         return_dict = {
             'img': img,
@@ -159,6 +170,7 @@ class DataGenerator:
             'objpos': objpos,
             'objvel': tf.identity(objpos, name="objvel") * 240,  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
             'object_segments': object_segments,
+
             'experiment_length': experiment_length,
             'experiment_id': experiment_id,
             'n_total_objects': n_total_objects,
@@ -174,11 +186,9 @@ class DataGenerator:
         return self.iterator.get_next()
 
 
-def _normalize_fixed(x, current_range, normed_range):
+def _normalize_fixed(x, current_range, normed_range, shape):
     normed_range = np.asarray(normed_range)
     # subtract over first dimension
-    shape = [1] * len(x.get_shape())
-    shape[0] = -1
 
     """ generates the min and max tensors of shape (?,) while "?" typically being e.g. the experiment length """
     current_min, current_max = tf.expand_dims(current_range[:, 0], 1), tf.expand_dims(current_range[:, 1], 1)
