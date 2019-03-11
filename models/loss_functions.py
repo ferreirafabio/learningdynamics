@@ -25,16 +25,15 @@ def create_loss_ops(config, target_op, output_ops):
     loss_ops_velocity = []
     loss_ops_distance = []
 
-
     if config.loss_type == 'mse':
         for i, output_op in enumerate(output_ops):
             """ VISUAL LOSS """
-            loss_visual_mse_nodes = 0.5 * tf.losses.mean_squared_error(output_op.nodes[:, :-6], target_node_splits[i][:, :-6])
+            loss_visual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, :-6], target_node_splits[i][:, :-6], weights=0.5)
 
             """ NONVISUAL LOSS (50% weight) """
-            loss_nonvisual_mse_edges = (1/6) * tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
-            loss_nonvisual_mse_nodes_pos = (1/6) * tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:])
-            loss_nonvisual_mse_nodes_vel = (1/6) * tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:])
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i], weights=(1/6))
+            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:], weights=(1/6))
+            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:], weights=(1/6))
 
             loss_ops_img.append(loss_visual_mse_nodes)
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
@@ -47,7 +46,7 @@ def create_loss_ops(config, target_op, output_ops):
     elif config.loss_type == 'mse_gdl':
         for i, output_op in enumerate(output_ops):
             """ VISUAL LOSS (50% weight) """
-            loss_visual_mse_nodes = 0.25 * tf.losses.mean_squared_error(output_op.nodes[:, :-6], target_node_splits[i][:, :-6])
+            loss_visual_mse_nodes = tf.losses.mean_squared_error(output_op.nodes[:, :-6], target_node_splits[i][:, :-6], weights=0.25)
 
             # pre-processing step for gdl function call
             predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
@@ -55,9 +54,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_visual_gdl_nodes = 0.25 * gradient_difference_loss(predicted_node_reshaped, target_node_reshaped)
 
             """ NONVISUAL LOSS (50% weight) """
-            loss_nonvisual_mse_edges = (1/6) * tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i])
-            loss_nonvisual_mse_nodes_pos = (1/6) * tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:])
-            loss_nonvisual_mse_nodes_vel = (1/6) * tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:])
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i], weights=(1/6))
+            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:], weights=(1/6))
+            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:], weights=(1/6))
 
             loss_ops_img.append(loss_visual_gdl_nodes + loss_visual_mse_nodes)
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)

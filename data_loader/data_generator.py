@@ -1,6 +1,7 @@
 import os
 import multiprocessing
 import tensorflow as tf
+import numpy as np
 from tensorflow.python.platform import gfile
 
 class DataGenerator:
@@ -75,7 +76,7 @@ class DataGenerator:
         sess.run(self.iterator.initializer)
 
 
-    def _parse_function(self, example_proto):
+    def _parse_function(self, example_proto, normalize=True):
         context_features = {
             'experiment_length': tf.FixedLenFeature([], tf.int64),
             'experiment_id': tf.FixedLenFeature([], tf.int64),
@@ -134,11 +135,22 @@ class DataGenerator:
         #objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
         #objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
+
         if self.old_tfrecords:
-            object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.uint8)
+            img_type = tf.uint8
+            fixed_range = [np.iinfo(np.uint8).min, np.iinfo(np.uint8).max]
+            object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
-            object_segments = tf.decode_raw(sequence['object_segments'], out_type=tf.int16)
+            img_type = tf.int16
+            fixed_range = [np.iinfo(np.int16).min, np.iinfo(np.int16).max]
+            object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
+
+        if normalize:
+            mult = tf.stack([experiment_length])
+            fixed_range_tensor = tf.reshape(tf.tile(fixed_range, mult), [mult[0], tf.shape(fixed_range)[0]])
+            #print(fixed_range_tensor.get_shape())
+            img = _normalize_fixed(img, current_range=fixed_range_tensor, normed_range=[[0, 1]])
 
         return_dict = {
             'img': img,
@@ -161,3 +173,23 @@ class DataGenerator:
     def get_next_batch(self):
         return self.iterator.get_next()
 
+
+def _normalize_fixed(x, current_range, normed_range):
+    normed_range = np.asarray(normed_range)
+    # subtract over first dimension
+    shape = [1] * len(x.get_shape())
+    shape[0] = -1
+
+    """ generates the min and max tensors of shape (?,) while "?" typically being e.g. the experiment length """
+    current_min, current_max = tf.expand_dims(current_range[:, 0], 1), tf.expand_dims(current_range[:, 1], 1)
+    normed_min, normed_max = tf.expand_dims(normed_range[:, 0], 1), tf.expand_dims(normed_range[:, 1], 1)
+    current_min, current_max = tf.cast(current_min, x.dtype), tf.cast(current_max, x.dtype)
+
+    """ reshape from (?,1) to (?, (-1, n))) while n = number of dimensions of x minus 1 """
+    current_min, current_max = tf.reshape(current_min, shape), tf.reshape(current_max, shape)
+    normed_min, normed_max = tf.reshape(normed_min, shape), tf.reshape(normed_max, shape)
+
+    x_normed = (x - current_min) / (current_max - current_min)
+    normed_min, normed_max = tf.cast(normed_min, x_normed.dtype), tf.cast(normed_max, x_normed.dtype)
+    x_normed = x_normed * (normed_max - normed_min) + normed_min
+    return x_normed
