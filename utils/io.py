@@ -255,11 +255,12 @@ def export_latent_df(df, dir_path):
     df.to_csv(path_csv)
 
 
-def export_latent_images(df, features, features_index, dir_path, config):
+def export_latent_images(df, features, features_index, dir_path, config, prefix, cur_batch_it, return_image_dict=True):
     """ exports the images corresponding to the latent space such as velocity or position -- currently only implemented for position """
-    #assert mode in ["position", "velocity"]
     n_objects = features[features_index]['n_manipulable_objects']
+    experiment_id = int(features[features_index]['experiment_id'])
 
+    image_dict = {}
     for i in range(n_objects):
         identifier_gt = "{}_obj_gt_pos".format(i)
         identifier_pred = "{}_obj_pred_pos".format(i)
@@ -267,7 +268,12 @@ def export_latent_images(df, features, features_index, dir_path, config):
         animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=config.n_rollouts)
         title = 'Ground truth vs predicted centroid position of object {}'.format(i)
 
-        path_3d = os.path.join(dir_path, "3d_obj_pos_3d_object_" + str(i) + ".gif")
-        path_2d = os.path.join(dir_path, "2d_obj_pos_3d_object_" + str(i) + ".gif")
-        animate.store_3dplot(title=title, output_dir=path_3d)
-        animate.store_2dplot(title=title, output_dir=path_2d)
+        path_3d = os.path.join(dir_path, "3d_obj_pos_object_" + str(i) + ".gif")
+        path_2d = os.path.join(dir_path, "2d_obj_pos_object_" + str(i) + ".gif")
+        fig_as_array_3d = animate.store_3dplot(title=title, output_dir=path_3d)
+        fig_as_array_2d = animate.store_2dplot(title=title, output_dir=path_2d)
+
+        image_dict[prefix + "_3d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_3d
+        image_dict[prefix + "_2d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_2d
+
+    return_image_dict
