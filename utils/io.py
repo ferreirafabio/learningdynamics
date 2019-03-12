@@ -255,8 +255,10 @@ def export_latent_df(df, dir_path):
     df.to_csv(path_csv)
 
 
-def export_latent_images(df, features, features_index, dir_path, config, prefix, cur_batch_it, return_image_dict=True):
-    """ exports the images corresponding to the latent space such as velocity or position -- currently only implemented for position """
+def create_latent_images(df, features, features_index, dir_path, config, prefix, cur_batch_it, export_latent_images=False):
+    """ creates the images corresponding to the latent space such as velocity or position -- currently only implemented for position
+        if a directory exists, only the image_dict is generated for summary, otherwise the dict is generated and the images exported
+     """
     n_objects = features[features_index]['n_manipulable_objects']
     experiment_id = int(features[features_index]['experiment_id'])
 
@@ -270,10 +272,10 @@ def export_latent_images(df, features, features_index, dir_path, config, prefix,
 
         path_3d = os.path.join(dir_path, "3d_obj_pos_object_" + str(i) + ".gif")
         path_2d = os.path.join(dir_path, "2d_obj_pos_object_" + str(i) + ".gif")
-        fig_as_array_3d = animate.store_3dplot(title=title, output_dir=path_3d)
-        fig_as_array_2d = animate.store_2dplot(title=title, output_dir=path_2d)
+        fig_as_array_3d = animate.save_3d_plot(title=title, output_dir=path_3d)
+        fig_as_array_2d = animate.save_2d_plot(title=title, output_dir=path_2d)
 
         image_dict[prefix + "_3d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_3d
         image_dict[prefix + "_2d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_2d
 
-    return_image_dict
+    return image_dict
