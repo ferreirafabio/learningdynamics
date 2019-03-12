@@ -119,7 +119,7 @@ class SingulationTrainer(BaseTrain):
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
-            print('batch: {:<8} total loss: {:<8.2f} | img loss: {:<8.2f} | vel loss: {:<8.2f} | pos loss: {:<8.4f} | distance loss: {:<8.4f} time(s): {:<10.2f} '
+            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | distance loss: {:<8.6f} time(s): {:<10.2f} '
                 .format(
                 cur_batch_it, batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log)
             )
@@ -155,6 +155,7 @@ class SingulationTrainer(BaseTrain):
                                                                     initial_pos_vel_known=initial_pos_vel_known
                                                                     )
 
+
         start_time = time.time()
         last_log_time = start_time
 
@@ -163,8 +164,6 @@ class SingulationTrainer(BaseTrain):
                                                                                                       target_graphs_all_exp[i],
                                                                                                       features[i],
                                                                                                       train=False)
-
-            # todo: denormalize outputs
             if total_loss is not None:
                 losses_total.append(total_loss)
                 losses_img.append(loss_img)
@@ -205,13 +204,11 @@ class SingulationTrainer(BaseTrain):
         else:
             batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss = 0, 0, 0, 0, 0
 
-
         if outputs_for_summary is not None:
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-1):
                     summaries_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
-                                                                                 export_images, export_latent_data, sub_dir_name)
-                                                       for output in outputs_for_summary)
+                                                                                 export_images, sub_dir_name) for output in outputs_for_summary)
 
 
             else:
@@ -225,12 +222,14 @@ class SingulationTrainer(BaseTrain):
                                                                      export_latent_data=export_latent_data,
                                                                      dir_name=sub_dir_name)
 
-
             if summaries_dict_images:
                 if self.config.parallel_batch_processing:
                     """ parallel mode returns list, just use first element as a summary for the logger """
                     summaries_dict_images = summaries_dict_images[0]
-                summaries_dict = {**summaries_dict, **summaries_dict_images, **summary_pos_dict_images}
+                    if summary_pos_dict_images is not None:
+                        summaries_dict = {**summaries_dict, **summaries_dict_images, **summary_pos_dict_images}
+                    else:
+                        summaries_dict = {**summaries_dict, **summaries_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
                 del summaries_dict

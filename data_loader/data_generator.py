@@ -147,6 +147,7 @@ class DataGenerator:
         else:
             # img, seg
             image_range = [np.uint16(0), np.uint16(255)]
+            image_range_depth = [np.uint16(np.iinfo(np.uint16).min), np.uint16(np.iinfo(np.uint16).max)]
 
             # object_segments
             img_type = tf.int16
@@ -167,7 +168,7 @@ class DataGenerator:
 
             if self.depth_data_provided:
                 depth_shape = depth.get_shape()[-3:]
-                depth = _normalize_fixed(depth, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=depth_shape)
+                depth = _normalize_fixed(depth, range_min=image_range_depth[0], range_max=image_range_depth[1], normed_min=0, normed_max=1, shape=depth_shape)
 
             object_segments = _normalize_fixed(object_segments, range_min=image_range_seg[0], range_max=image_range_seg[1], normed_min=0,
                                                normed_max=1, shape=object_seg_shape)

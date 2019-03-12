@@ -28,7 +28,7 @@ class AnimateLatentData():
         self.std_stats = self.df[std_col_name].iloc[0]
 
 
-    def store_3dplot(self, title, output_dir):
+    def save_3d_plot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.graph = self.ax.scatter([], [], [], s=70, marker="o")
@@ -74,7 +74,7 @@ class AnimateLatentData():
         return fig_as_np_array
 
 
-    def store_2dplot(self, title, output_dir):
+    def save_2d_plot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111)
         self.graph = self.ax.scatter([], [], s=70, marker="o" , animated=True)
@@ -173,6 +173,6 @@ if __name__ == '__main__':
     title = 'Ground truth vs predicted centroid position of object {}'.format(SELECTED_OBJECT_NUMBER)
     path_3d = out_dir + "/3d_obj_pos_3d_object" + ".gif"
     path_2d = out_dir + "/2d_obj_pos_3d_object" + ".gif"
-    animate.store_3dplot(title=title, output_dir=path_3d)
-    animate.store_2dplot(title=title, output_dir=path_2d)
+    animate.save_3d_plot(title=title, output_dir=path_3d)
+    animate.save_2d_plot(title=title, output_dir=path_2d)
 

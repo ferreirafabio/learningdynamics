@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 
 from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
-from utils.io import export_summary_images, export_latent_df, export_latent_images
+from utils.io import export_summary_images, export_latent_df, create_latent_images
 from skimage import img_as_ubyte, img_as_uint
 
-def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it):
+def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it, config):
     predicted_summaries_dict_seg = {
     prefix + '_predicted_seg_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i): obj for
     i, obj in enumerate(images_seg)}
@@ -32,27 +32,31 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
 
     target_summaries_dict_rgb = {
     prefix + '_target_rgb_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
-        lst[..., :3], axis=0) for i, lst in enumerate(lists_obj_segs)}
+        lst[..., :3], axis=0) if not config.normalize_data else img_as_uint(np.squeeze(lst[..., :3], axis=0))
+        for i, lst in enumerate(lists_obj_segs)}
 
     target_summaries_dict_seg = {
     prefix + '_target_seg_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
-        np.expand_dims(lst[..., 3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
+        np.expand_dims(lst[..., 3], axis=4), axis=0) if not config.normalize_data else
+        img_as_uint(np.squeeze(np.expand_dims(lst[..., 3], axis=4), axis=0)) for i, lst in enumerate(lists_obj_segs)}
 
     target_summaries_dict_depth = {
     prefix + '_target_depth_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
-        lst[..., -3:], axis=0) for i, lst in enumerate(lists_obj_segs)}
+        lst[..., -3:], axis=0) if not config.normalize_data else img_as_uint(np.squeeze(lst[..., -3:], axis=0))
+            for i, lst in enumerate(lists_obj_segs)}
 
     target_summaries_dict_global_img = {
         prefix + '_target_global_img_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it):
-            features[features_index]['img']}
+            features[features_index]['img'] if not config.normalize_data else img_as_uint(features[features_index]['img'])}
 
     target_summaries_dict_global_seg = {
         prefix + '_target_global_seg_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it): np.expand_dims(
-            features[features_index]['seg'], axis=4)}
+            features[features_index]['seg'], axis=4) if not config.normalize_data else img_as_uint(np.expand_dims(
+            features[features_index]['seg'], axis=4))}
 
     target_summaries_dict_global_depth = {
         prefix + '_target_global_depth_exp_id_{}_batch_{}'.format(cur_batch_it, features[features_index]['experiment_id'], cur_batch_it):
-            features[features_index]['depth']}
+            features[features_index]['depth'] if not config.normalize_data else img_as_uint(features[features_index]['depth'])}
 
     return target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
            target_summaries_dict_global_seg, target_summaries_dict_global_depth
@@ -72,8 +76,8 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
         prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config)
 
-    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg,
-                             **target_summaries_dict_rgb, **target_summaries_dict_seg,
+    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
+                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
                              **target_summaries_dict_global_img, **target_summaries_dict_global_seg}
 
 
@@ -163,7 +167,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
-            summary_pos_dict_images = export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path,
+            summary_pos_dict_images = create_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path,
                                                           config=config, prefix=prefix, cur_batch_it=cur_batch_it)
 
     return summaries_dict_images, summary_pos_dict_images
