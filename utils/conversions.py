@@ -58,3 +58,6 @@ def convert_float_image_to_int16_legacy(float_image): #todo: remove wrong (65k v
     float_image = float_image.astype(dt) / float_image.max()
     float_image = 255 * float_image
     return float_image.astype(np.int16)
+
+def denormalize_gn_output(output):
+    raise NotImplementedError
