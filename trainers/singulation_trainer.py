@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import time
 from base.base_train import BaseTrain
-from utils.conversions import convert_dict_to_list_subdicts
+from utils.conversions import convert_dict_to_list_subdicts, denormalize_gn_output
 from utils.tf_summaries import generate_results
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
@@ -164,6 +164,7 @@ class SingulationTrainer(BaseTrain):
                                                                                                       features[i],
                                                                                                       train=False)
 
+            # todo: denormalize outputs
             if total_loss is not None:
                 losses_total.append(total_loss)
                 losses_img.append(loss_img)

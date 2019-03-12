@@ -5,7 +5,7 @@ import pandas as pd
 
 from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
 from utils.io import export_summary_images, export_latent_df, export_latent_images
-
+from skimage import img_as_ubyte, img_as_uint
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it):
     predicted_summaries_dict_seg = {
@@ -23,7 +23,7 @@ def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix,
     return predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb
 
 
-def create_target_summary_dicts(prefix, features, features_index, cur_batch_it):
+def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, config):
     ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     # shape [exp_length, n_objects, w, h, c] --> shape [n_objects, exp_length, w, h, c] --> split in n_objects lists -->
@@ -58,18 +58,19 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it):
            target_summaries_dict_global_seg, target_summaries_dict_global_depth
 
 
-def create_image_summary(output_for_summary, config, prefix, features, cur_batch_it, export_images, dir_name):
+def create_image_summary(output_for_summary, config, prefix, features, cur_batch_it):
     ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
     images_rgb, images_seg, images_depth = get_images_from_gn_output(output_for_summary[0], config.depth_data_provided)
     features_index = output_for_summary[1]  # assumes outside caller uses for loop to iterate over outputs --> use always first index
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
-        images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+        images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,
+        config=config)
 
 
     target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
     target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
-        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config)
 
     summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg,
                              **target_summaries_dict_rgb, **target_summaries_dict_seg,
@@ -148,7 +149,7 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
-                                                 cur_batch_it=cur_batch_it, export_images=export_images, dir_name=dir_name)
+                                                 cur_batch_it=cur_batch_it)
 
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
