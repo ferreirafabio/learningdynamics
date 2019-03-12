@@ -69,6 +69,11 @@ class AnimateLatentData():
         output_dir = os.path.join(base, file + "_final" + ".png")
         self.fig.savefig(output_dir, writer="imagemagick")
 
+        fig_as_np_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        fig_as_np_array = fig_as_np_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+        return fig_as_np_array
+
+
     def store_2dplot(self, title, output_dir):
         self.fig = plt.figure(dpi=200)
         self.ax = self.fig.add_subplot(111)
@@ -107,6 +112,10 @@ class AnimateLatentData():
 
         plt.show()
         self.fig.savefig(output_dir, writer="imagemagick")
+
+        fig_as_np_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        fig_as_np_array = fig_as_np_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+        return fig_as_np_array
 
     def _update_3d_graph(self, num):
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])

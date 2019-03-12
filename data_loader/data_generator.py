@@ -132,37 +132,37 @@ class DataGenerator:
         objpos = tf.reshape(objpos, tf.stack([experiment_length, n_manipulable_objects, 3]))
 
         # the following yields [240,240,240] to broadcast with shape (experiment_length, n_manipulable_objects, 3)
+        # might be unneccessary step in case of normalization due to multiplicative scale invariance
         vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
         objvel = tf.identity(objpos, name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
 
-        # indices: 0=first object,...,2=third object
-        #objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
-        #objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3]))
-
         if self.old_tfrecords:
             img_type = tf.uint8
-            image_range = [np.iinfo(np.uint8).min, np.iinfo(np.uint8).max]
+            image_range_seg = [np.iinfo(np.uint8).min, np.iinfo(np.uint8).max]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             img_type = tf.int16
-            image_range = [np.iinfo(np.int16).min, np.iinfo(np.int16).max]
+            image_range_seg = [np.iinfo(np.int16).min, np.iinfo(np.int16).max]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
         if normalize:
+            image_range = [np.iinfo(np.uint16).min, np.iinfo(np.uint16).max]
             img_shape = img.get_shape()[-3:]
             seg_shape = seg.get_shape()[-2:]
             object_seg_shape = object_segments.get_shape()[-3:]
             gripperpos_shape = gripperpos.get_shape()[-1:]
             objpos_shape = objpos.get_shape()[-1:]
+
             img = _normalize_fixed(img, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=img_shape)
             seg = _normalize_fixed(seg, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=seg_shape)
 
             if self.depth_data_provided:
                 depth_shape = depth.get_shape()[-3:]
                 depth = _normalize_fixed(depth, range_min=image_range[0], range_max=image_range[1], normed_min=0, normed_max=1, shape=depth_shape)
-            object_segments = _normalize_fixed(object_segments, range_min=image_range[0], range_max=image_range[1], normed_min=0,
-                                               normed_max=1, shape=object_seg_shape)
+
+            #object_segments = _normalize_fixed(object_segments, range_min=image_range_seg[0], range_max=image_range_seg[1], normed_min=0,
+            #                                   normed_max=1, shape=object_seg_shape)
 
             gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
             objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
@@ -199,7 +199,7 @@ def _normalize_fixed(x, range_min, range_max, normed_min, normed_max, shape):
     current_min_tensor = tf.fill(shape, tf.cast(range_min, x.dtype))
     current_max_tensor = tf.fill(shape, tf.cast(range_max, x.dtype))
 
-    # using broadcasting, e.g. shape (5,10,120,160,3) subtracted by shape (120,160,3) yields (5,10,120,160,3)
+    # using broadcasting, e.g. shape (10,5,120,160,7) subtracted by shape (120,160,7) yields (10,5,120,160,7)
     x_normed = (x - current_min_tensor) / (current_max_tensor - current_min_tensor)
 
     normed_min_tensor = tf.fill(shape, tf.cast(normed_min, x_normed.dtype))

@@ -71,16 +71,15 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
         prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it)
 
-    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
-                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
-                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg,
-                             **target_summaries_dict_global_depth}
+    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg,
+                             **target_summaries_dict_rgb, **target_summaries_dict_seg,
+                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg}
 
 
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=False, adjust_vel_pred_range=False, norm_factor=240):
+def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=False, adjust_vel_pred_range=False, convert_pos_to_vel=True, norm_factor=240):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
@@ -92,13 +91,17 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
     # unresolved bug: velocity ground truth is scaled by a factor of "norm_factor" (as expected) but the predicted vel is not scaled
     # vice-versa for position
-    if adjust_pos_ped_range:
-        pos = [list(ary/norm_factor for ary in lst) for lst in pos]
-    if adjust_vel_pred_range:
-        vel = [list(ary * norm_factor for ary in lst) for lst in vel]
+    #if adjust_pos_ped_range:
+    #    pos = [list(ary/norm_factor for ary in lst) for lst in pos]
+    #if adjust_vel_pred_range:
+    #    vel = [list(ary * norm_factor for ary in lst) for lst in vel]
 
     features_index = output_for_summary[1]
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
+
+    if convert_pos_to_vel:
+        vel = [list(ary * norm_factor for ary in lst) for lst in vel]
+        vel_gt = [list(ary * norm_factor for ary in lst) for lst in vel_gt]
 
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
@@ -149,6 +152,8 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
 
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
+    summary_pos_dict_images = None
+
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
 
@@ -157,9 +162,10 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
-            export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path, config=config)
+            summary_pos_dict_images = export_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path,
+                                                          config=config, prefix=prefix, cur_batch_it=cur_batch_it)
 
-    return summaries_dict_images
+    return summaries_dict_images, summary_pos_dict_images
 
 
 def get_latent_target_data(features, features_index):

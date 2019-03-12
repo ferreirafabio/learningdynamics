@@ -215,21 +215,21 @@ class SingulationTrainer(BaseTrain):
 
             else:
                 for output in outputs_for_summary:
-                    summaries_dict_images = generate_results(output=output,
-                                                             config=self.config,
-                                                             prefix=prefix,
-                                                             features=features,
-                                                             cur_batch_it=cur_batch_it,
-                                                             export_images=export_images,
-                                                             export_latent_data=export_latent_data,
-                                                             dir_name=sub_dir_name)
+                    summaries_dict_images, summary_pos_dict_images = generate_results(output=output,
+                                                                     config=self.config,
+                                                                     prefix=prefix,
+                                                                     features=features,
+                                                                     cur_batch_it=cur_batch_it,
+                                                                     export_images=export_images,
+                                                                     export_latent_data=export_latent_data,
+                                                                     dir_name=sub_dir_name)
 
 
             if summaries_dict_images:
                 if self.config.parallel_batch_processing:
                     """ parallel mode returns list, just use first element as a summary for the logger """
                     summaries_dict_images = summaries_dict_images[0]
-                summaries_dict = {**summaries_dict, **summaries_dict_images}
+                summaries_dict = {**summaries_dict, **summaries_dict_images, **summary_pos_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
                 del summaries_dict

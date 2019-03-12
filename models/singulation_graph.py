@@ -107,7 +107,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 """ in this case, the nodes will have dynamic visual information over time """
                 obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
-            vel = features['objvel'][step][obj_id].flatten().astype(np.float32) # todo: normalize by fps 1/30
+            vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
 
@@ -217,6 +217,7 @@ def create_placeholders(config, batch_data):
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
+
     return input_ph, target_ph
 
 
