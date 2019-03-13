@@ -6,7 +6,7 @@ def create_loss_ops(config, target_op, output_ops):
     """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
     is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
     --> same applies for edges
-    we further assume object/node features are given in the following order (pixels/visual information, velocity(3dim), gripper (3dim))
+    we further assume object/node features are given in the following order (pixels/visual information, velocity(3dim), pos (3dim))
 
     """
     mult = tf.constant([len(output_ops)])
