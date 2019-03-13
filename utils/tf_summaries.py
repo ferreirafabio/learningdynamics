@@ -93,7 +93,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
 
     summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
                              **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
-                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg}
+                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
 
 
     return summaries_dict_images, features_index
