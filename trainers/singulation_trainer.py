@@ -29,9 +29,9 @@ class SingulationTrainer(BaseTrain):
                 break
 
     def do_step(self, input_graph, target_graphs, feature, train=True):
-        feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
 
         if train:
+            feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
                                   "loss_total": self.model.loss_op_train_total,
@@ -43,7 +43,8 @@ class SingulationTrainer(BaseTrain):
                                   }, feed_dict=feed_dict)
 
         else:
-            data = self.sess.run({"target": self.model.target_ph,
+            feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, input_graph, target_graphs)
+            data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
                                   "outputs": self.model.output_ops_test,
                                   "loss_img": self.model.loss_ops_test_img,
@@ -191,7 +192,7 @@ class SingulationTrainer(BaseTrain):
             dis_batch_loss = np.mean(losses_distance)
 
 
-            print('total test batch loss: {:<8.2f} | img loss: {:<8.2f} | vel loss: {:<8.2f} | pos loss {:<8.4f} | distance loss {:<8.4f} time(s): {:<10.2f}'.format(
+            print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
                 batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_total_loss': batch_loss,

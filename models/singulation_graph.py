@@ -213,7 +213,7 @@ def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
 
 
 def create_placeholders(config, batch_data):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=False)
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=config.initial_pos_vel_known)
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
