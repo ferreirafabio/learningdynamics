@@ -30,11 +30,12 @@
   "test_batch_size": 5,
   "test_interval": 5,
   "tfrecords_dir": "../data/destination_10_rollouts",
+  "test_interval": 300,
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "train_test",
   "initial_pos_vel_known": false,
   "loss_type": "mse",
-  "model_zoo_file": "EncodeProcessDecode_v2"
+  "model_zoo_file": "EncodeProcessDecode_v1"
 }

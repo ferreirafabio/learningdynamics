@@ -93,3 +93,4 @@ class BaseTrain:
         self.model.loss_ops_test_velocity = tf.reduce_mean(loss_ops_test_velocity)
         self.model.loss_ops_test_position = tf.reduce_mean(loss_ops_test_position)
         self.model.loss_ops_test_distance = tf.reduce_mean(loss_ops_test_distance)
+
