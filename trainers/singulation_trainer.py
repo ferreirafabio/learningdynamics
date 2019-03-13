@@ -208,13 +208,13 @@ class SingulationTrainer(BaseTrain):
         if outputs_for_summary is not None:
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-1):
-                    summaries_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
+                    summaries_dict_images, summaries_pos_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
                                                                                  export_images, export_latent_data, sub_dir_name) for output in outputs_for_summary)
 
 
             else:
                 for output in outputs_for_summary:
-                    summaries_dict_images, summary_pos_dict_images = generate_results(output=output,
+                    summaries_dict_images, summaries_pos_dict_images = generate_results(output=output,
                                                                      config=self.config,
                                                                      prefix=prefix,
                                                                      features=features,
@@ -227,13 +227,16 @@ class SingulationTrainer(BaseTrain):
                 if self.config.parallel_batch_processing:
                     """ parallel mode returns list, just use first element as a summary for the logger """
                     summaries_dict_images = summaries_dict_images[0]
-                    if summary_pos_dict_images is not None:
-                        summaries_dict = {**summaries_dict, **summaries_dict_images, **summary_pos_dict_images}
-                    else:
-                        summaries_dict = {**summaries_dict, **summaries_dict_images}
+                    if summaries_pos_dict_images is not None: 
+                        summaries_pos_dict_images = summaries_pos_dict_images[0]
+                
+                if summaries_pos_dict_images is not None:
+                    # todo: add pos_dict
+                    summaries_dict = {**summaries_dict, **summaries_dict_images}
+                else:
+                    summaries_dict = {**summaries_dict, **summaries_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
-                del summaries_dict
 
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 

@@ -119,6 +119,12 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     features_index = output_for_summary[1]
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
 
+    # in the case we have more gt data than predictions:
+    if gt_features[feature_index]['experiment_length'] != len(output_for_summary[0]):
+        cut_length = len(output_for_summary[0])
+    else:
+        cut_length = None
+
     if convert_pos_to_vel:
         vel = [list(ary * norm_factor for ary in lst) for lst in vel]
         vel_gt = [list(ary * norm_factor for ary in lst) for lst in vel_gt]
@@ -140,6 +146,9 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
 
     all_data = all_pos + all_vel
     all_header = header_pos + header_vel
+
+    if cut_length is not None:
+        all_data = [lst[:cut_length] for lst in all_data]
 
     df = pd.DataFrame.from_items(zip(all_header, all_data))
 
