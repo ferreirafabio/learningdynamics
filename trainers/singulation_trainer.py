@@ -43,6 +43,7 @@ class SingulationTrainer(BaseTrain):
                                   }, feed_dict=feed_dict)
 
         else:
+
             feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, input_graph, target_graphs)
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
@@ -72,6 +73,25 @@ class SingulationTrainer(BaseTrain):
                                 sub_dir_name="test_{}_rollouts_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it))
             except tf.errors.OutOfRangeError:
                 break
+
+    def test_overfit(self):
+        if self.config.n_epochs == 1:
+            print("test mode --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+        prefix = self.config.exp_name
+        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        while True:
+            try:
+                self.test_batch(prefix=prefix,
+                                export_images=self.config.export_test_images,
+                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                process_all_nn_outputs=True,
+                                sub_dir_name="test_overfit_{}_rollouts_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it))
+            except tf.errors.OutOfRangeError:
+                break
+
 
     def train_batch(self, prefix):
         losses = []
@@ -136,7 +156,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None, export_latent_data=True):
+    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None, export_latent_data=True, add_gripper_noise=False):
         losses_total = []
         losses_img = []
         losses_velocity = []
@@ -149,7 +169,12 @@ class SingulationTrainer(BaseTrain):
         next_element = self.test_data.get_next_batch()
         features = self.sess.run(next_element)
 
+
+
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+        #if add_gripper_noise:
+
+
         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     batch_size=self.config.test_batch_size,

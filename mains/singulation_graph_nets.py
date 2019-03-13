@@ -35,9 +35,9 @@ def main():
             config.latent_state_noise = False
 
         if config.normalize_data:
-            print("using normalized data as input")
+            print("-- using normalized data as input --")
         else:
-            print("using unnormalized data as input")
+            print("-- using unnormalized data as input --")
 
 
         # model = import_class_by_string("models.model_zoo." + config.model_zoo_file)
@@ -75,7 +75,9 @@ def main():
     elif config.mode == "test":
         print("--- Running TEST MODE ---")
         trainer.test_rollouts()
-
+    elif config.mode == "test_overfit":
+        print("--- Running TEST OVERFIT ---")
+        trainer.test_overfit()
 
 if __name__ == '__main__':
     main()
