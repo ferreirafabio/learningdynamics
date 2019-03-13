@@ -120,7 +120,7 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
 
     # in the case we have more gt data than predictions:
-    if gt_features[feature_index]['experiment_length'] != len(output_for_summary[0]):
+    if gt_features[features_index]['experiment_length'] != len(output_for_summary[0]):
         cut_length = len(output_for_summary[0])
     else:
         cut_length = None
