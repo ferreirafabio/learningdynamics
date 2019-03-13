@@ -188,11 +188,12 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
         return None
 
     for file_name, img_data in image_dicts.items():
-        if img_data.dtype == np.float32 or img_data.dtype == np.float64:
-            ''' normalize [-1, 1]'''
-            img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
-
-        img_data_uint = img_as_ubyte(img_data)
+        # if img_data.dtype == np.float32 or img_data.dtype == np.float64:
+        #     ''' normalize [-1, 1]'''
+        #     img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
+        #
+        # img_data_uint = img_as_ubyte(img_data)
+        img_data_uint = img_data
         if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
             if use_moviepy:
                 ''' segmentation masks '''
