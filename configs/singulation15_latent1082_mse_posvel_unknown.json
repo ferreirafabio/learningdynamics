@@ -35,7 +35,7 @@
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
-  "mode": "test",
+  "mode": "train_test",
   "initial_pos_vel_known": false,
   "loss_type": "mse",
   "model_zoo_file": "EncodeProcessDecode_v3"
