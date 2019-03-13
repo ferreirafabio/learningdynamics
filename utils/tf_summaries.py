@@ -109,21 +109,21 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     Adjustment parameters specified due to scale bug
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
-    # unresolved bug: velocity ground truth is scaled by a factor of "norm_factor" (as expected) but the predicted vel is not scaled
-    # vice-versa for position
     #if adjust_pos_ped_range:
     #    pos = [list(ary/norm_factor for ary in lst) for lst in pos]
     #if adjust_vel_pred_range:
     #    vel = [list(ary * norm_factor for ary in lst) for lst in vel]
 
     features_index = output_for_summary[1]
-    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index)
-
-    # in the case we have more gt data than predictions:
+    
+    #in the case we have more gt data than predictions:
     if gt_features[features_index]['experiment_length'] != len(output_for_summary[0]):
         cut_length = len(output_for_summary[0])
     else:
         cut_length = None
+
+
+    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
 
     if convert_pos_to_vel:
         vel = [list(ary * norm_factor for ary in lst) for lst in vel]
@@ -146,9 +146,6 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
 
     all_data = all_pos + all_vel
     all_header = header_pos + header_vel
-
-    if cut_length is not None:
-        all_data = [lst[:cut_length] for lst in all_data]
 
     df = pd.DataFrame.from_items(zip(all_header, all_data))
 
@@ -197,11 +194,11 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     return summaries_dict_images, summary_pos_dict_images
 
 
-def get_latent_target_data(features, features_index):
+def get_latent_target_data(features, features_index, limit=None):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
     list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
-    list_obj_pos = [list(np.squeeze(i)) for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
-    list_obj_vel = [list(np.squeeze(i)) for i in list_obj_vel]
+    list_obj_pos = [list(np.squeeze(i))[:None] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
+    list_obj_vel = [list(np.squeeze(i))[:None] for i in list_obj_vel]
 
     return list_obj_pos, list_obj_vel
