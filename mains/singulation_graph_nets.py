@@ -18,6 +18,7 @@ def main():
         config.old_tfrecords = args.old_tfrecords
         config.normalize_data = args.normalize_data
 
+
         if args.n_epochs:
             print("overwriting n_epochs in config file")
             config.n_epochs = args.n_epochs
@@ -32,6 +33,12 @@ def main():
 
         if not hasattr(config, 'latent_state_noise'):
             config.latent_state_noise = False
+
+        if config.normalize_data:
+            print("using normalized data as input")
+        else:
+            print("using unnormalized data as input")
+
 
         # model = import_class_by_string("models.model_zoo." + config.model_zoo_file)
         model_class = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
