@@ -142,7 +142,8 @@ class DataGenerator:
 
             # object_segments
             img_type = tf.uint8
-            image_range_seg = [np.uint8(np.iinfo(np.uint8).min), np.uint8(np.iinfo(np.uint8).max)]
+            #image_range_seg = [np.uint8(np.iinfo(np.uint8).min), np.uint8(np.iinfo(np.uint8).max)]
+            image_range_seg = [np.uint8(0), np.uint8(239)]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             # img, seg
@@ -151,7 +152,8 @@ class DataGenerator:
 
             # object_segments
             img_type = tf.int16
-            image_range_seg = [np.int16(-255), np.int16(255)]
+            #image_range_seg = [np.int16(-255), np.int16(255)]
+            image_range_seg = [np.int16(-54), np.int16(243)]
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 

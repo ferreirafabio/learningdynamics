@@ -29,7 +29,7 @@ def generate_singulation_graph(config, n_manipulable_objects):
 
     for i in range(offset, n_manipulable_objects):
         ''' no multiple features -> flatten and concatenate everything '''
-        # 120*160*4(seg+rgb)+3(pos)+3(vel)
+        # 120*160*4(seg+rgb)+3(vel)+3(pos)
         object_str = str(i)
         graph_nx.add_node(i, type_name='manipulable_object_' + object_str)
         graph_nx.add_node(i, features=np.zeros(shape=(config.node_output_size,), dtype=np.float32))
