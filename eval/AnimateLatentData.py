@@ -67,9 +67,10 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
-        plt.show()
-        self.fig.savefig(output_dir, writer="imagemagick")
 
+        self.fig.savefig(output_dir, writer="imagemagick")
+        
+        #plt.show()
         fig_as_np_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
         fig_as_np_array = fig_as_np_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
         return fig_as_np_array
@@ -111,9 +112,9 @@ class AnimateLatentData():
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
 
-        plt.show()
         self.fig.savefig(output_dir, writer="imagemagick")
 
+        #plt.show()
         fig_as_np_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
         fig_as_np_array = fig_as_np_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
         return fig_as_np_array
