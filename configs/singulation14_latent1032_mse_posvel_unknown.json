@@ -28,7 +28,7 @@
   "num_iter_per_epoch": 10,
   "parallel_batch_processing": false,
   "test_batch_size": 5,
-  "test_interval": 5,
+  "test_interval": 200,
   "tfrecords_dir": "../data/destination_10_rollouts",
   "test_interval": 300,
   "train_batch_size": 20,
@@ -37,5 +37,5 @@
   "mode": "train_test",
   "initial_pos_vel_known": false,
   "loss_type": "mse",
-  "model_zoo_file": "EncodeProcessDecode_v1"
+  "model_zoo_file": "EncodeProcessDecode_v2"
 }
