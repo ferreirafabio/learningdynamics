@@ -67,6 +67,7 @@ class AnimateLatentData():
         base, filename = os.path.split(output_dir)
         file, _ = filename.split(".")
         output_dir = os.path.join(base, file + "_final" + ".png")
+        plt.show()
         self.fig.savefig(output_dir, writer="imagemagick")
 
         fig_as_np_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')

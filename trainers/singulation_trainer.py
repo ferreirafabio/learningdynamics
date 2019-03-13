@@ -209,7 +209,7 @@ class SingulationTrainer(BaseTrain):
             if self.config.parallel_batch_processing:
                 with parallel_backend('loky', n_jobs=-1):
                     summaries_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
-                                                                                 export_images, sub_dir_name) for output in outputs_for_summary)
+                                                                                 export_images, export_latent_data, sub_dir_name) for output in outputs_for_summary)
 
 
             else:
