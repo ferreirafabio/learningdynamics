@@ -18,7 +18,7 @@ def get_args():
     argparser.add_argument('-tfrecords_dir', '--tfrecords_dir', default=None, help='overwrites the tfrecords dir specified in the configuration file')
 
     argparser.add_argument('-old_tfrecords', '--old_tfrecords', default=False, action="store_true", help='overwrites the mode specified in the configuration file')
-    argparser.add_argument('-normalize_data', '--normalize_data', default=True, action="store_true", help='indicates whether training and testing data should be normalized to cover values of range (0,1)')
+    argparser.add_argument('-normalize_data', '--normalize_data', default=True, action="store_false", help='indicates whether training and testing data should be normalized to cover values of range (0,1)')
 
     args, _ = argparser.parse_known_args()
     return args
