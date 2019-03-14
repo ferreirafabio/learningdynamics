@@ -198,7 +198,7 @@ def get_latent_target_data(features, features_index, limit=None):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
     list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
-    list_obj_pos = [list(np.squeeze(i))[:None] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
-    list_obj_vel = [list(np.squeeze(i))[:None] for i in list_obj_vel]
+    list_obj_pos = [list(np.squeeze(i))[:limit] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
+    list_obj_vel = [list(np.squeeze(i))[:limit] for i in list_obj_vel]
 
     return list_obj_pos, list_obj_vel
