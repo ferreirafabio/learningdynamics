@@ -16,7 +16,6 @@ class SingulationTrainer(BaseTrain):
         while True:
             try:
                 _, _, _, _, cur_batch_it = self.train_batch(prefix)
-
                 if cur_batch_it % self.config.model_save_step_interval == 1:
                     self.model.save(self.sess)
                 if cur_batch_it % self.config.test_interval == 1:

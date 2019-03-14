@@ -188,8 +188,8 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
         return None
 
     for file_name, img_data in image_dicts.items():
-        if not normalization:
-            if img_data.dtype == np.float32 or img_data.dtype == np.float64:
+        if img_data.dtype == np.float32 or img_data.dtype == np.float64:
+            if np.min(img_data) < -1.0 or np.max(img_data) > 1.0:
                 ''' normalize [0, 1]'''
                 img_data = (img_data - np.min(img_data)) / np.ptp(img_data)
                 #img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
