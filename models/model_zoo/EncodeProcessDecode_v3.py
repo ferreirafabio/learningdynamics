@@ -112,16 +112,16 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
 
-    def _build(self, input_op, num_processing_steps, is_training, sess):
+    def _build(self, input_op, num_processing_steps, is_training):
         print("EncodeProcessDecode mode: global position only")
-        latent = self._encoder(input_op, is_training, sess)
+        latent = self._encoder(input_op, is_training)
 
         latent0 = latent
         output_ops = []
         for _ in range(num_processing_steps):
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
-            decoded_op = self._decoder(latent, is_training, sess)
+            decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
 
         return output_ops
@@ -197,49 +197,51 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
 
     def __init__(self, model_id, name="CNNMLPEncoderGraphIndependent"):
         super(CNNMLPEncoderGraphIndependent, self).__init__(name=name)
+        self.model_id = model_id
 
         with self._enter_variable_scope():
             """ we want to re-use the cnn encoder for both nodes and global attributes """
-            visual_encoder = get_model_from_config(model_id, model_type="visual_encoder")(name="visual_encoder")
+            visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=None, name="visual_encoder")
 
             """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
             self._network = modules.GraphIndependent(
-                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_edges,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_encoder_edge"),
 
-                node_model_fn=lambda: get_model_from_config(model_id, model_type="visual_and_latent_encoder")(visual_encoder,
+                node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
                                                                                                               name="visual_and_latent_node_encoder"),
 
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_globals,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_encoder_global"),
             )
 
-    def _build(self, inputs, is_training, sess, verbose=VERBOSITY):
-        out = self._network(inputs)
+    def _build(self, inputs, is_training, verbose=VERBOSITY):
+        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
+        visual_encoder = get_model_from_config(model_id=self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
 
-        # modify is_training flags accordingly
-        with sess.as_default():
-            for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
-                if "is_training_enc" in v.name:
-                    if verbose:
-                        print("tf variable changed: ", v.name, "to: ", str(is_training))
-                    assign_op = v.assign(is_training)
-                    sess.run(assign_op)
-                    assert v.eval() == is_training
+        self._network = modules.GraphIndependent(
+            edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_edges,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
+                                                                                        name="mlp_encoder_edge"),
 
-            # check if it is necessary to call _network(inputs) again
-            variables = out[0].graph.get_collection("variables")
-            for v in variables:
-                if "is_training_enc" in v.name:
-                    assert v.eval() == is_training
+            node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
+                                                                                                               name="visual_and_latent_node_encoder"),
 
-        return out
+            global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                           n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                           output_size=None,
+                                                                                           typ="mlp_layer_norm",
+                                                                                           name="mlp_encoder_global"), )
+
+        return self._network(inputs)
 
 
 class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
@@ -247,47 +249,48 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
 
     def __init__(self, model_id, name="CNNMLPDecoderGraphIndependent"):
         super(CNNMLPDecoderGraphIndependent, self).__init__(name=name)
+        self.model_id = model_id
 
         with self._enter_variable_scope():
-            visual_decoder = get_model_from_config(model_id, model_type="visual_decoder")(name="visual_decoder")
+            visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=None, name="visual_decoder")
 
             self._network = modules.GraphIndependent(
-                edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_edges,
                                                                                         output_size=EncodeProcessDecode_v3.edge_output_size,
                                                                                         typ="mlp_transform",
                                                                                         name="mlp_decoder_edge"),
 
-                node_model_fn=lambda: get_model_from_config(model_id, model_type="visual_and_latent_decoder")(visual_decoder,
+                node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(visual_decoder,
                                                                                                               name="visual_and_latent_node_decoder"),
 
-                global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_globals,
                                                                                         output_size=EncodeProcessDecode_v3.global_output_size,
                                                                                         typ="mlp_transform",
                                                                                         name="mlp_decoder_global"),
             )
 
-    def _build(self, inputs, is_training, sess, verbose=VERBOSITY):
-        out = self._network(inputs)
+    def _build(self, inputs, is_training, verbose=VERBOSITY):
+        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
+        visual_decoder = get_model_from_config(self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
 
-        # modify is_training flags accordingly
-        with sess.as_default():
-            for v in self._network.get_all_variables(collection=tf.GraphKeys.GLOBAL_VARIABLES):
-                if "is_training_dec" in v.name:
-                    if verbose:
-                        print("tf variable changed: ", v.name, "to:", str(is_training))
-                    assign_op = v.assign(is_training)
-                    sess.run(assign_op)
-                    assert v.eval() == is_training
+        self._network = modules.GraphIndependent(
+            edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
+                                                                                                  n_layers=EncodeProcessDecode_v3.n_layers_edges,
+                                                                                                  output_size=EncodeProcessDecode_v3.edge_output_size,
+                                                                                                  typ="mlp_transform",
+                                                                                                  name="mlp_decoder_edge"),
 
-            # check if it is necessary to call _network(inputs) again
-            variables = out[0].graph.get_collection("variables")
-            for v in variables:
-                if "is_training_dec" in v.name:
-                    assert v.eval() == is_training
+            node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(visual_decoder,
+                                                                                                                        name="visual_and_latent_node_decoder"),
 
-        return out
+            global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                                    n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                                    output_size=EncodeProcessDecode_v3.global_output_size,
+                                                                                                    typ="mlp_transform",
+                                                                                                    name="mlp_decoder_global"), )
+        return self._network(inputs)
 
 
 class MLPGraphNetwork(snt.AbstractModule):
@@ -320,8 +323,9 @@ class MLPGraphNetwork(snt.AbstractModule):
 
 
 class Decoder5LayerConvNet2D(snt.AbstractModule):
-    def __init__(self, name='decoder_convnet2d'):
+    def __init__(self, is_training, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
+        self.is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY):
         filter_sizes = [EncodeProcessDecode_v3.n_conv_filters, EncodeProcessDecode_v3.n_conv_filters * 2]
@@ -331,7 +335,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         else:
             activation = tf.nn.relu
 
-        is_training = tf.get_variable("is_training_dec", shape=(), dtype=tf.bool, trainable=False)
 
         img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v3.depth_data_provided)
 
@@ -354,69 +357,95 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 1 (7,10,5) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l1_shape = outputs.get_shape()
 
         ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l2_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
         ''' layer 2 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l3_shape = outputs.get_shape()
 
+
         ''' layer 2 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l4_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
         ''' layer 3 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l5_shape = outputs.get_shape()
 
 
         ''' layer 4 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l6_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
 
         ''' layer 5 (30,40,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l7_shape = outputs.get_shape()
 
         ''' layer 5 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l8_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
         ''' layer 5 (60,80,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l9_shape = outputs.get_shape()
 
         ''' layer 5 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l10_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
         ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=1, strides=1, padding='same')
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         outputs = activation(outputs)
         l11_shape = outputs.get_shape()
 
@@ -437,15 +466,13 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             print("Layer11 decoder output shape", l11_shape)
             print("decoder shape before adding non-visual data", visual_latent_output.get_shape())
 
-        # outputs = tf.nn.dropout(outputs, keep_prob=tf.constant(1.0)) # todo: deal with train/test time
-
-
         return visual_latent_output
 
 
 class Encoder5LayerConvNet2D(snt.AbstractModule):
-    def __init__(self, name):
+    def __init__(self, is_training, name="encoder_convnet2d"):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
+        self.is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY):
 
@@ -457,8 +484,6 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         n_non_visual_elements = 6 # velocity (x,y,z) and position (x,y,z)
 
-        is_training = tf.get_variable("is_training_enc", shape=(), dtype=tf.bool, trainable=False)
-
         filter_sizes = [EncodeProcessDecode_v3.n_conv_filters, EncodeProcessDecode_v3.n_conv_filters * 2]
 
         img_data = inputs[:, :-n_non_visual_elements]  # shape: (batch_size, features)
@@ -468,14 +493,19 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ''' layer 1'''
         outputs = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         l1_shape = outputs.get_shape()
 
         ''' layer 2'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         l2_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 3'''
         if EncodeProcessDecode_v3.convnet_pooling:
@@ -485,8 +515,13 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ''' layer 4'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         l4_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 5'''
         if EncodeProcessDecode_v3.convnet_pooling:
@@ -497,8 +532,13 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ''' layer 6'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         l6_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 7'''
         if EncodeProcessDecode_v3.convnet_pooling:
@@ -510,18 +550,28 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         l8_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
         ''' layer 9'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
         l9_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=0.75)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 10'''
         if EncodeProcessDecode_v3.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l10_shape = outputs.get_shape()
 
-        outputs = tf.layers.batch_normalization(outputs, training=is_training)
+        outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
 
         if verbose:
             print("Layer0 encoder output shape", l1_shape)
@@ -620,6 +670,3 @@ def get_model_from_config(model_id, model_type="mlp"):
         return VisualAndLatentDecoder
     if "cnn2d" in model_id and model_type == "mlp":
         return MLP_model
-
-
-
