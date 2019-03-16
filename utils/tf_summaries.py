@@ -70,7 +70,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
             features[features_index]['seg'], axis=4)}
 
     target_summaries_dict_global_depth = {
-        prefix + '_target_global_depth_exp_id_{}_batch_{}'.format(cur_batch_it, features[features_index]['experiment_id'], cur_batch_it):
+        prefix + '_target_global_depth_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it):
             features[features_index]['depth']}
 
     return target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
