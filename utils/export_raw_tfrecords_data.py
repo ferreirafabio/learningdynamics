@@ -74,12 +74,8 @@ def create_target_summary_dicts(features):
     target_summaries_dict_global_seg = {
         '_target_global_seg_exp_id_{}'.format(features['experiment_id']): np.expand_dims(
             features['seg'], axis=4)}
-
-    target_summaries_dict_global_depth = {
-        '_target_global_depth_exp_id_{}'.format(features['experiment_id']):
-            features['depth']}
-
-    return {**target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
+    
+    return {**target_summaries_dict_global_img, **target_summaries_dict_global_seg}
 
 
 def check_exp_folder_exists_and_create(features, dir_name):
