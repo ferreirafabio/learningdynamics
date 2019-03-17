@@ -57,14 +57,15 @@ class BaseTrain:
         features = self.sess.run(next_element)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
-        input_ph, target_ph = create_placeholders(self.config, features)
-        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
+        input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
+        input_ph, target_ph, input_ctrl_ph = make_all_runnable_in_session(input_ph, target_ph, input_ctrl_ph)
 
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
+        self.model.input_ctrl_ph = input_ctrl_ph
 
         self.model.is_training = True
-        self.model.output_ops_train = self.model(self.model.input_ph, self.config.n_rollouts, self.model.is_training, self.sess)
+        self.model.output_ops_train = self.model(self.model.input_ph, self.model.input_ctrl_ph, self.config.n_rollouts, self.model.is_training)
         total_loss_ops, loss_ops_img, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         self.model.loss_op_train_total = tf.reduce_mean(total_loss_ops)
         self.model.loss_ops_train_img = tf.reduce_mean(loss_ops_img)  # just for summary, is already included in loss_op_train
@@ -79,14 +80,15 @@ class BaseTrain:
         features = self.sess.run(next_element)
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-        input_ph, target_ph = create_placeholders(self.config, features)
-        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
+        input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
+        input_ph, target_ph, input_ctrl_ph = make_all_runnable_in_session(input_ph, target_ph, input_ctrl_ph)
 
         self.model.input_ph_test = input_ph
         self.model.target_ph_test = target_ph
+        self.model.input_ctrl_ph_test = input_ctrl_ph
 
         self.model.is_training = False
-        self.model.output_ops_test = self.model(self.model.input_ph_test, self.config.n_rollouts, self.model.is_training, self.sess)
+        self.model.output_ops_test = self.model(self.model.input_ph_test, self.model.input_ctrl_ph_test, self.config.n_rollouts, self.model.is_training)
         total_loss_ops_test, loss_ops_test_img, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
         self.model.loss_op_test_total = tf.reduce_mean(total_loss_ops_test)  # just for summary, is already included in loss_op_train
         self.model.loss_ops_test_img = tf.reduce_mean(loss_ops_test_img)

@@ -119,7 +119,10 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         pos2 = node_feature_snd['features'][-3:]
         return (pos1-pos2).astype(np.float32)
 
+    input_control_graphs = []
+
     for step in range(experiment_length):
+
         for node_index, node_feature in graph.nodes(data=True):
             node_feature = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
             target_graphs[step].add_node(node_index, features=node_feature)
@@ -130,10 +133,25 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
                                                               features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
                                                                 constants.g), features['gripperpos'][step].flatten())).astype(np.float32)
+
+
+            """ assign gripperpos to input control graphs """
+            input_control_graph = nx.DiGraph()
+            input_control_graph.graph["features"] = np.concatenate(
+                (features['img'][step].flatten(),
+                features['seg'][step].flatten(),
+                features['depth'][step].flatten(),
+                np.atleast_1d(step + 1),
+                 np.atleast_1d(constants.g),
+                 features['gripperpos'][step].flatten())).astype(np.float32)
+
+            input_control_graphs.append(input_control_graph)
+
         else:
             target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
                                                               features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
                                                                 constants.g))).astype(np.float32)
+            input_control_graphs = None
 
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
     for step in range(experiment_length):
@@ -157,7 +175,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             feat[:] = 0
             input_graph.add_edge(sender, receiver, features=feat)
 
-    return input_graph, target_graphs
+    return input_graph, target_graphs, input_control_graphs
 
 
 def get_graph_tuple(graph_nx):
@@ -183,23 +201,28 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
 
 def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_vel_known):
     input_graphs_all_experiments = []
+    input_control_graphs_all_experiments = []
     target_graphs_all_experiments = []
     graphs = []
 
     for i in range(train_batch_size):
         n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
+        # todo: construct control input graph
         graph = generate_singulation_graph(config, n_manipulable_objects)
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i], initial_pos_vel_known)
+        input_graphs, target_graphs, input_control_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i],
+                                                                                                         initial_pos_vel_known)
         input_graphs_all_experiments.append(input_graphs)
         target_graphs_all_experiments.append(target_graphs)
+        input_control_graphs_all_experiments.append(input_control_graphs)
         graphs.append(graph)
 
-    return input_graphs_all_experiments, target_graphs_all_experiments, graphs
+    return input_graphs_all_experiments, target_graphs_all_experiments, input_control_graphs_all_experiments, graphs
 
 
 def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, batch_size, initial_pos_vel_known=initial_pos_vel_known)
+    input_graphs, target_graphs, input_control_graphs, _ = create_singulation_graphs(config, batch_data, batch_size,
+                                                                                     initial_pos_vel_known=initial_pos_vel_known)
 
     if not initial_pos_vel_known:
         """ sanity checking one of the graphs, [1] means access nodes in the nx graph"""
@@ -209,16 +232,20 @@ def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
         for _, _, edge_feature in input_graphs[1].edges(data=True):
             assert not np.any(edge_feature['features'][-3:])
 
-    return input_graphs, target_graphs
+    return input_graphs, target_graphs, input_control_graphs
 
 
 def create_placeholders(config, batch_data):
-    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=config.initial_pos_vel_known)
+    """ if gripper_as_global = False, this function will still return 3 values (input_ph, target_ph, input_ctrl_ph) but the last will
+    (input_ctrl_ph) will be None, caller needs to check this """
+    input_graphs, target_graphs, input_control_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1,
+                                                                                     initial_pos_vel_known=config.initial_pos_vel_known)
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
+    input_ctrl_ph = utils_tf.placeholders_from_networkxs(input_control_graphs[0], force_dynamic_num_graphs=True)
 
-    return input_ph, target_ph
+    return input_ph, target_ph, input_ctrl_ph
 
 
 def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):

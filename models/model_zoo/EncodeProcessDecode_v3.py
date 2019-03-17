@@ -112,13 +112,19 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
 
-    def _build(self, input_op, num_processing_steps, is_training):
+    def _build(self, input_op, input_ctrl_ph, num_processing_steps, is_training):
         print("EncodeProcessDecode mode: global position only")
         latent = self._encoder(input_op, is_training)
 
+        #n_globals = [tf.shape(input_ctrl_ph.globals)[0]]
+        #global_splits = tf.split(input_ctrl_ph.globals, num_or_size_splits=tf.tile(n_globals, tf.constant([num_processing_steps])), axis=0)
+
+        global_T = input_ctrl_ph.globals
         latent0 = latent
         output_ops = []
-        for _ in range(num_processing_steps):
+
+        for step in range(num_processing_steps):
+            global_t = global_T[step+1]
             core_input = utils_tf.concat([latent0, latent], axis=1)
             latent = self._core(core_input)
             decoded_op = self._decoder(latent, is_training)

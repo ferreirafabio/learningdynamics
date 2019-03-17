@@ -11,6 +11,9 @@ class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger):
         super(SingulationTrainer, self).__init__(sess, model, train_data, valid_data, config, logger)
 
+        self.next_element_train = self.train_data.get_next_batch()
+        self.next_element_test = self.test_data.get_next_batch()
+
     def train_epoch(self):
         prefix = self.config.exp_name
         while True:
@@ -99,8 +102,7 @@ class SingulationTrainer(BaseTrain):
         losses_position = []
         losses_distance = []
 
-        next_element = self.train_data.get_next_batch()
-        features = self.sess.run(next_element)
+        features = self.sess.run(self.next_element_train)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
@@ -155,7 +157,12 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 
-    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None, export_latent_data=True, add_gripper_noise=False):
+    def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
+                   export_latent_data=True, add_noise_to_gripper=False, exp_ids_to_export=None):
+
+        if exp_ids_to_export is None:
+            exp_ids_to_export = []
+
         losses_total = []
         losses_img = []
         losses_velocity = []
@@ -165,13 +172,28 @@ class SingulationTrainer(BaseTrain):
         summaries_dict = {}
         summaries_dict_images = {}
 
-        next_element = self.test_data.get_next_batch()
-        features = self.sess.run(next_element)
-
-
+        features = self.sess.run(self.next_element_test)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
-        #if add_gripper_noise:
+
+        features_to_export = []
+
+        if exp_ids_to_export:
+            for dct in features:
+                if dct["experiment_id"] in exp_ids_to_export:
+                    features_to_export.append(dct)
+                    print("added", dct["experiment_id"])
+
+        if exp_ids_to_export and not features_to_export:
+            return
+
+        features = features_to_export
+        if add_noise_to_gripper:
+            print("adding noise to the gripperpos")
+            for dct in features:
+                #dct['gripperpos'] = dct['gripperpos'] + np.random.normal(0, 1.0, (10, 3))
+                dct['objpos'] = dct['objpos'] + np.random.normal(0, 1.0, (10, 3, 3))
+                dct['objvel'] = dct['objvel'] + np.random.normal(0, 1.0, (10, 3, 3))
 
 
         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
@@ -264,7 +286,29 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 
+    def test_overfitting(self):
+        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
+        prefix = self.config.exp_name
+        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
+        exp_ids_to_export = [14573, 15671, 11699, 11529, 14293, 10765, 1143, 19859, 8388, 14616, 16854, 17272, 1549,
+                           8961, 14756, 11167, 18828, 10689, 17192, 10512, 10667]
+
+        while True:
+            try:
+                self.test_batch(prefix=prefix,
+                                export_images=self.config.export_test_images,
+                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                process_all_nn_outputs=True,
+                                sub_dir_name="test_{}_overfitting_{}_iterations_trained_perturbed_objvel_objpos_mu_0_std_1.0".format(self.config.n_rollouts, cur_batch_it),
+                                add_noise_to_gripper=True,
+                                exp_ids_to_export=exp_ids_to_export)
+            except tf.errors.OutOfRangeError:
+                break
+            else:
+                print("continue")
+                continue
 
 
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
