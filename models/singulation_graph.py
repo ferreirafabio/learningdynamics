@@ -260,5 +260,6 @@ def create_placeholders(config, batch_data):
 def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):
     input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs])
     target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
+    input_ctrl_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
 
     return {input_ph: input_tuple, target_ph: target_tuple}
