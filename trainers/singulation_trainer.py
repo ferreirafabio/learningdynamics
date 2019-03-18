@@ -63,7 +63,7 @@ class SingulationTrainer(BaseTrain):
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_velocity'], data['loss_position'], data['loss_distance']
 
     def test_rollouts(self):
-        if self.config.n_epochs == 1:
+        if not self.config.n_epochs == 1:
             print("test mode --> n_epochs will be set to 1")
             self.config.n_epochs = 1
         prefix = self.config.exp_name
