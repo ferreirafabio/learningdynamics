@@ -175,6 +175,8 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             target_graphs[step].add_edge(sender, receiver, features=edge_feature)
 
     input_graph = target_graphs[0].copy()
+    target_graphs = target_graphs[1:]  # first state is used for init
+    input_control_graphs = input_control_graphs[1:]  # first state is used for init
 
     # todo: following code assumes all nodes are of type 'manipulable'
     """ set velocity and position info to zero """
@@ -258,9 +260,6 @@ def create_placeholders(config, batch_data):
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
     input_ctrl_ph = utils_tf.placeholders_from_networkxs(input_control_graphs[0], force_dynamic_num_graphs=True)
-
-    #input_ctrl_ph = utils_tf.set_zero_edge_features(input_ctrl_ph, config.edge_output_size)
-    #input_ctrl_ph = utils_tf.set_zero_node_features(input_ctrl_ph, config.node_output_size)
 
     return input_ph, target_ph, input_ctrl_ph
 

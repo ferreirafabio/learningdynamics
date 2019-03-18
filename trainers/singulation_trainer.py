@@ -191,10 +191,11 @@ class SingulationTrainer(BaseTrain):
                     features_to_export.append(dct)
                     print("added", dct["experiment_id"])
 
+            features = features_to_export
+
         if exp_ids_to_export and not features_to_export:
             return
 
-        features = features_to_export
         if add_noise_to_gripper:
             print("adding noise to the gripperpos")
             for dct in features:
