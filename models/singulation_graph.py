@@ -130,27 +130,36 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         """ if gripper_as_global = True, graphs will have one node less
          add globals (image, segmentation, depth, gravity, time_step) """
         if gripper_as_global:
-            target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
-                                                              features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
-                                                                constants.g), features['gripperpos'][step].flatten())).astype(np.float32)
+            if config.global_output_size == 5:
+                global_features = np.concatenate((np.atleast_1d(step),
+                                                 np.atleast_1d(constants.g),
+                                                 features['gripperpos'][step].flatten()
+                                                  )).astype(np.float32)
+            else:
+                global_features = np.concatenate((features['img'][step].flatten(),
+                                    features['seg'][step].flatten(),
+                                    features['depth'][step].flatten(),
+                                    np.atleast_1d(step),
+                                    np.atleast_1d(constants.g),
+                                    features['gripperpos'][step].flatten())
+                                   ).astype(np.float32)
 
+
+            target_graphs[step].graph["features"] = global_features
 
             """ assign gripperpos to input control graphs """
             input_control_graph = nx.DiGraph()
-            input_control_graph.graph["features"] = np.concatenate(
-                (features['img'][step].flatten(),
-                features['seg'][step].flatten(),
-                features['depth'][step].flatten(),
-                np.atleast_1d(step + 1),
-                 np.atleast_1d(constants.g),
-                 features['gripperpos'][step].flatten())).astype(np.float32)
+            input_control_graph.graph["features"] = global_features
 
+            assert target_graphs[step].graph["features"].shape[0] == config.global_output_size
+            assert input_control_graph.graph["features"].shape[0] == config.global_output_size
             input_control_graphs.append(input_control_graph)
 
         else:
             target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
-                                                              features['depth'][step].flatten(), np.atleast_1d(step+1), np.atleast_1d(
+                                                              features['depth'][step].flatten(), np.atleast_1d(step), np.atleast_1d(
                                                                 constants.g))).astype(np.float32)
+            assert target_graphs[step].graph["features"].shape[0]-3 == config.global_output_size
             input_control_graphs = None
 
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """

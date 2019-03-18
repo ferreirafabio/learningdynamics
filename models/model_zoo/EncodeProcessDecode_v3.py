@@ -98,6 +98,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         if self.use_cnn:
             self._encoder = CNNMLPEncoderGraphIndependent(config.model_type)
             self._decoder = CNNMLPDecoderGraphIndependent(config.model_type)
+            self._encoder_globals = EncoderGlobalsGraphIndependent(config.model_type)
         else:
             raise TypeError("set flag to >use_cnn<")
 
@@ -116,20 +117,27 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         print("EncodeProcessDecode mode: global position only")
         latent = self._encoder(input_op, is_training)
 
-        #n_globals = [tf.shape(input_ctrl_ph.globals)[0]]
-        #global_splits = tf.split(input_ctrl_ph.globals, num_or_size_splits=tf.tile(n_globals, tf.constant([num_processing_steps])), axis=0)
+        latent_global = self._encoder_globals(input_op, is_training)
+        latent = latent.replace(globals=latent_global.globals)
 
-        global_T = input_ctrl_ph.globals
+        global_T = self._encoder_globals(input_ctrl_ph, is_training).globals
         latent0 = latent
         output_ops = []
 
         for step in range(num_processing_steps):
-            global_t = global_T[step+1]
-            core_input = utils_tf.concat([latent0, latent], axis=1)
-            latent = self._core(core_input)
+            if step > 0:
+                global_t = tf.expand_dims(global_T[step+1], 0)  # (5,) --> (1,5)
+                latent = latent.replace(globals=global_t)
+                #latent.globals = global_t
+                #latent = latent.map(lambda: self._encoder_globals(input_op.replace(globals=global_t), is_training), fields=["globals"])
+                #latent_global = self._encoder_globals(input_op.replace(globals=global_t), is_training)
+                #latent = latent.replace(globals=latent_global)
+
+            #core_input = utils_tf.concat([latent0, latent], axis=1)
+            #latent = self._core(core_input)
+            latent = self._core(latent)
             decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
-
         return output_ops
 
     # save function that saves the checkpoint in the path defined in the config file
@@ -150,7 +158,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
     def init_cur_epoch(self):
         with tf.variable_scope('cur_epoch'):
             self.cur_epoch_tensor = tf.Variable(0, trainable=False, name='cur_epoch')
-            self.increment_cur_epoch_tensor = tf.assign(self.cur_epoch_tensor, self.cur_epoch_tensor + 1)
+            self.increment_cur_epoch_tensor = tf.assign(self.cur_epoch_tensor, self.cur_epoch_tensor+1)
 
     # just initialize a tensorflow variable to use it as global step counter
     def init_global_step(self):
@@ -162,7 +170,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         # DON'T forget to add the global step tensor to the tensorflow trainer
         with tf.variable_scope('global_step'):
             self.cur_batch_tensor = tf.Variable(0, trainable=False, name='cur_batch')
-            self.increment_cur_batch_tensor = tf.assign(self.cur_batch_tensor, self.cur_batch_tensor + 1)
+            self.increment_cur_batch_tensor = tf.assign(self.cur_batch_tensor, self.cur_batch_tensor+1)
 
     def init_saver(self):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_checkpoints_to_keep)
@@ -198,6 +206,42 @@ class MLP_model(snt.AbstractModule):
         return seq
 
 
+class EncoderGlobalsGraphIndependent(snt.AbstractModule):
+    """GraphNetwork with CNN node and MLP edge / global models."""
+
+    def __init__(self, model_id, name="EncoderGlobalsGraphIndependent"):
+        super(EncoderGlobalsGraphIndependent, self).__init__(name=name)
+        self.model_id = model_id
+
+        with self._enter_variable_scope():
+            """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
+            self._network = modules.GraphIndependent(
+                edge_model_fn=None,
+
+                node_model_fn=None,
+
+                global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                        output_size=None,
+                                                                                        typ="mlp_layer_norm",
+                                                                                        name="mlp_encoder_global"),
+            )
+
+    def _build(self, inputs, is_training, verbose=VERBOSITY):
+        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
+
+        self._network = modules.GraphIndependent(
+            edge_model_fn=None,
+            node_model_fn=None,
+            global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                                                                                           n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                                                                                           output_size=None,
+                                                                                           typ="mlp_layer_norm",
+                                                                                           name="mlp_encoder_global"), )
+
+        return self._network(inputs)
+
+
 class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
     """GraphNetwork with CNN node and MLP edge / global models."""
 
@@ -220,11 +264,12 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                 node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
                                                                                                               name="visual_and_latent_node_encoder"),
 
-                global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_globals,
-                                                                                        output_size=None,
-                                                                                        typ="mlp_layer_norm",
-                                                                                        name="mlp_encoder_global"),
+                global_model_fn=None
+                # global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+                #                                                                         n_layers=EncodeProcessDecode_v3.n_layers_globals,
+                #                                                                         output_size=None,
+                #                                                                         typ="mlp_layer_norm",
+                #                                                                         name="mlp_encoder_global"),
             )
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
@@ -241,11 +286,13 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
             node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
                                                                                                                name="visual_and_latent_node_encoder"),
 
-            global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                           n_layers=EncodeProcessDecode_v3.n_layers_globals,
-                                                                                           output_size=None,
-                                                                                           typ="mlp_layer_norm",
-                                                                                           name="mlp_encoder_global"), )
+            global_model_fn=None
+            # global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
+            #                                                                                n_layers=EncodeProcessDecode_v3.n_layers_globals,
+            #                                                                                output_size=None,
+            #                                                                                typ="mlp_layer_norm",
+            #                                                                                name="mlp_encoder_global"),
+            )
 
         return self._network(inputs)
 
