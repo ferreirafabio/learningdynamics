@@ -30,10 +30,12 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
-    def do_step(self, input_graph, target_graphs, feature, train=True):
+    def do_step(self, input_graph, target_graphs, input_ctrl_graphs, feature, train=True):
 
         if train:
-            feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, input_graph, target_graphs)
+            feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, self.model.input_ctrl_ph,
+                                         input_graph, target_graphs, input_ctrl_graphs)
+
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
                                   "loss_total": self.model.loss_op_train_total,
@@ -46,7 +48,9 @@ class SingulationTrainer(BaseTrain):
 
         else:
 
-            feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, input_graph, target_graphs)
+            feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, self.model.input_ctrl_ph_test,
+                                         input_graph, target_graphs, input_ctrl_graphs)
+
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
                                   "outputs": self.model.output_ops_test,
@@ -105,11 +109,11 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(self.next_element_train)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
-        input_graphs_all_exp, target_graphs_all_exp, input_control_graphs = create_graphs(config=self.config,
-                                                                            batch_data=features,
-                                                                            batch_size=self.config.train_batch_size,
-                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known
-                                                                            )
+        input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
+                                                                                    batch_data=features,
+                                                                                    batch_size=self.config.train_batch_size,
+                                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                                    )
 
         start_time = time.time()
         last_log_time = start_time
@@ -121,7 +125,9 @@ class SingulationTrainer(BaseTrain):
         else:
             for i in range(self.config.train_batch_size):
                 total_loss, _, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
-                                                                                                    target_graphs_all_exp[i], features[i])
+                                                                                                    target_graphs_all_exp[i],
+                                                                                                    input_ctrl_graphs_all_exp[i],
+                                                                                                    features[i])
                 if total_loss is not None:
                     losses.append(total_loss)
                     losses_img.append(loss_img)
@@ -197,11 +203,11 @@ class SingulationTrainer(BaseTrain):
                 dct['objvel'] = dct['objvel'] + np.random.normal(0, 1.0, (10, 3, 3))
 
 
-        input_graphs_all_exp, target_graphs_all_exp, input_control_graphs = create_graphs(config=self.config,
-                                                                            batch_data=features,
-                                                                            batch_size=self.config.test_batch_size,
-                                                                            initial_pos_vel_known=initial_pos_vel_known
-                                                                            )
+        input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
+                                                                                    batch_data=features,
+                                                                                    batch_size=self.config.test_batch_size,
+                                                                                    initial_pos_vel_known=initial_pos_vel_known
+                                                                                    )
 
 
         start_time = time.time()
@@ -210,8 +216,10 @@ class SingulationTrainer(BaseTrain):
         for i in range(self.config.test_batch_size):
             total_loss, outputs, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
                                                                                                       target_graphs_all_exp[i],
+                                                                                                      input_ctrl_graphs_all_exp[i],
                                                                                                       features[i],
-                                                                                                      train=False)
+                                                                                                      train=False
+                                                                                                      )
             if total_loss is not None:
                 losses_total.append(total_loss)
                 losses_img.append(loss_img)
