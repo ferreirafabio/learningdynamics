@@ -124,14 +124,10 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         latent0 = latent
         output_ops = []
 
-        for step in range(0, num_processing_steps-1):
-            if step > 0:
-                global_t = tf.expand_dims(global_T[step+1], 0)  # (5,) --> (1,5)
-                latent = latent.replace(globals=global_t)
-                #latent.globals = global_t
-                #latent = latent.map(lambda: self._encoder_globals(input_op.replace(globals=global_t), is_training), fields=["globals"])
-                #latent_global = self._encoder_globals(input_op.replace(globals=global_t), is_training)
-                #latent = latent.replace(globals=latent_global)
+        for step in range(0, num_processing_steps-1): # todo: check if this is correct
+            #if step > 0:
+            global_t = tf.expand_dims(global_T[step], 0)  # (5,) --> (1,5)
+            latent = latent.replace(globals=global_t)
 
             #core_input = utils_tf.concat([latent0, latent], axis=1)
             #latent = self._core(core_input)
