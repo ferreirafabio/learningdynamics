@@ -148,7 +148,13 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             target_graphs[step].graph["features"] = global_features
 
             """ assign gripperpos to input control graphs """
-            input_control_graph = nx.DiGraph()
+            input_control_graph = graph.copy()
+            for i in range(input_control_graph.number_of_nodes()):
+                input_control_graph.nodes(data=True)[i]["features"] = None
+            for receiver, sender, edge_feature in input_control_graph.edges(data=True):
+                input_control_graph[sender][receiver]['features'] = None
+
+
             input_control_graph.graph["features"] = global_features
 
             assert target_graphs[step].graph["features"].shape[0] == config.global_output_size
@@ -217,7 +223,6 @@ def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_
     for i in range(train_batch_size):
         n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
-        # todo: construct control input graph
         graph = generate_singulation_graph(config, n_manipulable_objects)
         input_graphs, target_graphs, input_control_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i],
                                                                                                          initial_pos_vel_known)
@@ -254,12 +259,19 @@ def create_placeholders(config, batch_data):
     target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
     input_ctrl_ph = utils_tf.placeholders_from_networkxs(input_control_graphs[0], force_dynamic_num_graphs=True)
 
+    #input_ctrl_ph = utils_tf.set_zero_edge_features(input_ctrl_ph, config.edge_output_size)
+    #input_ctrl_ph = utils_tf.set_zero_node_features(input_ctrl_ph, config.node_output_size)
+
     return input_ph, target_ph, input_ctrl_ph
 
 
-def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs):
+def create_feed_dict(input_ph, target_ph, input_ctrl_ph, input_graphs, target_graphs, input_ctrl_graphs):
     input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs])
     target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
-    input_ctrl_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs)
+    input_ctrl_tuple = utils_np.networkxs_to_graphs_tuple(input_ctrl_graphs)
 
-    return {input_ph: input_tuple, target_ph: target_tuple}
+    input_dct = utils_tf.get_feed_dict(input_ph, input_tuple)
+    target_dct = utils_tf.get_feed_dict(target_ph, target_tuple)
+    input_ctrl_dct = utils_tf.get_feed_dict(input_ctrl_ph, input_ctrl_tuple)
+
+    return {**input_dct, **target_dct, **input_ctrl_dct}
