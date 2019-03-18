@@ -58,7 +58,7 @@ class BaseTrain:
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
         input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
-        input_ph, target_ph, input_ctrl_ph = make_all_runnable_in_session(input_ph, target_ph, input_ctrl_ph)
+        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
 
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
@@ -81,7 +81,7 @@ class BaseTrain:
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
         input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
-        input_ph, target_ph, input_ctrl_ph = make_all_runnable_in_session(input_ph, target_ph, input_ctrl_ph)
+        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
 
         self.model.input_ph_test = input_ph
         self.model.target_ph_test = target_ph
