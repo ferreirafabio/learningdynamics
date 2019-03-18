@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import time
 from base.base_train import BaseTrain
-from utils.conversions import convert_dict_to_list_subdicts, denormalize_gn_output
+from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_results
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
@@ -105,10 +105,11 @@ class SingulationTrainer(BaseTrain):
         features = self.sess.run(self.next_element_train)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
-        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
-                                                                    batch_data=features,
-                                                                    batch_size=self.config.train_batch_size,
-                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known)
+        input_graphs_all_exp, target_graphs_all_exp, input_control_graphs = create_graphs(config=self.config,
+                                                                            batch_data=features,
+                                                                            batch_size=self.config.train_batch_size,
+                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                            )
 
         start_time = time.time()
         last_log_time = start_time
@@ -196,11 +197,11 @@ class SingulationTrainer(BaseTrain):
                 dct['objvel'] = dct['objvel'] + np.random.normal(0, 1.0, (10, 3, 3))
 
 
-        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
-                                                                    batch_data=features,
-                                                                    batch_size=self.config.test_batch_size,
-                                                                    initial_pos_vel_known=initial_pos_vel_known
-                                                                    )
+        input_graphs_all_exp, target_graphs_all_exp, input_control_graphs = create_graphs(config=self.config,
+                                                                            batch_data=features,
+                                                                            batch_size=self.config.test_batch_size,
+                                                                            initial_pos_vel_known=initial_pos_vel_known
+                                                                            )
 
 
         start_time = time.time()

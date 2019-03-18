@@ -18,7 +18,6 @@ def main():
         config.old_tfrecords = args.old_tfrecords
         config.normalize_data = args.normalize_data
 
-
         if args.n_epochs:
             print("overwriting n_epochs in config file")
             config.n_epochs = args.n_epochs
