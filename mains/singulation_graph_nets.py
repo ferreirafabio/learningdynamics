@@ -74,9 +74,9 @@ def main():
     elif config.mode == "test":
         print("--- Running TEST MODE ---")
         trainer.test_rollouts()
-    elif config.mode == "test_overfitting":
-        print("--- Running TEST MODE ---")
-        trainer.test_overfitting()
+    elif config.mode == "test_specific_exp_ids":
+        print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
+        trainer.test_specific_exp_ids()
 
 if __name__ == '__main__':
     main()

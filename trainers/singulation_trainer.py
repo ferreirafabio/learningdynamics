@@ -80,24 +80,6 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
-    def test_overfit(self):
-        if self.config.n_epochs == 1:
-            print("test mode --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
-        prefix = self.config.exp_name
-        print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-        while True:
-            try:
-                self.test_batch(prefix=prefix,
-                                export_images=self.config.export_test_images,
-                                initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                process_all_nn_outputs=True,
-                                sub_dir_name="test_overfit_{}_rollouts_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it))
-            except tf.errors.OutOfRangeError:
-                break
-
 
     def train_batch(self, prefix):
         losses = []
@@ -165,10 +147,8 @@ class SingulationTrainer(BaseTrain):
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 
     def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
-                   export_latent_data=True, add_noise_to_gripper=False, exp_ids_to_export=None):
+                   export_latent_data=True):
 
-        if exp_ids_to_export is None:
-            exp_ids_to_export = []
 
         losses_total = []
         losses_img = []
@@ -183,25 +163,6 @@ class SingulationTrainer(BaseTrain):
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-        features_to_export = []
-
-        if exp_ids_to_export:
-            for dct in features:
-                if dct["experiment_id"] in exp_ids_to_export:
-                    features_to_export.append(dct)
-                    print("added", dct["experiment_id"])
-
-            features = features_to_export
-
-        if exp_ids_to_export and not features_to_export:
-            return
-
-        if add_noise_to_gripper:
-            print("adding noise to the gripperpos")
-            for dct in features:
-                #dct['gripperpos'] = dct['gripperpos'] + np.random.normal(0, 1.0, (10, 3))
-                dct['objpos'] = dct['objpos'] + np.random.normal(0, 1.0, (10, 3, 3))
-                dct['objvel'] = dct['objvel'] + np.random.normal(0, 1.0, (10, 3, 3))
 
 
         input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
@@ -271,13 +232,15 @@ class SingulationTrainer(BaseTrain):
             else:
                 for output in outputs_for_summary:
                     summaries_dict_images, summaries_pos_dict_images = generate_results(output=output,
-                                                                     config=self.config,
-                                                                     prefix=prefix,
-                                                                     features=features,
-                                                                     cur_batch_it=cur_batch_it,
-                                                                     export_images=export_images,
-                                                                     export_latent_data=export_latent_data,
-                                                                     dir_name=sub_dir_name)
+                                                                         config=self.config,
+                                                                         prefix=prefix,
+                                                                         features=features,
+                                                                         cur_batch_it=cur_batch_it,
+                                                                         export_images=export_images,
+                                                                         export_latent_data=export_latent_data,
+                                                                         dir_name=sub_dir_name,
+                                                                         reduce_dict=True
+                                                                        )
 
             if summaries_dict_images:
                 if self.config.parallel_batch_processing:
@@ -285,10 +248,9 @@ class SingulationTrainer(BaseTrain):
                     summaries_dict_images = summaries_dict_images[0]
                     if summaries_pos_dict_images is not None: 
                         summaries_pos_dict_images = summaries_pos_dict_images[0]
-                
+
                 if summaries_pos_dict_images is not None:
-                    # todo: add pos_dict
-                    summaries_dict = {**summaries_dict, **summaries_dict_images}
+                    summaries_dict = {**summaries_dict, **summaries_dict_images, **summaries_pos_dict_images}
                 else:
                     summaries_dict = {**summaries_dict, **summaries_dict_images}
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -296,7 +258,7 @@ class SingulationTrainer(BaseTrain):
 
         return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, cur_batch_it
 
-    def test_overfitting(self):
+    def test_specific_exp_ids(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
@@ -305,15 +267,104 @@ class SingulationTrainer(BaseTrain):
         exp_ids_to_export = [14573, 15671, 11699, 11529, 14293, 10765, 1143, 19859, 8388, 14616, 16854, 17272, 1549,
                            8961, 14756, 11167, 18828, 10689, 17192, 10512, 10667]
 
+        export_images = self.config.export_test_images,
+        initial_pos_vel_known = self.config.initial_pos_vel_known
+        export_latent_data = True
+        process_all_nn_outputs = True
+        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it)
+
         while True:
             try:
-                self.test_batch(prefix=prefix,
-                                export_images=self.config.export_test_images,
-                                initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                process_all_nn_outputs=True,
-                                sub_dir_name="test_{}_overfitting_{}_iterations_trained_perturbed_objvel_objpos_mu_0_std_1.0".format(self.config.n_rollouts, cur_batch_it),
-                                add_noise_to_gripper=True,
-                                exp_ids_to_export=exp_ids_to_export)
+
+                losses_total = []
+                losses_img = []
+                losses_velocity = []
+                losses_position = []
+                losses_distance = []
+                outputs_for_summary = []
+
+                features = self.sess.run(self.next_element_test)
+
+                features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+
+                if exp_ids_to_export:
+                    features_to_export = []
+                    for dct in features:
+                        if dct["experiment_id"] in exp_ids_to_export:
+                            features_to_export.append(dct)
+                            print("added", dct["experiment_id"])
+
+                    features = features_to_export
+
+                if exp_ids_to_export and not features_to_export:
+                    return
+
+                # if add_noise_to_gripper:
+                #     print("adding noise to the gripperpos")
+                #     for dct in features:
+                #         #dct['gripperpos'] = dct['gripperpos'] + np.random.normal(0, 1.0, (10, 3))
+                #         dct['objpos'] = dct['objpos'] + np.random.normal(0, 1.0, (10, 3, 3))
+
+                input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
+                                                                                                       batch_data=features,
+                                                                                                       batch_size=self.config.test_batch_size,
+                                                                                                       initial_pos_vel_known=initial_pos_vel_known)
+
+                start_time = time.time()
+                last_log_time = start_time
+
+                for i in range(self.config.test_batch_size):
+                    total_loss, outputs, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
+                                                                                                              target_graphs_all_exp[i],
+                                                                                                              input_ctrl_graphs_all_exp[
+                                                                                                                  i], features[i],
+                                                                                                              train=False)
+                    if total_loss is not None:
+                        losses_total.append(total_loss)
+                        losses_img.append(loss_img)
+                        losses_velocity.append(loss_velocity)
+                        losses_position.append(loss_position)
+                        losses_distance.append(loss_distance)
+
+                    ''' get the last not-None output '''
+                    if outputs is not None:
+                        outputs_for_summary.append((outputs, i))
+
+                the_time = time.time()
+                elapsed_since_last_log = the_time - last_log_time
+                cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+                if not process_all_nn_outputs:
+                    """ due to brevity, just use last results """
+                    outputs_for_summary = [outputs_for_summary[-1]]
+
+                if total_loss:
+                    batch_loss = np.mean(losses_total)
+                    img_batch_loss = np.mean(losses_img)
+                    vel_batch_loss = np.mean(losses_velocity)
+                    pos_batch_loss = np.mean(losses_position)
+                    dis_batch_loss = np.mean(losses_distance)
+
+                    print(
+                        'total test batch loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
+                            batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log))
+
+                if outputs_for_summary is not None:
+                    if self.config.parallel_batch_processing:
+                        with parallel_backend('loky', n_jobs=-1):
+                            _, _ = Parallel()(
+                                delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
+                                                          export_latent_data, sub_dir_name) for output in outputs_for_summary)
+                    else:
+                        for output in outputs_for_summary:
+                            _, _ = generate_results(output=output,
+                                                    config=self.config,
+                                                    prefix=prefix,
+                                                    features=features,
+                                                    cur_batch_it=cur_batch_it,
+                                                    export_images=export_images,
+                                                    export_latent_data=export_latent_data,
+                                                    dir_name=sub_dir_name, reduce_dict=True)
             except tf.errors.OutOfRangeError:
                 break
             else:

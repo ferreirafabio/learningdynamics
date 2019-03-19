@@ -99,20 +99,15 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=False, adjust_vel_pred_range=False, convert_pos_to_vel=True, norm_factor=240):
+def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=False, adjust_vel_pred_range=False, convert_pos_to_vel=False, norm_factor=240):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
     0   [...], ..., [...]
     1
 
-    Adjustment parameters specified due to scale bug
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
-    #if adjust_pos_ped_range:
-    #    pos = [list(ary/norm_factor for ary in lst) for lst in pos]
-    #if adjust_vel_pred_range:
-    #    vel = [list(ary * norm_factor for ary in lst) for lst in vel]
 
     features_index = output_for_summary[1]
     
@@ -121,7 +116,6 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
         cut_length = len(output_for_summary[0])
     else:
         cut_length = None
-
 
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
 
@@ -154,31 +148,30 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     np.testing.assert_array_equal(df.ix[:,-1].tolist(), vel[-1])  # check last column
 
     """ compute statistics of pos """
-    for i in range(0, n_objects*2, 2):  # 2: each a column for pred and gt
+    for i in range(0, n_objects*2, 2):  # 2: each one column for pred and gt
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
-        # don't consider the first position values for stats since it's off due to initialization
-        df['mean'+'('+column_name+')'] = [(df.ix[1:, i] - df.ix[1:, i+1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[1:, i+1]).tolist(), axis=0)] * len(df.index)
+
+        df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
     """ compute statistics of vel """
     for i in range(n_objects * 2, (n_objects * 2)*2, 2):
         column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
-        df['mean' + '(' + column_name + ')'] = [(df.ix[1:, i] - df.ix[1:, i + 1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[1:, i] - df.ix[1:, i+1]).tolist(), axis=0)] * len(df.index)
+        # compute mean / std and repeat (df.index)-lines to construct a pandas series
+        df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
+        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
-    print("mean pos obj 0:", df.ix[:,12][0], "mean vel obj 0:", df.ix[:,18][0])
+    print("mean pos obj 0:", df.ix[:, 12][0], "mean vel obj 0:", df.ix[:, 18][0])
     return df
 
 
-
-
-def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name):
+def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name, reduce_dict=True):
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it)
 
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
-    summary_pos_dict_images = None
+    summaries_pos_dict_images = None
 
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
@@ -188,10 +181,14 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
-            summary_pos_dict_images = create_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path,
+            summaries_pos_dict_images = create_latent_images(df=df, features=features, features_index=features_index, dir_path=dir_path,
                                                           config=config, prefix=prefix, cur_batch_it=cur_batch_it)
 
-    return summaries_dict_images, summary_pos_dict_images
+    keys = ["seg"]  # will only yield segmentation images
+    if reduce_dict:
+        summaries_dict_images = {summary_key: summaries_dict_images[summary_key] for summary_key in summaries_dict_images.keys() for k in keys if k in summary_key}
+
+    return summaries_dict_images, summaries_pos_dict_images
 
 
 def get_latent_target_data(features, features_index, limit=None):
