@@ -107,9 +107,16 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 """ in this case, the nodes will have dynamic visual information over time """
                 obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
+
+            # todo: compute velocity between samples
+
+            #if step == 0:
+            #    vel = np.zeros(shape=3, dtype=np.float32)
+            #else:
+            #    diff = features['objvel'][step-1][obj_id] - features['objvel'][step][obj_id]
+            #    vel = (diff * 240.0).flatten().astype(np.float32)
             vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
-
 
     def create_edge_feature(receiver, sender, target_graph_i):
         node_feature_rcv = target_graph_i.nodes(data=True)[receiver]
@@ -241,12 +248,7 @@ def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
                                                                                      initial_pos_vel_known=initial_pos_vel_known)
 
     if not initial_pos_vel_known:
-        """ sanity checking one of the graphs, [1] means access nodes in the nx graph"""
-        for _, node_feature in input_graphs[1].nodes(data=True):
-            assert not np.any(node_feature['features'][-6:])
-
-        for _, _, edge_feature in input_graphs[1].edges(data=True):
-            assert not np.any(edge_feature['features'][-3:])
+        _sanity_check_pos_vel(input_graphs)
 
     return input_graphs, target_graphs, input_control_graphs
 
@@ -274,3 +276,14 @@ def create_feed_dict(input_ph, target_ph, input_ctrl_ph, input_graphs, target_gr
     input_ctrl_dct = utils_tf.get_feed_dict(input_ctrl_ph, input_ctrl_tuple)
 
     return {**input_dct, **target_dct, **input_ctrl_dct}
+
+
+def _sanity_check_pos_vel(input_graphs):
+    """ assertts whether position and velocity are zero """
+    """ sanity checking one of the graphs """
+    for _, node_feature in input_graphs[1].nodes(data=True):
+        assert not np.any(node_feature['features'][-6:])
+
+    for _, _, edge_feature in input_graphs[1].edges(data=True):
+        assert not np.any(edge_feature['features'][-3:])
+

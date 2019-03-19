@@ -114,7 +114,7 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
 
 
     def _build(self, input_op, input_ctrl_ph, num_processing_steps, is_training):
-        print("EncodeProcessDecode mode: global position only")
+        print("Data used as global attribute: position only")
         latent = self._encoder(input_op, is_training)
 
         latent_global = self._encoder_globals(input_op, is_training)
@@ -213,9 +213,7 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
             """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
             self._network = modules.GraphIndependent(
                 edge_model_fn=None,
-
                 node_model_fn=None,
-
                 global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v3.n_layers_globals,
                                                                                         output_size=None,

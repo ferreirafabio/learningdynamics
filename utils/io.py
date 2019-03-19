@@ -278,7 +278,7 @@ def create_latent_images(df, features, features_index, dir_path, config, prefix,
         fig_as_array_3d = animate.save_3d_plot(title=title, output_dir=path_3d)
         fig_as_array_2d = animate.save_2d_plot(title=title, output_dir=path_2d)
 
-        image_dict[prefix + "_3d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_3d
-        image_dict[prefix + "_2d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = fig_as_array_2d
+        image_dict[prefix + "_3d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = np.expand_dims(fig_as_array_3d, 0)
+        image_dict[prefix + "_2d_obj_pos_exp_id_{}_batch_{}_object_{}".format(experiment_id, cur_batch_it, i)] = np.expand_dims(fig_as_array_2d, 0)
 
     return image_dict

@@ -135,6 +135,7 @@ class DataGenerator:
         # might be unneccessary step in case of normalization due to multiplicative scale invariance
         vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
         objvel = tf.identity(objpos, name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+        #objvel = tf.identity(objpos[:,] ,name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
 
         if self.old_tfrecords:
             # object_segments
