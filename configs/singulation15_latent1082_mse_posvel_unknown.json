@@ -1,4 +1,5 @@
 {
+  "_comment": "global_output_size==8 -> shape (t,gravity,3d-gripperpos), global_output_size==5 -> shape(t,gravity,3d-vel,3d-pos)",
   "convnet_pooling": true,
   "convnet1D_stride": 2,
   "convnet_tanh": false,
@@ -9,7 +10,7 @@
   "edge_output_size": 3,
   "exp_name": "singulation15_latent1082_mse_posvel_unknown_global_without_visual",
   "export_test_images": true,
-  "global_output_size": 5,
+  "global_output_size": 8,
   "gripper_as_global": true,
   "learning_rate": 0.001,
   "max_checkpoints_to_keep": 5,
@@ -30,13 +31,13 @@
   "num_iter_per_epoch": 10,
   "parallel_batch_processing": false,
   "test_batch_size": 5,
-  "test_interval": 2,
-  "tfrecords_dir": "/Users/fabioferreira/Dropbox/0_Studium/Master/git_projects/GNforInteraction/data/destination_10_rollouts",
+  "test_interval": 100,
+  "tfrecords_dir": "/scr2/fabiof/data/tfrecords/",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
-  "mode": "test",
-  "initial_pos_vel_known": false,
+  "mode": "train_test",
+  "initial_pos_vel_known": true,
   "loss_type": "mse",
   "model_zoo_file": "EncodeProcessDecode_v3"
 }
