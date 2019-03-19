@@ -34,6 +34,7 @@ from utils.utils import get_correct_image_shape
 
 import sonnet as snt
 import tensorflow as tf
+from graph_nets.demos import models
 
 
 VERBOSITY = False
@@ -125,13 +126,12 @@ class EncodeProcessDecode_v3(snt.AbstractModule, BaseModel):
         output_ops = []
 
         for step in range(0, num_processing_steps-1): # todo: check if this is correct
-            #if step > 0:
-            global_t = tf.expand_dims(global_T[step], 0)  # (5,) --> (1,5)
-            latent = latent.replace(globals=global_t)
+            core_input = utils_tf.concat([latent0, latent], axis=1)
+            global_t = tf.expand_dims(global_T[step], 0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
+            core_input = core_input.replace(globals=global_t)
 
-            #core_input = utils_tf.concat([latent0, latent], axis=1)
-            #latent = self._core(core_input)
-            latent = self._core(latent)
+            latent = self._core(core_input)
+
             decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
         return output_ops
