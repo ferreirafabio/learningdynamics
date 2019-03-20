@@ -394,8 +394,8 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #    EncodeProcessDecode.n_neurons_nodes_total_dim, EncodeProcessDecode.n_neurons_globals)
 
         #image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
-        image_data = tf.reshape(image_data, (-1, 7, 10, 5))
-        #image_data = tf.reshape(image_data, (-1, 7, 10, 15))
+        #image_data = tf.reshape(image_data, (-1, 7, 10, 5))
+        image_data = tf.reshape(image_data, (-1, 7, 10, 15))
 
         ''' layer 1 (7,10,5) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
