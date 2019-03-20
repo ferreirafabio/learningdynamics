@@ -11,9 +11,6 @@ class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger):
         super(SingulationTrainer, self).__init__(sess, model, train_data, valid_data, config, logger)
 
-        self.next_element_train = self.train_data.get_next_batch()
-        self.next_element_test = self.test_data.get_next_batch()
-
     def train_epoch(self):
         prefix = self.config.exp_name
         while True:
@@ -88,7 +85,8 @@ class SingulationTrainer(BaseTrain):
         losses_position = []
         losses_distance = []
 
-        features = self.sess.run(self.next_element_train)
+        next_element = self.train_data.get_next_batch()
+        features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
         input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
@@ -159,7 +157,8 @@ class SingulationTrainer(BaseTrain):
         summaries_dict = {}
         summaries_dict_images = {}
 
-        features = self.sess.run(self.next_element_test)
+        next_element = self.test_data.get_next_batch()
+        features = self.sess.run(next_element)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
@@ -283,7 +282,8 @@ class SingulationTrainer(BaseTrain):
                 losses_distance = []
                 outputs_for_summary = []
 
-                features = self.sess.run(self.next_element_test)
+                next_element = self.test_data.get_next_batch()
+                features = self.sess.run(next_element)
 
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
