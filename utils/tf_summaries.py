@@ -161,7 +161,7 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
         df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
         df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
-    print("mean pos obj 0:", df.ix[:, 12][0], "mean vel obj 0:", df.ix[:, 18][0])
+    #print("mean pos obj 0:", df.ix[:, 12][0], "mean vel obj 0:", df.ix[:, 18][0])
     return df
 
 

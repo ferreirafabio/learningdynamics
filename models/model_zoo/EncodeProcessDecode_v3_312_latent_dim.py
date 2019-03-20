@@ -120,15 +120,15 @@ class EncodeProcessDecode_v3_312_latent_dim(snt.AbstractModule, BaseModel):
         latent = latent.replace(globals=latent_global.globals)
 
         global_T = self._encoder_globals(input_ctrl_ph, is_training).globals
-        latent0 = latent
+        #latent0 = latent
         output_ops = []
 
         for step in range(0, num_processing_steps-1):
-            core_input = utils_tf.concat([latent0, latent], axis=1)
+            #core_input = utils_tf.concat([latent0, latent], axis=1)
             global_t = tf.expand_dims(global_T[step], 0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
-            core_input = core_input.replace(globals=global_t)
+            latent = latent.replace(globals=global_t)
 
-            latent = self._core(core_input)
+            latent = self._core(latent)
 
             decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
