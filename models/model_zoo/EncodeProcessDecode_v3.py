@@ -219,16 +219,6 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
             )
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-
-        self._network = modules.GraphIndependent(
-            edge_model_fn=None,
-            node_model_fn=None,
-            global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                           n_layers=EncodeProcessDecode_v3.n_layers_globals,
-                                                                                           output_size=None,
-                                                                                           typ="mlp_layer_norm",
-                                                                                           name="mlp_encoder_global"), )
-
         return self._network(inputs)
 
 
@@ -255,35 +245,9 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                                                                                                               name="visual_and_latent_node_encoder"),
 
                 global_model_fn=None
-                # global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-                #                                                                         n_layers=EncodeProcessDecode_v3.n_layers_globals,
-                #                                                                         output_size=None,
-                #                                                                         typ="mlp_layer_norm",
-                #                                                                         name="mlp_encoder_global"),
             )
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
-        visual_encoder = get_model_from_config(model_id=self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
-
-        self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
-                                                                                        n_layers=EncodeProcessDecode_v3.n_layers_edges,
-                                                                                        output_size=None,
-                                                                                        typ="mlp_layer_norm",
-                                                                                        name="mlp_encoder_edge"),
-
-            node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
-                                                                                                               name="visual_and_latent_node_encoder"),
-
-            global_model_fn=None
-            # global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-            #                                                                                n_layers=EncodeProcessDecode_v3.n_layers_globals,
-            #                                                                                output_size=None,
-            #                                                                                typ="mlp_layer_norm",
-            #                                                                                name="mlp_encoder_global"),
-            )
-
         return self._network(inputs)
 
 
@@ -315,24 +279,6 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
             )
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
-        visual_decoder = get_model_from_config(self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
-
-        self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_edges,
-                                                                                                  n_layers=EncodeProcessDecode_v3.n_layers_edges,
-                                                                                                  output_size=EncodeProcessDecode_v3.edge_output_size,
-                                                                                                  typ="mlp_transform",
-                                                                                                  name="mlp_decoder_edge"),
-
-            node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(visual_decoder,
-                                                                                                                        name="visual_and_latent_node_decoder"),
-
-            global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-                                                                                                    n_layers=EncodeProcessDecode_v3.n_layers_globals,
-                                                                                                    output_size=EncodeProcessDecode_v3.global_output_size,
-                                                                                                    typ="mlp_transform",
-                                                                                                    name="mlp_decoder_global"), )
         return self._network(inputs)
 
 
@@ -370,7 +316,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.8):
         filter_sizes = [EncodeProcessDecode_v3.n_conv_filters, EncodeProcessDecode_v3.n_conv_filters * 2]
 
         if EncodeProcessDecode_v3.convnet_tanh:
@@ -517,7 +463,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.8):
 
         if EncodeProcessDecode_v3.convnet_tanh:
             activation = tf.nn.tanh

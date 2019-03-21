@@ -315,7 +315,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.8):
         filter_sizes = [EncodeProcessDecode_v3_312_latent_dim.n_conv_filters, EncodeProcessDecode_v3_312_latent_dim.n_conv_filters * 2]
 
         if EncodeProcessDecode_v3_312_latent_dim.convnet_tanh:
@@ -462,7 +462,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.8):
 
         if EncodeProcessDecode_v3_312_latent_dim.convnet_tanh:
             activation = tf.nn.tanh
