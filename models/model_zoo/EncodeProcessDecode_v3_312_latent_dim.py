@@ -303,7 +303,7 @@ class MLPGraphNetwork(snt.AbstractModule):
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_core_global"),
-              global_block_opt={'use_edges': False, 'use_nodes': False, 'use_globals': False}
+              #global_block_opt={'use_edges': False, 'use_nodes': False, 'use_globals': False}
           )
 
     def _build(self, inputs):
