@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import scipy.constants as constants
+from utils.math_ops import normalize_list
 from itertools import product
 from graph_nets import utils_tf, utils_np
 
@@ -70,12 +71,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
 
     target_graphs = [graph.copy() for _ in range(experiment_length)]
 
-    def create_node_feature(attr, features, step, use_object_seg_data_only_for_init):
+    def create_node_feature(attr, features, step, config):
         if attr['type_name'] == 'container':
             """ container only has object segmentations """
             # pad up to fixed size since sonnet can only handle fixed-sized features
             res = attr['features']
-            if use_object_seg_data_only_for_init:
+            if config.use_object_seg_data_only_for_init:
                 feature = features['object_segments'][0].flatten()
             else:
                 feature = features['object_segments'][step][0].flatten()
@@ -84,7 +85,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
 
         elif attr['type_name'] == 'gripper':
             """ gripper only has obj segs and gripper pos """
-            if use_object_seg_data_only_for_init:
+            if config.use_object_seg_data_only_for_init:
                 obj_seg = features['object_segments'][1].flatten()
             else:
                 obj_seg = features['object_segments'][step][1].flatten()
@@ -100,7 +101,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
             # obj_seg will have data as following: (rgb, seg, optionally: depth)
-            if use_object_seg_data_only_for_init:
+            if config.use_object_seg_data_only_for_init:
                 """ in this case, the nodes will have static visual information over time """
                 obj_seg = features['object_segments'][obj_id].flatten()
             else:
@@ -108,14 +109,17 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
 
-            # todo: compute velocity between samples
-
-            #if step == 0:
-            #    vel = np.zeros(shape=3, dtype=np.float32)
-            #else:
-            #    diff = features['objvel'][step-1][obj_id] - features['objvel'][step][obj_id]
-            #    vel = (diff * 240.0).flatten().astype(np.float32)
-            vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
+            # todo: normalize velocity
+            """ (normalized) velocity is computed here since rolled indexing in 
+            tfrecords seems not straightforward """
+            if step == 0:
+               vel = np.zeros(shape=3, dtype=np.float32)
+            else:
+               vel = features['objpos'][step-1][obj_id] - features['objpos'][step][obj_id]
+               if config.normalize_data:
+                   vel = normalize_list([vel])[0]
+               #vel = (diff * 240.0).flatten().astype(np.float32)
+            #vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
     def create_edge_feature(receiver, sender, target_graph_i):
@@ -131,7 +135,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     for step in range(experiment_length):
 
         for node_index, node_feature in graph.nodes(data=True):
-            node_feature = create_node_feature(node_feature, features, step, config.use_object_seg_data_only_for_init)
+            node_feature = create_node_feature(node_feature, features, step, config)
             target_graphs[step].add_node(node_index, features=node_feature)
 
         """ if gripper_as_global = True, graphs will have one node less
@@ -171,7 +175,6 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 input_control_graph.nodes(data=True)[i]["features"] = None
             for receiver, sender, edge_feature in input_control_graph.edges(data=True):
                 input_control_graph[sender][receiver]['features'] = None
-
 
             input_control_graph.graph["features"] = global_features
 
@@ -297,4 +300,6 @@ def _sanity_check_pos_vel(input_graphs):
 
     for _, _, edge_feature in input_graphs[1].edges(data=True):
         assert not np.any(edge_feature['features'][-3:])
+
+
 
