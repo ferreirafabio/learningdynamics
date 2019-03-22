@@ -8,7 +8,7 @@
   "depth_data_provided": true,
   "n_neurons_nodes_total_dim": 1082,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent1082_mse_posvel_unknown_global_without_visual",
+  "exp_name": "singulation15_latent312",
   "export_test_images": true,
   "global_output_size": 8,
   "gripper_as_global": true,
@@ -31,13 +31,13 @@
   "num_iter_per_epoch": 10,
   "parallel_batch_processing": false,
   "test_batch_size": 5,
-  "test_interval": 100,
-  "tfrecords_dir": "/scr2/fabiof/data/tfrecords/",
+  "test_interval": 20,
+  "tfrecords_dir": "/Users/fabioferreira/Dropbox/0_Studium/Master/git_projects/GNforInteraction/data/destination_10_rollouts",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "train_test",
-  "initial_pos_vel_known": true,
+  "initial_pos_vel_known": false,
   "loss_type": "mse",
-  "model_zoo_file": "EncodeProcessDecode_v3"
+  "model_zoo_file": "EncodeProcessDecode_v3_312_latent_dim"
 }

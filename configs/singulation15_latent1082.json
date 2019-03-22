@@ -8,7 +8,7 @@
   "depth_data_provided": true,
   "n_neurons_nodes_total_dim": 1082,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent1082_no_train_flags",
+  "exp_name": "singulation15_latent1082",
   "export_test_images": true,
   "global_output_size": 8,
   "gripper_as_global": true,
@@ -37,7 +37,7 @@
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,
   "mode": "train_test",
-  "initial_pos_vel_known": false,
+  "initial_pos_vel_known": true,
   "loss_type": "mse",
-  "model_zoo_file": "EncodeProcessDecode_v3_no_train_flags"
+  "model_zoo_file": "EncodeProcessDecode_v3_1082_latent_dim"
 }

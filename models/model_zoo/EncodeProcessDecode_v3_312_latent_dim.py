@@ -302,7 +302,8 @@ class MLPGraphNetwork(snt.AbstractModule):
                                                                                         n_layers=EncodeProcessDecode_v3_312_latent_dim.n_layers_globals,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
-                                                                                        name="mlp_core_global")
+                                                                                        name="mlp_core_global"),
+              global_block_opt={'use_edges': False, 'use_nodes': False, 'use_globals': False}
           )
 
     def _build(self, inputs):
@@ -341,7 +342,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         #image_data = tf.reshape(image_data, (-1, int(math.sqrt(visual_latent_space_dim)), int(math.sqrt(visual_latent_space_dim)), 1))
         image_data = tf.reshape(image_data, (-1, 7, 10, 4))
-        #image_data = tf.reshape(image_data, (-1, 7, 10, 15))
 
         ''' layer 1 (7,10,5) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
