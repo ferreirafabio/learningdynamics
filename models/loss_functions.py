@@ -175,15 +175,15 @@ def _intersection_over_union(image_gt, image_pred):
     nonzero_indices = tf.where(tf.not_equal(image_pred, tf.zeros_like(image_pred)))
     image_pred_nonzero = tf.gather_nd(image_pred, nonzero_indices)
 
-    x11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=1)
-    y11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=0)
-    x12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=1)
-    y12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=0)
+    x11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=1, keepdims=True)
+    y11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=0, keepdims=True)
+    x12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=1, keepdims=True)
+    y12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=0, keepdims=True)
 
-    x21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=1)
-    y21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=0)
-    x22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=1)
-    y22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=0)
+    x21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=1, keepdims=True)
+    y21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=0, keepdims=True)
+    x22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=1, keepdims=True)
+    y22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=0, keepdims=True)
 
     # determine the (x,y) coordinates of the intersection rectangle
     xI1 = tf.maximum(x11, x21)
