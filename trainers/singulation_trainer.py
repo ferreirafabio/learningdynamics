@@ -38,6 +38,7 @@ class SingulationTrainer(BaseTrain):
                                   "loss_total": self.model.loss_op_train_total,
                                   "outputs": self.model.output_ops_train,
                                   "loss_img": self.model.loss_ops_train_img,
+                                  "loss_iou": self.model.loss_ops_train_iou,
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
                                   "loss_distance": self.model.loss_ops_train_distance
@@ -52,12 +53,13 @@ class SingulationTrainer(BaseTrain):
                                   "loss_total": self.model.loss_op_test_total,
                                   "outputs": self.model.output_ops_test,
                                   "loss_img": self.model.loss_ops_test_img,
+                                  "loss_iou": self.model.loss_ops_test_iou,
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
                                   "loss_distance": self.model.loss_ops_test_distance
                                   }, feed_dict=feed_dict)
 
-        return data['loss_total'], data['outputs'], data['loss_img'], data['loss_velocity'], data['loss_position'], data['loss_distance']
+        return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
 
     def test_rollouts(self):
         if not self.config.n_epochs == 1:
@@ -81,6 +83,7 @@ class SingulationTrainer(BaseTrain):
     def train_batch(self, prefix):
         losses = []
         losses_img = []
+        losses_iou = []
         losses_velocity = []
         losses_position = []
         losses_distance = []
@@ -104,13 +107,14 @@ class SingulationTrainer(BaseTrain):
                                                                                     features[i], losses) for i in range(self.config.train_batch_size))
         else:
             for i in range(self.config.train_batch_size):
-                total_loss, _, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
+                total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
                                                                                                     target_graphs_all_exp[i],
                                                                                                     input_ctrl_graphs_all_exp[i],
                                                                                                     features[i])
                 if total_loss is not None:
                     losses.append(total_loss)
                     losses_img.append(loss_img)
+                    losses_iou.append(loss_iou)
                     losses_velocity.append(loss_velocity)
                     losses_position.append(loss_position)
                     losses_distance.append(loss_distance)
@@ -124,16 +128,18 @@ class SingulationTrainer(BaseTrain):
         if losses:
             batch_loss = np.mean(losses)
             img_batch_loss = np.mean(losses_img)
+            iou_batch_loss = np.mean(losses_iou)
             vel_batch_loss = np.mean(losses_velocity)
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
-            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | distance loss: {:<8.6f} time(s): {:<10.2f} '
+            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | distance loss: {:<8.6f} time(s): {:<10.2f} '
                 .format(
-                cur_batch_it, batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log)
+                cur_batch_it, batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log)
             )
             summaries_dict = {prefix + '_total_loss': batch_loss,
                               prefix + '_img_loss': img_batch_loss,
+                              prefix + '_iou_loss': iou_batch_loss,
                               prefix + '_velocity_loss': vel_batch_loss,
                               prefix + '_position_loss': pos_batch_loss,
                               prefix + '_distance_loss': dis_batch_loss
@@ -150,6 +156,7 @@ class SingulationTrainer(BaseTrain):
 
         losses_total = []
         losses_img = []
+        losses_iou = []
         losses_velocity = []
         losses_position = []
         losses_distance = []
@@ -175,7 +182,7 @@ class SingulationTrainer(BaseTrain):
         last_log_time = start_time
 
         for i in range(self.config.test_batch_size):
-            total_loss, outputs, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
+            total_loss, outputs, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
                                                                                                       target_graphs_all_exp[i],
                                                                                                       input_ctrl_graphs_all_exp[i],
                                                                                                       features[i],
@@ -184,6 +191,7 @@ class SingulationTrainer(BaseTrain):
             if total_loss is not None:
                 losses_total.append(total_loss)
                 losses_img.append(loss_img)
+                losses_iou.append(loss_iou)
                 losses_velocity.append(loss_velocity)
                 losses_position.append(loss_position)
                 losses_distance.append(loss_distance)
@@ -203,16 +211,18 @@ class SingulationTrainer(BaseTrain):
         if total_loss:
             batch_loss = np.mean(losses_total)
             img_batch_loss = np.mean(losses_img)
+            iou_batch_loss = np.mean(loss_iou)
             vel_batch_loss = np.mean(losses_velocity)
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
 
-            print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
-                batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log))
+            print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
+                batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_total_loss': batch_loss,
                               prefix + '_img_loss': img_batch_loss,
+                              prefix + '_iou_loss': iou_batch_loss,
                               prefix + '_velocity_loss': vel_batch_loss,
                               prefix + '_position_loss': pos_batch_loss,
                               prefix + '_distance_loss': dis_batch_loss

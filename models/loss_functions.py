@@ -24,6 +24,7 @@ def create_loss_ops(config, target_op, output_ops):
     loss_ops_position = []
     loss_ops_velocity = []
     loss_ops_distance = []
+    loss_ops_img_iou = []
 
     if config.loss_type == 'mse':
         for i, output_op in enumerate(output_ops):
@@ -42,6 +43,44 @@ def create_loss_ops(config, target_op, output_ops):
 
             total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
+    elif config.loss_type == 'mse_iou':
+        for i, output_op in enumerate(output_ops):
+
+            """ VISUAL LOSS """
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
+            target_node_reshaped = _transform_into_images(config, target_node_splits[i])
+
+            segmentation_data_predicted = predicted_node_reshaped[:, :, :, 3]
+            segmentation_data_gt = target_node_reshaped[:, :, :, 3]
+
+            # todo: requires tf for loop over batch dimension
+
+
+
+            loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted)
+
+            if config.depth_data_provided:
+                # todo: check if stack is correct, print shapes
+                image_data_predicted = tf.stack([predicted_node_reshaped[:, :, :, :3], predicted_node_reshaped[:, :, :, -3:]])
+                image_data_gt = tf.stack([target_node_reshaped[:, :, :, :3], target_node_reshaped[:, :, :, -3:]])
+            else:
+                image_data_predicted = predicted_node_reshaped[:, :, :, :3]
+                image_data_gt = target_node_reshaped[:, :, :, :3]
+
+            loss_visual_mse_nodes = tf.losses.mean_squared_error(image_data_predicted, image_data_gt, weights=(2/3))
+
+            """ NONVISUAL LOSS (50% weight) """
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i], weights=(1/6))
+            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:], weights=(1/6))
+            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:], weights=(1/6))
+
+            loss_ops_img.append(loss_visual_mse_nodes)
+            loss_ops_img_iou.append(loss_visual_iou_seg)
+            loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
+            loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
+            loss_ops_distance.append(loss_nonvisual_mse_edges)
+
+            total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_gdl':
         for i, output_op in enumerate(output_ops):
@@ -68,7 +107,7 @@ def create_loss_ops(config, target_op, output_ops):
     else:
         raise ValueError("loss type must be in [\"mse\", \"mse_gdl\" but is {}".format(config.loss_type))
 
-    return total_loss_ops, loss_ops_img, loss_ops_velocity, loss_ops_position, loss_ops_distance
+    return total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance
 
 
 def gradient_difference_loss(true, pred, alpha=2.0):
@@ -81,8 +120,8 @@ def gradient_difference_loss(true, pred, alpha=2.0):
     if true.get_shape()[3] == 7:
         true_pred_diff_vert_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=True) - difference_gradient(pred[..., :3], vertical=True)), alpha)
         true_pred_diff_hor_rgb = tf.pow(tf.abs(difference_gradient(true[..., :3], vertical=False) - difference_gradient(pred[..., :3], vertical=False)), alpha)
-        true_pred_diff_vert_seg = tf.pow(tf.abs(difference_gradient(true[..., 4, None], vertical=True) - difference_gradient(pred[..., 4, None], vertical=True)), alpha)
-        true_pred_diff_hor_seg = tf.pow(tf.abs(difference_gradient(true[..., 4, None], vertical=False) - difference_gradient(pred[..., 4, None], vertical=False)), alpha)
+        true_pred_diff_vert_seg = tf.pow(tf.abs(difference_gradient(true[..., 3, None], vertical=True) - difference_gradient(pred[..., 3, None], vertical=True)), alpha)
+        true_pred_diff_hor_seg = tf.pow(tf.abs(difference_gradient(true[..., 3, None], vertical=False) - difference_gradient(pred[..., 3, None], vertical=False)), alpha)
         true_pred_diff_vert_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=True) - difference_gradient(pred[..., -3:], vertical=True)), alpha)
         true_pred_diff_hor_depth = tf.pow(tf.abs(difference_gradient(true[..., -3:], vertical=False) - difference_gradient(pred[..., -3:], vertical=False)), alpha)
 
@@ -121,3 +160,43 @@ def _transform_into_images(config, data):
     data = data[:, :-6]
     data = tf.reshape(data, [-1, *data_shape])
     return data
+
+def _intersection_over_union(image_gt, image_pred):
+    """
+    We assume the (x,y) coordinate system is inverted, i.e. (0,0) is on the top left, (0,1) top right, (1,1) right bottom
+    :param node_image_data: expects a tensor of shape (120,160,3) or (120,160,1)
+    :return: the intersection over union. The union is computed for the bounding boxes represented by the min and max values of the segments
+    """
+
+    # filter out all zeros
+    nonzero_indices = tf.where(tf.not_equal(image_gt, tf.zeros_like(image_gt)))
+    image_gt_nonzero = tf.gather_nd(image_gt, nonzero_indices)
+
+    nonzero_indices = tf.where(tf.not_equal(image_pred, tf.zeros_like(image_pred)))
+    image_pred_nonzero = tf.gather_nd(image_pred, nonzero_indices)
+
+    x11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=1)
+    y11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=0)
+    x12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=1)
+    y12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=0)
+
+    x21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=1)
+    y21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=0)
+    x22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=1)
+    y22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=0)
+
+    # determine the (x,y) coordinates of the intersection rectangle
+    xI1 = tf.maximum(x11, x21)
+    xI2 = tf.minimum(x12, x22)
+
+    yI1 = tf.maximum(y11, y21)
+    yI2 = tf.minimum(y12, y22)
+
+    # compute the areas
+    inter_area = tf.maximum((xI1-xI2), 0) * tf.maximum((yI1-yI2), 0)
+
+    gt_area = (x12 - x11) * (y21 - y11)  # remember: we assume x/y coordinates are inverted
+    pred_area = (x22 - x21) * (y22 - y21)
+
+    union = gt_area + pred_area
+    return inter_area / (union + 0.00001)
