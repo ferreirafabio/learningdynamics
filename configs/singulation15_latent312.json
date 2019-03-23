@@ -38,6 +38,6 @@
   "use_tfrecord_compression": true,
   "mode": "train_test",
   "initial_pos_vel_known": true,
-  "loss_type": "mse",
+  "loss_type": "mse_iou",
   "model_zoo_file": "EncodeProcessDecode_v3_312_latent_dim"
 }
