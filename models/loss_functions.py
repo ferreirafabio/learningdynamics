@@ -55,7 +55,7 @@ def create_loss_ops(config, target_op, output_ops):
             segmentation_data_predicted = predicted_node_reshaped[:, :, 3]
             segmentation_data_gt = target_node_reshaped[:, :, 3]
 
-            loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted)
+            loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted, config=config)
 
             if config.depth_data_provided:
                 # todo: check if stack is correct, print shapes
@@ -160,48 +160,59 @@ def _transform_into_images(config, data):
     return data
 
 
-def _intersection_over_union(image_gt, image_pred):
+def _intersection_over_union(image_gt, image_pred, config):
     """
-    We assume the (x,y) coordinate system is inverted, i.e. (0,0) is on the top left, (0,1) top right, (1,1) right bottom
     :param image_gt: the ground truth segmentation image, expects a tensor of shape (120,160,1)
     :param image_gt: the predicted image, expects a tensor of shape (120,160,1)
     :return: the intersection over union. The union is computed for the bounding boxes represented by the min and max values of the segments
     """
+    if config.normalize_data:
+        # when normalization is activated, background pixels are transformed from 0 to another number
+        background_pixel_value = tf.cast(tf.reduce_min(image_gt), dtype=tf.float32)
+        #background_pixel_value = tf.cast(0.18181819, dtype=tf.float32)
+    else:
+        background_pixel_value = tf.cast(0.0, dtype=tf.float32)
 
-    mask = image_pred > 0
-    coordinates_pred = tf.where(mask)
+    mask_pred = image_pred > background_pixel_value
+    coordinates_pred = tf.where(mask_pred)
 
-    mask = image_gt > 0
-    coordinates_gt = tf.where(mask)
+    mask_gt = tf.cast(image_gt, dtype=tf.float32) > background_pixel_value
+    coordinates_gt = tf.where(mask_gt)
 
-    # axis=1 means reduce over axis 1 --> determine all minimum values over axis 0 --> yields one vector with axis 0 min values,
-    # outer tf.reduce_min then extracts min single value of this vector
-    x11 = tf.reduce_min(tf.reduce_min(coordinates_gt, axis=1))
-    y11 = tf.reduce_min(tf.reduce_min(coordinates_gt, axis=0))
-    x12 = tf.reduce_max(tf.reduce_max(coordinates_gt, axis=1))
-    y12 = tf.reduce_max(tf.reduce_max(coordinates_gt, axis=0))
+    # the following is a test line; should yield 1 (IoU) or 0 (1-IoU)
+    # coordinates_pred = coordinates_gt
 
-    x21 = tf.reduce_min(tf.reduce_min(coordinates_pred, axis=1))
-    y21 = tf.reduce_min(tf.reduce_min(coordinates_pred, axis=0))
-    x22 = tf.reduce_max(tf.reduce_max(coordinates_pred, axis=1))
-    y22 = tf.reduce_max(tf.reduce_max(coordinates_pred, axis=0))
+    xy1_max = tf.reduce_max(coordinates_pred, axis=0)
+    x12 = xy1_max[1]
+    y12 = xy1_max[0]
+
+    xy1_min = tf.reduce_min(coordinates_pred, axis=0)
+    x11 = xy1_min[1]
+    y11 = xy1_min[0]
+
+    xy2_max = tf.reduce_max(coordinates_gt, axis=0)
+    x22 = xy2_max[1]
+    y22 = xy2_max[0]
+
+    xy2_min = tf.reduce_min(coordinates_gt, axis=0)
+    x21 = xy2_min[1]
+    y21 = xy2_min[0]
 
     # determine the (x,y) coordinates of the intersection rectangle
-    xI1 = tf.maximum(x11, tf.transpose(x21))
-    xI2 = tf.minimum(x12, tf.transpose(x22))
+    xI1 = tf.maximum(x11, x21)
+    xI2 = tf.minimum(x12, x22)
 
-    yI1 = tf.maximum(y11, tf.transpose(y21))
-    yI2 = tf.minimum(y12, tf.transpose(y22))
+    yI1 = tf.maximum(y11, y21)
+    yI2 = tf.minimum(y12, y22)
 
     # compute the areas
-    inter_area = tf.maximum((xI2-xI1), 0) * tf.maximum((yI2-yI1), 0) #todo
+    inter_area = tf.maximum(xI2-xI1, 0) * tf.maximum(yI2-yI1, 0)
     inter_area = tf.cast(inter_area, dtype=tf.float32)
 
-    gt_area = (x12 - x11) * (y21 - y11)  # remember: we assume x/y coordinates are inverted
-    pred_area = (x22 - x21) * (y22 - y21)
+    pred_area = (x12 - x11) * (y12 - y11)
+    gt_area = (x22 - x21) * (y22 - y21)
     gt_area = tf.cast(gt_area, dtype=tf.float32)
     pred_area = tf.cast(pred_area, dtype=tf.float32)
 
-    union = (gt_area + tf.transpose(pred_area)) - inter_area
-    return inter_area / (union + 1e-05)
-    #return inter_area
+    union = gt_area + pred_area - inter_area
+    return 1-(inter_area / (union + 1e-05))
