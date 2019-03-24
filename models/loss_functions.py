@@ -183,7 +183,7 @@ def _intersection_over_union(image_gt, image_pred, config):
     # coordinates_pred = coordinates_gt
 
     xy1_max = tf.reduce_max(coordinates_pred, axis=0)
-    x12 = xy1_max[1]
+    x12 = xy1_max[1]  # numpy coordinates are (y,x) instead of (x,y), origin of coordinate system is top left
     y12 = xy1_max[0]
 
     xy1_min = tf.reduce_min(coordinates_pred, axis=0)
