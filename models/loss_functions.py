@@ -47,25 +47,23 @@ def create_loss_ops(config, target_op, output_ops):
         for i, output_op in enumerate(output_ops):
 
             """ VISUAL LOSS """
-            predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
-            target_node_reshaped = _transform_into_images(config, target_node_splits[i])
-
-            segmentation_data_predicted = predicted_node_reshaped[:, :, :, 3]
-            segmentation_data_gt = target_node_reshaped[:, :, :, 3]
-
-            # todo: requires tf for loop over batch dimension
+            # if depth = True, predicted_node_reshaped and target_node_reshape have shape (120,160,7)
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes)[0]
+            target_node_reshaped = _transform_into_images(config, target_node_splits[i])[0]
 
 
+            segmentation_data_predicted = predicted_node_reshaped[:, :, 3]
+            segmentation_data_gt = target_node_reshaped[:, :, 3]
 
             loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted)
 
             if config.depth_data_provided:
                 # todo: check if stack is correct, print shapes
-                image_data_predicted = tf.stack([predicted_node_reshaped[:, :, :, :3], predicted_node_reshaped[:, :, :, -3:]])
-                image_data_gt = tf.stack([target_node_reshaped[:, :, :, :3], target_node_reshaped[:, :, :, -3:]])
+                image_data_predicted = tf.stack([predicted_node_reshaped[:, :, :3], predicted_node_reshaped[:, :, -3:]])
+                image_data_gt = tf.stack([target_node_reshaped[:, :, :3], target_node_reshaped[:, :, -3:]])
             else:
-                image_data_predicted = predicted_node_reshaped[:, :, :, :3]
-                image_data_gt = target_node_reshaped[:, :, :, :3]
+                image_data_predicted = predicted_node_reshaped[:, :, :3]
+                image_data_gt = target_node_reshaped[:, :, :3]
 
             loss_visual_mse_nodes = tf.losses.mean_squared_error(image_data_predicted, image_data_gt, weights=(2/3))
 
@@ -161,42 +159,49 @@ def _transform_into_images(config, data):
     data = tf.reshape(data, [-1, *data_shape])
     return data
 
+
 def _intersection_over_union(image_gt, image_pred):
     """
     We assume the (x,y) coordinate system is inverted, i.e. (0,0) is on the top left, (0,1) top right, (1,1) right bottom
-    :param node_image_data: expects a tensor of shape (120,160,3) or (120,160,1)
+    :param image_gt: the ground truth segmentation image, expects a tensor of shape (120,160,1)
+    :param image_gt: the predicted image, expects a tensor of shape (120,160,1)
     :return: the intersection over union. The union is computed for the bounding boxes represented by the min and max values of the segments
     """
 
-    # filter out all zeros
-    nonzero_indices = tf.where(tf.not_equal(image_gt, tf.zeros_like(image_gt)))
-    image_gt_nonzero = tf.gather_nd(image_gt, nonzero_indices)
+    mask = image_pred > 0
+    coordinates_pred = tf.where(mask)
 
-    nonzero_indices = tf.where(tf.not_equal(image_pred, tf.zeros_like(image_pred)))
-    image_pred_nonzero = tf.gather_nd(image_pred, nonzero_indices)
+    mask = image_gt > 0
+    coordinates_gt = tf.where(mask)
 
-    x11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=1, keepdims=True)
-    y11 = tf.reduce_min(image_gt_nonzero[:, :, :3], axis=0, keepdims=True)
-    x12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=1, keepdims=True)
-    y12 = tf.reduce_max(image_gt_nonzero[:, :, :3], axis=0, keepdims=True)
+    # axis=1 means reduce over axis 1 --> determine all minimum values over axis 0 --> yields one vector with axis 0 min values,
+    # outer tf.reduce_min then extracts min single value of this vector
+    x11 = tf.reduce_min(tf.reduce_min(coordinates_gt, axis=1))
+    y11 = tf.reduce_min(tf.reduce_min(coordinates_gt, axis=0))
+    x12 = tf.reduce_max(tf.reduce_max(coordinates_gt, axis=1))
+    y12 = tf.reduce_max(tf.reduce_max(coordinates_gt, axis=0))
 
-    x21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=1, keepdims=True)
-    y21 = tf.reduce_min(image_pred_nonzero[:, :, :3], axis=0, keepdims=True)
-    x22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=1, keepdims=True)
-    y22 = tf.reduce_max(image_pred_nonzero[:, :, :3], axis=0, keepdims=True)
+    x21 = tf.reduce_min(tf.reduce_min(coordinates_pred, axis=1))
+    y21 = tf.reduce_min(tf.reduce_min(coordinates_pred, axis=0))
+    x22 = tf.reduce_max(tf.reduce_max(coordinates_pred, axis=1))
+    y22 = tf.reduce_max(tf.reduce_max(coordinates_pred, axis=0))
 
     # determine the (x,y) coordinates of the intersection rectangle
-    xI1 = tf.maximum(x11, x21)
-    xI2 = tf.minimum(x12, x22)
+    xI1 = tf.maximum(x11, tf.transpose(x21))
+    xI2 = tf.minimum(x12, tf.transpose(x22))
 
-    yI1 = tf.maximum(y11, y21)
-    yI2 = tf.minimum(y12, y22)
+    yI1 = tf.maximum(y11, tf.transpose(y21))
+    yI2 = tf.minimum(y12, tf.transpose(y22))
 
     # compute the areas
-    inter_area = tf.maximum((xI1-xI2), 0) * tf.maximum((yI1-yI2), 0)
+    inter_area = tf.maximum((xI2-xI1), 0) * tf.maximum((yI2-yI1), 0) #todo
+    inter_area = tf.cast(inter_area, dtype=tf.float32)
 
     gt_area = (x12 - x11) * (y21 - y11)  # remember: we assume x/y coordinates are inverted
     pred_area = (x22 - x21) * (y22 - y21)
+    gt_area = tf.cast(gt_area, dtype=tf.float32)
+    pred_area = tf.cast(pred_area, dtype=tf.float32)
 
-    union = gt_area + pred_area
-    return inter_area / (union + 0.00001)
+    union = (gt_area + tf.transpose(pred_area)) - inter_area
+    return inter_area / (union + 1e-05)
+    #return inter_area
