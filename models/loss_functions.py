@@ -167,9 +167,9 @@ def _intersection_over_union(image_gt, image_pred, config):
     :return: the intersection over union. The union is computed for the bounding boxes represented by the min and max values of the segments
     """
     if config.normalize_data:
-        # when normalization is activated, background pixels are transformed from 0 to another number
+        # when normalization is activated, background pixels (smallest values) are transformed from 0 to another number --> transformation
+        # is linear therefore take smallest occurring value
         background_pixel_value = tf.cast(tf.reduce_min(image_gt), dtype=tf.float32)
-        #background_pixel_value = tf.cast(0.18181819, dtype=tf.float32)
     else:
         background_pixel_value = tf.cast(0.0, dtype=tf.float32)
 
