@@ -58,6 +58,7 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
 
     objects_segments = []
     gripperpos = []
+    grippervel = []
     objpos = []
     objvel = []
     depth = []
@@ -86,29 +87,42 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
         seg.append(img_as_uint(trajectory_step['seg']))
         img.append(img_as_uint(trajectory_step['img']))
         gripperpos.append(trajectory_step['gripperpos'])
+        grippervel.append(trajectory_step['grippervel'])
         objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
         objvel.append(np.stack(list(trajectory_step['objvel'].tolist().values())))
 
     if depth_data_provided:
-        return objects_segments, gripperpos, objpos, objvel, img, seg, depth
-    return objects_segments, gripperpos, objpos, objvel, img, seg
+        return objects_segments, gripperpos, grippervel, objpos, objvel, img, seg, depth
+    return objects_segments, gripperpos, grippervel, objpos, objvel, img, seg
 
 
 
 def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_number_object_experiments=True,
-                              n_sequences_per_batch = 10, test_size=0.2):
+                              n_sequences_per_batch = 10, test_size=0.2, pad_to=None, use_fixed_rollout=None):
     """
+    specify pad_to to e.g. 15 if all experiments should be padded to length 15 (simply copies the last valid element n times s.t. resulting experiment length is 15).
+    Sets gripper velocity and object velocities to zero for the padded samples.
+
+    specify use_fixed_rollout to e.g. 7 to remove all experiments that have more or less rollout steps.
 
     :param source_path:
     :param dest_path:
     :param name:
     :return:
     """
+
+    assert (pad_to is not None and use_fixed_rollout is None) or (pad_to is None and use_fixed_rollout is not None) or \
+           (pad_to is None and use_fixed_rollout is None), "either pad_to and use_fixed_rollout are both None or just one is set (and not both)"
+
     use_object_seg_data_only_for_init = config.use_object_seg_data_only_for_init
     depth_data_provided = config.depth_data_provided
     use_compression = config.use_tfrecord_compression
 
     file_paths = get_all_experiment_file_paths_from_dir(source_path)
+    """ filter out experiments that have a different rollout length than wanted """
+    if use_fixed_rollout is not None:
+        file_paths = [path for path in file_paths if len(path) == use_fixed_rollout]
+
     train_paths, test_paths = train_test_split(file_paths, test_size=test_size)
     filenames_split_train = list(chunks(train_paths, n_sequences_per_batch))
     filenames_split_test = list(chunks(test_paths, n_sequences_per_batch))
@@ -132,7 +146,6 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
         filename = os.path.join(dest_path, name + str(i+1) + '_of_' + str(len(filenames)) + '.tfrecords')
         print('Writing', filename)
 
-
         identifier = "_object_full_seg_rgb"
         depth = None
         if depth_data_provided:
@@ -149,6 +162,29 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                     if skip:
                         continue
 
+                """ add gripper velocity """
+                for key, value in experiment.items():
+                    if key == 0:
+                        vel = np.zeros(shape=3, dtype=np.float64)
+                    else:
+                        vel = (experiment[key-1]['gripperpos'] - experiment[key]['gripperpos']) * 240.0
+                    value['grippervel'] = vel
+
+                experiment_length = len(experiment.keys())
+
+                if pad_to is not None:
+                    len_to_pad = pad_to - experiment_length
+                    for i in range(len_to_pad):
+                        last_element_to_copy = experiment[experiment_length-1]  # zero indexed
+                        pad_element = last_element_to_copy.copy()
+                        pad_element['grippervel'] = np.zeros(pad_element['grippervel'].shape)
+                        objvelocities = pad_element['objvel'].tolist()
+                        for k, v in objvelocities.items():
+                            objvelocities[k] = np.zeros(v.shape)
+                        pad_element['objvel'] = np.asarray(objvelocities)
+                        experiment[experiment_length+i] = pad_element
+
+
                 number_of_total_objects = get_number_of_segment(experiment[0]['seg'])
                 n_manipulable_objects = number_of_total_objects - 2 # container and gripper subtracted (background is removed)
                 experiment_id = int(experiment[0]['experiment_id'])
@@ -157,20 +193,22 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                 # if data is multi-dimensional (e.g. segments for each object per times-step), ndarrays are stacked along first
                 # dimension
                 if depth_data_provided:
-                    objects_segments, gripperpos, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
+                    objects_segments, gripperpos, grippervel, objpos, objvel, img, seg, depth = add_experiment_data_to_lists(experiment, identifier,
                                                             use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
                                                             depth_data_provided= depth_data_provided)
                     depth = [_bytes_feature(i.tostring()) for i in depth]
                 else:
-                    objects_segments, gripperpos, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
+                    objects_segments, gripperpos, grippervel, objpos, objvel, img, seg = add_experiment_data_to_lists(experiment, identifier,
                                                             use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
                                                             depth_data_provided= depth_data_provided)
+                if experiment_length < pad_to:
+                    assert not np.any(grippervel[experiment_length+1]), "padded gripperpositions are not zero although they should be"
+                    assert not np.any(objvel[experiment_length + 1]), "padded objvelocities are not zero although they should be"
 
-
-
-                imgs =[_bytes_feature(i.tostring()) for i in img]
+                imgs = [_bytes_feature(i.tostring()) for i in img]
                 segs = [_bytes_feature(i.tostring()) for i in seg]
                 gripperpositions = [_bytes_feature(i.tostring()) for i in gripperpos]
+                grippervelocities = [_bytes_feature(i.tostring()) for i in grippervel]
 
                 # concatenate all object positions/velocities into an ndarray per experiment step
                 objpos = [_bytes_feature(i.tostring()) for i in objpos]
@@ -183,18 +221,18 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                     'img': tf.train.FeatureList(feature=imgs),
                     'seg' : tf.train.FeatureList(feature=segs),
                     'gripperpos': tf.train.FeatureList(feature=gripperpositions),
+                    'grippervel': tf.train.FeatureList(feature=grippervelocities),
                     'objpos': tf.train.FeatureList(feature=objpos),
                     'objvel': tf.train.FeatureList(feature=objvel),
                     'object_segments': tf.train.FeatureList(feature=objects_segments)
                 }
-
                 if depth_data_provided:
                     feature_list['depth'] = tf.train.FeatureList(feature=depth)
 
                 feature_lists = tf.train.FeatureLists(feature_list=feature_list)
 
                 example = tf.train.SequenceExample(feature_lists=feature_lists)
-                example.context.feature['experiment_length'].int64_list.value.append(len(experiment.keys()))
+                example.context.feature['experiment_length'].int64_list.value.append(experiment_length)
                 example.context.feature['experiment_id'].int64_list.value.append(experiment_id)
                 example.context.feature['n_total_objects'].int64_list.value.append(number_of_total_objects)
                 example.context.feature['n_manipulable_objects'].int64_list.value.append(n_manipulable_objects)
@@ -205,4 +243,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/Volumes/fabioexternal/Dropbox/Apps/masterthesis_results/seg_dir", "../data/destination_20_rollouts", test_size=0.8, n_sequences_per_batch=30)
+    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)
