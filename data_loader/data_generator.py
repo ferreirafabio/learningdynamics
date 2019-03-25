@@ -127,6 +127,9 @@ class DataGenerator:
         gripperpos = tf.decode_raw(sequence['gripperpos'], out_type=tf.float64)
         gripperpos = tf.reshape(gripperpos, tf.stack([experiment_length, 3]))
 
+        grippervel = tf.decode_raw(sequence['grippervel'], out_type=tf.float64)
+        grippervel = tf.reshape(grippervel, tf.stack([experiment_length, 3]))
+
         # indices: 0=first object,...,2=third object
         objpos = tf.decode_raw(sequence['objpos'], out_type=tf.float64)
         objpos = tf.reshape(objpos, tf.stack([experiment_length, n_manipulable_objects, 3]))
@@ -135,7 +138,6 @@ class DataGenerator:
         # might be unneccessary step in case of normalization due to multiplicative scale invariance
         #vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
         objvel = tf.identity(objpos, name="objvel")  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
-
 
         #objvel = tf.identity(objpos[:,] ,name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
 
@@ -166,6 +168,7 @@ class DataGenerator:
 
             object_segments = _normalize_fixed(object_segments, normed_min=0, normed_max=1, shape=object_seg_shape)
 
+            # gripper
             gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
             objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
             objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objpos_shape, scaling_factor=240.0)
@@ -175,6 +178,7 @@ class DataGenerator:
             'img': img,
             'seg': seg,
             'gripperpos': gripperpos,
+            'grippervel': grippervel,
             'objpos': objpos,
             'objvel': objvel,
             'object_segments': object_segments,

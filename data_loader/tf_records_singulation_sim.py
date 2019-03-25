@@ -170,7 +170,7 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                         vel = (experiment[key-1]['gripperpos'] - experiment[key]['gripperpos']) * 240.0
                     value['grippervel'] = vel
 
-                experiment_length = len(experiment.keys())
+                experiment_length = len(experiment)
 
                 if pad_to is not None:
                     len_to_pad = pad_to - experiment_length
@@ -202,8 +202,13 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                                                             use_object_seg_data_only_for_init=use_object_seg_data_only_for_init,
                                                             depth_data_provided= depth_data_provided)
                 if experiment_length < pad_to:
-                    assert not np.any(grippervel[experiment_length+1]), "padded gripperpositions are not zero although they should be"
-                    assert not np.any(objvel[experiment_length + 1]), "padded objvelocities are not zero although they should be"
+                    assert not np.any(grippervel[experiment_length:]), "padded gripperpositions are not zero although they should be"
+                    assert not np.any(objvel[experiment_length:]), "padded objvelocities are not zero although they should be"
+                    try:
+                        np.testing.assert_array_equal(img[experiment_length], img[experiment_length+1])
+                    except:
+                        print("error")
+
 
                 imgs = [_bytes_feature(i.tostring()) for i in img]
                 segs = [_bytes_feature(i.tostring()) for i in seg]
