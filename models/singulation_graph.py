@@ -147,15 +147,10 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                                                  features['gripperpos'][step].flatten()
                                                   )).astype(np.float32)
             elif config.global_output_size == 8:
-                """ compute gripper velocity """
-                if step == 0:
-                    vel = np.zeros(shape=3, dtype=np.float32)
-                else:
-                    vel = (features['gripperpos'][step-1] - features['gripperpos'][step])*240.0
                 global_features = np.concatenate((np.atleast_1d(step),
                                                   np.atleast_1d(constants.g),
                                                   features['gripperpos'][step].flatten(),
-                                                  vel,
+                                                  features['grippervel'][step].flatten(),
                                                   )).astype(np.float32)
             else:
                 global_features = np.concatenate((features['img'][step].flatten(),
