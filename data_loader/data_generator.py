@@ -132,6 +132,7 @@ class DataGenerator:
         gripperpos = tf.decode_raw(sequence['gripperpos'], out_type=tf.float64)
         gripperpos = tf.reshape(gripperpos, tf.stack([experiment_length, 3]))
 
+        # grippervel has been already multiplied with 240 during tfrecord generation
         grippervel = tf.decode_raw(sequence['grippervel'], out_type=tf.float64)
         grippervel = tf.reshape(grippervel, tf.stack([experiment_length, 3]))
 
@@ -141,10 +142,13 @@ class DataGenerator:
 
         # the following yields [240,240,240] to broadcast with shape (experiment_length, n_manipulable_objects, 3)
         # might be unneccessary step in case of normalization due to multiplicative scale invariance
-        #vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
-        objvel = tf.identity(objpos, name="objvel")  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
 
+        #objvel = tf.identity(objpos, name="objvel")  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
         #objvel = tf.identity(objpos[:,] ,name="objvel") * vel_broadcast_tensor  # frequency used: 1/240 --> velocity: pos/time --> pos/(1/f) --> pos*f
+
+        vel_broadcast_tensor = tf.fill((3,), tf.cast(240.0, tf.float64))
+        objvel = tf.decode_raw(sequence['objvel'], out_type=tf.float64)
+        objvel = tf.reshape(objvel, tf.stack([experiment_length, n_manipulable_objects, 3])) * vel_broadcast_tensor
 
         if self.old_tfrecords:
             # object_segments
@@ -162,7 +166,9 @@ class DataGenerator:
             seg_shape = seg.get_shape()[-2:]
             object_seg_shape = object_segments.get_shape()[-3:]
             gripperpos_shape = gripperpos.get_shape()[-1:]
+            grippervel_shape = grippervel.get_shape()[-1:]
             objpos_shape = objpos.get_shape()[-1:]
+            objvel_shape = objvel.get_shape()[-1:]
 
             img = _normalize_fixed(img, normed_min=0, normed_max=1, shape=img_shape)
             seg = _normalize_fixed(seg, normed_min=0, normed_max=1, shape=seg_shape)
@@ -175,8 +181,10 @@ class DataGenerator:
 
             # gripper
             gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
+            grippervel = _normalize_fixed_pos_vel_data(grippervel, normed_min=0, normed_max=1, shape=grippervel_shape, scaling_factor=240.0)
+
             objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
-            objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objpos_shape, scaling_factor=240.0)
+            objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objvel_shape, scaling_factor=240.0)
 
 
         return_dict = {
