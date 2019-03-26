@@ -49,10 +49,12 @@ class DataGenerator:
                         'img': (None, 120, 160, 3),
                         'seg': (None, 120, 160),
                         'gripperpos': (None, 3),
+                        'grippervel': (None, 3),
                         'objpos': (None, None, 3),
                         'objvel': (None, None, 3),
                         'object_segments': (None, 120, 160, 4),
                         'experiment_length': (),
+                        'unpadded_experiment_length': (),
                         'experiment_id': (),
                         'n_total_objects': (),
                         'n_manipulable_objects': ()
@@ -79,6 +81,7 @@ class DataGenerator:
     def _parse_function(self, example_proto):
         context_features = {
             'experiment_length': tf.FixedLenFeature([], tf.int64),
+            'unpadded_experiment_length': tf.FixedLenFeature([], tf.int64),
             'experiment_id': tf.FixedLenFeature([], tf.int64),
             'n_total_objects': tf.FixedLenFeature([], tf.int64),
             'n_manipulable_objects': tf.FixedLenFeature([], tf.int64)
@@ -89,6 +92,7 @@ class DataGenerator:
             'seg': tf.FixedLenSequenceFeature([], dtype=tf.string),
             'object_segments': tf.FixedLenSequenceFeature([], dtype=tf.string),
             'gripperpos': tf.FixedLenSequenceFeature([], dtype=tf.string),
+            'grippervel': tf.FixedLenSequenceFeature([], dtype=tf.string),
             'objpos': tf.FixedLenSequenceFeature([], dtype=tf.string),
             'objvel': tf.FixedLenSequenceFeature([], dtype=tf.string)
         }
@@ -100,6 +104,7 @@ class DataGenerator:
                                                              sequence_features=sequence_features)
 
         experiment_length = context['experiment_length']
+        unpadded_experiment_length = context['unpadded_experiment_length']
         n_manipulable_objects = context['n_manipulable_objects']
         experiment_id = context['experiment_id']
         n_total_objects = context['n_total_objects']
@@ -143,11 +148,11 @@ class DataGenerator:
 
         if self.old_tfrecords:
             # object_segments
-            img_type = tf.uint8
+            img_type = tf.int16
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             # object_segments
-            img_type = tf.int16
+            img_type = tf.uint8
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
@@ -184,6 +189,7 @@ class DataGenerator:
             'object_segments': object_segments,
 
             'experiment_length': experiment_length,
+            'unpadded_experiment_length': unpadded_experiment_length,
             'experiment_id': experiment_id,
             'n_total_objects': n_total_objects,
             'n_manipulable_objects': n_manipulable_objects

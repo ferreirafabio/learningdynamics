@@ -113,12 +113,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             """ (normalized) velocity is computed here since rolled indexing in 
             tfrecords seems not straightforward """
             if step == 0:
-               vel = np.zeros(shape=3, dtype=np.float32)
+               diff = np.zeros(shape=3, dtype=np.float32)
             else:
-               vel = features['objpos'][step-1][obj_id] - features['objpos'][step][obj_id]
+               diff = features['objpos'][step-1][obj_id] - features['objpos'][step][obj_id]
                if config.normalize_data:
-                   vel = normalize_list([vel])[0]
-               #vel = (diff * 240.0).flatten().astype(np.float32)
+                   vel = normalize_list([diff])[0]
+            vel = (diff * 240.0).flatten().astype(np.float32)
             #vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
@@ -141,13 +141,16 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         """ if gripper_as_global = True, graphs will have one node less
          add globals (image, segmentation, depth, gravity, time_step) """
         if gripper_as_global:
+
             if config.global_output_size == 5:
                 global_features = np.concatenate((np.atleast_1d(step),
                                                  np.atleast_1d(constants.g),
                                                  features['gripperpos'][step].flatten()
                                                   )).astype(np.float32)
-            elif config.global_output_size == 8:
-                global_features = np.concatenate((np.atleast_1d(step),
+            elif config.global_output_size == 9:
+                padding_flag = 1 if step >= features["unpadded_experiment_length"] else 0
+                global_features = np.concatenate((np.atleast_1d(padding_flag),
+                                                  np.atleast_1d(step),
                                                   np.atleast_1d(constants.g),
                                                   features['gripperpos'][step].flatten(),
                                                   features['grippervel'][step].flatten(),

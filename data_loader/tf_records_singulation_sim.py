@@ -204,10 +204,8 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                 if experiment_length < pad_to:
                     assert not np.any(grippervel[experiment_length:]), "padded gripperpositions are not zero although they should be"
                     assert not np.any(objvel[experiment_length:]), "padded objvelocities are not zero although they should be"
-                    try:
-                        np.testing.assert_array_equal(img[experiment_length], img[experiment_length+1])
-                    except:
-                        print("error")
+                    np.testing.assert_array_equal(img[experiment_length-1], img[experiment_length])
+
 
 
                 imgs = [_bytes_feature(i.tostring()) for i in img]
@@ -237,7 +235,8 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
                 feature_lists = tf.train.FeatureLists(feature_list=feature_list)
 
                 example = tf.train.SequenceExample(feature_lists=feature_lists)
-                example.context.feature['experiment_length'].int64_list.value.append(experiment_length)
+                example.context.feature['experiment_length'].int64_list.value.append(len(experiment))
+                example.context.feature['unpadded_experiment_length'].int64_list.value.append(experiment_length)
                 example.context.feature['experiment_id'].int64_list.value.append(experiment_id)
                 example.context.feature['n_total_objects'].int64_list.value.append(number_of_total_objects)
                 example.context.feature['n_manipulable_objects'].int64_list.value.append(n_manipulable_objects)

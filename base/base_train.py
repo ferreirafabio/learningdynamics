@@ -44,7 +44,7 @@ class BaseTrain:
         """
         raise NotImplementedError
 
-    def do_step(self, input_graphs_all_exp, target_graphs_all_exp, features):
+    def do_step(self, input_graphs_all_exp, target_graphs_all_exp, features, train_flag):
         """
         implement the logic of the train step
         - run the tensorflow session
