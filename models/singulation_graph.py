@@ -109,17 +109,17 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
 
-            # todo: normalize velocity
-            """ (normalized) velocity is computed here since rolled indexing in 
-            tfrecords seems not straightforward """
-            if step == 0:
-               diff = np.zeros(shape=3, dtype=np.float32)
-            else:
-               diff = features['objpos'][step-1][obj_id] - features['objpos'][step][obj_id]
-               if config.normalize_data:
-                   vel = normalize_list([diff])[0]
-            vel = (diff * 240.0).flatten().astype(np.float32)
-            #vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
+            # # todo: normalize velocity
+            # """ (normalized) velocity is computed here since rolled indexing in
+            # tfrecords seems not straightforward """
+            # if step == 0:
+            #    diff = np.zeros(shape=3, dtype=np.float32)
+            # else:
+            #    diff = features['objpos'][step-1][obj_id] - features['objpos'][step][obj_id]
+            #    if config.normalize_data:
+            #        vel = normalize_list([diff])[0]
+            #vel = (diff * 240.0).flatten().astype(np.float32)
+            vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
     def create_edge_feature(receiver, sender, target_graph_i):
