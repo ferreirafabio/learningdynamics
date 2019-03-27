@@ -32,7 +32,7 @@
   "parallel_batch_processing": false,
   "test_batch_size": 5,
   "test_interval": 100,
-  "tfrecords_dir": "/scr2/fabiof/data/tfrecords_15_rollouts_padded",
+  "tfrecords_dir": "/scr-ssd/fabiof/tfrecords_15_rollouts_padded/",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
   "use_tfrecord_compression": true,

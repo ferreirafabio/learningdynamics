@@ -3,6 +3,8 @@ import os
 import re
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt, animation as animation
 from moviepy import editor as mpy
 from skimage import img_as_ubyte, img_as_int, img_as_uint
