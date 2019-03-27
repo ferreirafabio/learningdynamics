@@ -165,7 +165,8 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
     return df
 
 
-def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name, reduce_dict=True):
+def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name, reduce_dict=True, overlay_images=True):
+
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it)
 
@@ -174,7 +175,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     summaries_pos_dict_images = None
 
     if export_images and dir_path:  # skip if directory exists
-        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path)
+        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
 
     if export_latent_data and dir_path:
         df = create_latent_data_df(output, gt_features=features, adjust_pos_ped_range=False, adjust_vel_pred_range=False)

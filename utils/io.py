@@ -182,55 +182,95 @@ def save_image_data_to_disk(image_data, destination_path, store_gif=True, img_ty
         clip = mpy.ImageSequenceClip(output_dir, fps=5, with_mask=False).to_RGB()
         clip.write_gif(os.path.join(output_dir, 'sequence_' + img_type + '.gif'), program='ffmpeg')
 
+def _normalize_if_necessary(img_data):
+    if img_data.dtype == np.float32 or img_data.dtype == np.float64:
+        if np.min(img_data) < -1.0 or np.max(img_data) > 1.0:
+            ''' normalize [0, 1]'''
+            return (img_data - np.min(img_data)) / np.ptp(img_data)
+            # img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
+    return img_data
 
-def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=False, normalization=False):
+
+def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=False, overlay_images=True):
     if not isinstance(image_dicts, dict) or image_dicts is None:
         return None
 
     for file_name, img_data in image_dicts.items():
-        if img_data.dtype == np.float32 or img_data.dtype == np.float64:
-            if np.min(img_data) < -1.0 or np.max(img_data) > 1.0:
-                ''' normalize [0, 1]'''
-                img_data = (img_data - np.min(img_data)) / np.ptp(img_data)
-                #img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
+        img_data = _normalize_if_necessary(img_data)
 
         img_data_uint = img_as_ubyte(img_data)
+        clip_overlay = None
+
+        if overlay_images:
+            object_id = file_name.split('_')[-2:]
+            object_id = object_id[0] + '_' + object_id[1]
+
+            key_seg = [k for k in image_dicts.keys() if object_id in k and 'seg' in k and 'target' in k][0]
+            key_rgb = [k for k in image_dicts.keys() if object_id in k and 'rgb' in k and 'target' in k][0]
+            key_depth = [k for k in image_dicts.keys() if object_id in k and 'depth' in k and 'target' in k][0]
 
         if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
+            ''' segmentation masks '''
             if use_moviepy:
-                ''' segmentation masks '''
                 clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=True)
             else:
                 fig = plt.figure(frameon=False)
+                dpi = fig.get_dpi()
+                fig.set_size_inches(320.0/float(dpi), 240.0/float(dpi))
                 ax = plt.Axes(fig, [0., 0., 1., 1.])
-                ax.set_axis_off()
                 fig.add_axes(ax)
                 ims = []
+
                 for i in range(img_data_uint.shape[0]):
-                    ims.append([plt.imshow(img_data_uint[i,:,:,0], animated=True)])
-                clip = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=1000)
+                    if overlay_images and "predicted" in file_name:
+                        im1 = img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i+1, :, :, 0]))
+                        im1 = plt.imshow(im1, animated=True)
+                        im = [plt.imshow(img_data_uint[i, :, :, 0], alpha=0.7, animated=True), im1]
+                    else:
+                        im = [plt.imshow(img_data_uint[i, :, :, 0], animated=True)]
+                    ims.append(im)
+                clip = animation.ArtistAnimation(fig, ims, interval=300, blit=True, repeat_delay=1000)
 
         elif len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 3:
+            ''' all 3-channel data (rgb, depth etc.)'''
             if use_moviepy:
-                ''' all 3-channel data (rgb, depth etc.)'''
                 clip = mpy.ImageSequenceClip(list(img_data_uint), fps=fps, ismask=False)
             else:
                 fig = plt.figure(frameon=False)
+                dpi = fig.get_dpi()
+                fig.set_size_inches(320.0/float(dpi), 240.0/float(dpi))
                 ax = plt.Axes(fig, [0., 0., 1., 1.])
                 ax.set_axis_off()
                 fig.add_axes(ax)
                 ims = []
+                if "depth" in file_name:
+                    key = key_depth
+                else:
+                    key = key_rgb
+
                 for i in range(img_data_uint.shape[0]):
-                    ims.append([plt.imshow(img_data_uint[i,:,:,:], animated=True)])
-                clip = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=1000)
+                    if overlay_images and "predicted" in file_name:
+                        im1 = img_as_ubyte(_normalize_if_necessary(image_dicts[key][i + 1, :, :, 0]))  # +1 since predicted gifs do not show initial image
+                        im1 = plt.imshow(im1, animated=True)
+                        im = [plt.imshow(img_data_uint[i, :, :, 0], alpha=0.7, animated=True), im1]
+                        ims.append(im)
+                    else:
+                        ims.append([plt.imshow(img_data_uint[i, :, :, :], animated=True)])
+                clip = animation.ArtistAnimation(fig, ims, interval=300, blit=True, repeat_delay=1000)
         else:
             continue
 
-        name = os.path.join(destination_path, file_name) + ".gif"
+        name = os.path.join(destination_path, file_name)
         if use_moviepy:
+            name += ".gif"
             clip.write_gif(name, program="ffmpeg", verbose=False, progress_bar=False)
         else:
-            clip.save(name, writer='imagemagick')
+            if overlay_images and "predicted" in file_name:
+                name += "_overlay" + ".gif"
+                clip.save(name, writer='imagemagick')
+            else:
+                name += ".gif"
+                clip.save(name, writer='imagemagick')
 
 
 def create_dir(output_dir, dir_name, verbose=False):
@@ -247,8 +287,8 @@ def create_dir(output_dir, dir_name, verbose=False):
     return output_dir, exists
 
 
-def export_summary_images(config, summaries_dict_images, dir_path):
-    save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts, normalization=config.normalize_data)
+def export_summary_images(config, summaries_dict_images, dir_path, overlay_images=True):
+    save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts, overlay_images=overlay_images)
 
 
 def export_latent_df(df, dir_path):

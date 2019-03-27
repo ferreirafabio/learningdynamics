@@ -229,7 +229,6 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
         visual_encoder = get_model_from_config(model_id=self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
-
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3_172_latent_dim.n_neurons_edges,
                                                                                          n_layers=EncodeProcessDecode_v3_172_latent_dim.n_layers_edges,
@@ -241,11 +240,6 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                                                                                                                name="visual_and_latent_node_encoder"),
 
             global_model_fn=None
-            # global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3.n_neurons_globals,
-            #                                                                                n_layers=EncodeProcessDecode_v3.n_layers_globals,
-            #                                                                                output_size=None,
-            #                                                                                typ="mlp_layer_norm",
-            #                                                                                name="mlp_encoder_global"),
             )
 
         return self._network(inputs)
