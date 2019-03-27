@@ -6,9 +6,9 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "n_neurons_nodes_total_dim": 312,
+  "n_neurons_nodes_total_dim": 172,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent312",
+  "exp_name": "singulation15_latent172",
   "export_test_images": true,
   "global_output_size": 9,
   "gripper_as_global": true,
@@ -39,5 +39,5 @@
   "mode": "train_test",
   "initial_pos_vel_known": true,
   "loss_type": "mse_iou",
-  "model_zoo_file": "EncodeProcessDecode_v3_312_latent_dim"
+  "model_zoo_file": "EncodeProcessDecode_v3_172_latent_dim"
 }

@@ -63,32 +63,31 @@ def create_loss_ops(config, target_op, output_ops):
         # i, total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = \
         #     tf.while_loop(iter, body, [i, total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance, output_ops, target_node_splits, target_op])
 
-
         for i, output_op in enumerate(output_ops):
-            ''' checks whether the padding_flag is 1 or 0 --> if 1, return zero loss'''
+            ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
             condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
 
             """ VISUAL LOSS """
-            loss_visual_mse_nodes = tf.cond(condition, lambda: tf.constant(0.0),
+            loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
                                             lambda: tf.losses.mean_squared_error(output_op.nodes[:, :-6],
                                                                                  target_node_splits[i][:, :-6],
                                                                                  weights=0.5)
                                             )
             """ NONVISUAL LOSS (50% weight) """
-            loss_nonvisual_mse_edges = tf.cond(condition, lambda: tf.constant(0.0),
+            loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
                                                lambda: tf.losses.mean_squared_error(output_op.edges,
                                                                                     target_edge_splits[i],
-                                                                                    weights=(1/6) )
+                                                                                    weights=(1/6))
                                                )
-            loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: tf.constant(0.0),
+            loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
                                                    lambda: tf.losses.mean_squared_error(output_op.nodes[:, -3:],
                                                                                         target_node_splits[i][:, -3:],
-                                                                                        weights=(1 / 6))
+                                                                                        weights=(1/6))
                                                    )
-            loss_nonvisual_mse_nodes_vel = tf.cond(condition, lambda: tf.constant(0.0),
+            loss_nonvisual_mse_nodes_vel = tf.cond(condition, lambda: float("inf"),
                                                    lambda: tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:],
                                                                                         target_node_splits[i][:, -6:-3:],
-                                                                                        weights=(1 / 6))
+                                                                                        weights=(1/6))
                                                    )
 
 
@@ -116,32 +115,43 @@ def create_loss_ops(config, target_op, output_ops):
 
     elif config.loss_type == 'mse_iou':
         for i, output_op in enumerate(output_ops):
+            ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
+            condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
 
             """ VISUAL LOSS """
-            # if depth = True, predicted_node_reshaped and target_node_reshape have shape (120,160,7)
+            loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
+                                            lambda: tf.losses.mean_squared_error(output_op.nodes[:, :-6],
+                                                                                 target_node_splits[i][:, :-6],
+                                                                                 weights=0.4)
+                                            )
+
             predicted_node_reshaped = _transform_into_images(config, output_op.nodes)[0]
             target_node_reshaped = _transform_into_images(config, target_node_splits[i])[0]
-
-
             segmentation_data_predicted = predicted_node_reshaped[:, :, 3]
             segmentation_data_gt = target_node_reshaped[:, :, 3]
 
-            loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted, config=config)
-
-            if config.depth_data_provided:
-                # todo: check if stack is correct, print shapes
-                image_data_predicted = tf.stack([predicted_node_reshaped[:, :, :3], predicted_node_reshaped[:, :, -3:]])
-                image_data_gt = tf.stack([target_node_reshaped[:, :, :3], target_node_reshaped[:, :, -3:]])
-            else:
-                image_data_predicted = predicted_node_reshaped[:, :, :3]
-                image_data_gt = target_node_reshaped[:, :, :3]
-
-            loss_visual_mse_nodes = tf.losses.mean_squared_error(image_data_predicted, image_data_gt, weights=(2/3))
+            loss_visual_iou_seg = tf.cond(condition, lambda: float("inf"),
+                                            lambda: 0.1 *_intersection_over_union(segmentation_data_gt,
+                                                                                    segmentation_data_predicted,
+                                                                                    config=config)
+                                            )
 
             """ NONVISUAL LOSS (50% weight) """
-            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i], weights=(1/6))
-            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:], weights=(1/6))
-            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:], weights=(1/6))
+            loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
+                                               lambda: tf.losses.mean_squared_error(output_op.edges,
+                                                                                    target_edge_splits[i],
+                                                                                    weights=(1/6))
+                                               )
+            loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
+                                                   lambda: tf.losses.mean_squared_error(output_op.nodes[:, -3:],
+                                                                                        target_node_splits[i][:, -3:],
+                                                                                        weights=(1/6))
+                                                   )
+            loss_nonvisual_mse_nodes_vel = tf.cond(condition, lambda: float("inf"),
+                                                   lambda: tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:],
+                                                                                        target_node_splits[i][:, -6:-3:],
+                                                                                        weights=(1/6))
+                                                   )
 
             loss_ops_img.append(loss_visual_mse_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
@@ -150,6 +160,41 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
             total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+
+
+            # """ VISUAL LOSS """
+            # # if depth = True, predicted_node_reshaped and target_node_reshape have shape (120,160,7)
+            # predicted_node_reshaped = _transform_into_images(config, output_op.nodes)[0]
+            # target_node_reshaped = _transform_into_images(config, target_node_splits[i])[0]
+            #
+            #
+            # segmentation_data_predicted = predicted_node_reshaped[:, :, 3]
+            # segmentation_data_gt = target_node_reshaped[:, :, 3]
+            #
+            # loss_visual_iou_seg = (1/3) * _intersection_over_union(segmentation_data_gt, segmentation_data_predicted, config=config)
+            #
+            # if config.depth_data_provided:
+            #     # todo: check if stack is correct, print shapes
+            #     image_data_predicted = tf.stack([predicted_node_reshaped[:, :, :3], predicted_node_reshaped[:, :, -3:]])
+            #     image_data_gt = tf.stack([target_node_reshaped[:, :, :3], target_node_reshaped[:, :, -3:]])
+            # else:
+            #     image_data_predicted = predicted_node_reshaped[:, :, :3]
+            #     image_data_gt = target_node_reshaped[:, :, :3]
+            #
+            # loss_visual_mse_nodes = tf.losses.mean_squared_error(image_data_predicted, image_data_gt, weights=(2/3))
+
+            # """ NONVISUAL LOSS (50% weight) """
+            # loss_nonvisual_mse_edges = tf.losses.mean_squared_error(output_op.edges, target_edge_splits[i], weights=(1/6))
+            # loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(output_op.nodes[:, -3:], target_node_splits[i][:, -3:], weights=(1/6))
+            # loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(output_op.nodes[:, -6:-3:], target_node_splits[i][:, -6:-3:], weights=(1/6))
+            #
+            # loss_ops_img.append(loss_visual_mse_nodes)
+            # loss_ops_img_iou.append(loss_visual_iou_seg)
+            # loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
+            # loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
+            # loss_ops_distance.append(loss_nonvisual_mse_edges)
+            #
+            # total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_gdl':
         for i, output_op in enumerate(output_ops):

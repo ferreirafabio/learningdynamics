@@ -29,7 +29,10 @@ class AnimateLatentData():
 
 
     def save_3d_plot(self, title, output_dir):
-        self.fig = plt.figure(dpi=200)
+        self.fig = plt.figure()
+        dpi = self.fig.get_dpi()
+        self.fig.set_size_inches(640.0 / float(dpi), 480.0 / float(dpi))
+
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.graph = self.ax.scatter([], [], [], s=70, marker="o")
 
@@ -77,7 +80,9 @@ class AnimateLatentData():
 
 
     def save_2d_plot(self, title, output_dir):
-        self.fig = plt.figure(dpi=200)
+        self.fig = plt.figure()
+        dpi = self.fig.get_dpi()
+        self.fig.set_size_inches(640.0 / float(dpi), 480.0 / float(dpi))
         self.ax = self.fig.add_subplot(111)
         self.graph = self.ax.scatter([], [], s=70, marker="o" , animated=True)
         self.ax.set_xlim(0, 1)
