@@ -202,7 +202,6 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
 
         img_data_uint = img_as_ubyte(img_data)
 
-
         if overlay_images:
             object_id = file_name.split('_')[-2:]
             object_id = object_id[0] + '_' + object_id[1]

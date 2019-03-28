@@ -7,6 +7,9 @@ from utils.logger import Logger
 from utils.utils import get_args
 from pydoc import locate
 
+import matplotlib
+matplotlib.use('Agg')
+
 
 def main():
     # capture the config path from the run arguments
