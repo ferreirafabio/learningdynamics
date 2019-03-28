@@ -304,7 +304,7 @@ def export_latent_df(df, dir_path):
     df.to_csv(path_csv)
 
 
-def create_latent_images(df, features, features_index, dir_path, config, prefix, cur_batch_it, export_latent_images=False):
+def create_latent_images(df, features, features_index, dir_path, config, prefix, cur_batch_it):
     """ creates the images corresponding to the latent space such as velocity or position -- currently only implemented for position
         if a directory exists, only the image_dict is generated for summary, otherwise the dict is generated and the images exported
      """

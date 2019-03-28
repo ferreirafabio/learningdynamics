@@ -92,27 +92,44 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features, unpad_exp_length, normalize_values=True, adjust_pos_ped_range=False, adjust_vel_pred_range=False, norm_factor=240):
-    """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
+def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_length):
+    """ creates a pandas dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
     0   [...], ..., [...]
     1
+
+    the values are unnormalized.
 
     """
     pos, vel = get_latent_from_gn_output(output_for_summary[0])  # exclude the index
 
     features_index = output_for_summary[1]
     
-    #in the case we have more gt data than predictions:
+    # in the case we have more gt data than predictions:
     if gt_features[features_index]['experiment_length'] != len(output_for_summary[0]):
         cut_length = len(output_for_summary[0])
         if cut_length > unpad_exp_length:
             cut_length = unpad_exp_length
+            pos = [pos_of_obj[:unpad_exp_length] for pos_of_obj in pos]
+            vel = [vel_of_obj[:unpad_exp_length] for vel_of_obj in vel]
     else:
         cut_length = None
 
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
+
+    # pos, vel are predictions given an initial state t=0 --> gt data always has one more sample
+    # --> add this sample to predictions
+    if config.initial_pos_vel_known:
+        for i, pos_of_obj in enumerate(pos):
+            pos_of_obj.insert(0, pos_gt[i][0])
+        for i, vel_of_obj in enumerate(vel):
+            vel_of_obj.insert(0, vel_gt[i][0])
+    else:
+        for pos_of_obj in pos:
+            pos_of_obj.insert(0, np.zeros(shape=3))
+        for vel_of_obj in vel:
+            vel_of_obj.insert(0, np.zeros(shape=3))
 
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
@@ -133,7 +150,6 @@ def create_latent_data_df(output_for_summary, gt_features, unpad_exp_length, nor
     all_header = header_pos + header_vel
 
     df = pd.DataFrame.from_items(zip(all_header, all_data))
-    df_normalized = pd.DataFrame.from_items(zip(all_header, all_data))
 
     """ testing """
     np.testing.assert_array_equal(df.ix[:,0].tolist(), pos_gt[0])  # check first column
@@ -171,7 +187,8 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
 
     if export_latent_data and dir_path:
-        df = create_latent_data_df(output, gt_features=features, unpad_exp_length=unpad_exp_length, adjust_pos_ped_range=False, adjust_vel_pred_range=False)
+        """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
+        df = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
@@ -189,7 +206,7 @@ def get_latent_target_data(features, features_index, limit=None):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
     list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
-    list_obj_pos = [list(np.squeeze(i))[:limit] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
-    list_obj_vel = [list(np.squeeze(i))[:limit] for i in list_obj_vel]
+    list_obj_pos = [list(np.squeeze(i))[:limit+1] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
+    list_obj_vel = [list(np.squeeze(i))[:limit+1] for i in list_obj_vel]
 
     return list_obj_pos, list_obj_vel
