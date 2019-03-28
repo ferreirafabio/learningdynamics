@@ -92,7 +92,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features, normalize_values=True, adjust_pos_ped_range=False, adjust_vel_pred_range=False, norm_factor=240):
+def create_latent_data_df(output_for_summary, gt_features, unpad_exp_length, normalize_values=True, adjust_pos_ped_range=False, adjust_vel_pred_range=False, norm_factor=240):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
@@ -107,6 +107,8 @@ def create_latent_data_df(output_for_summary, gt_features, normalize_values=True
     #in the case we have more gt data than predictions:
     if gt_features[features_index]['experiment_length'] != len(output_for_summary[0]):
         cut_length = len(output_for_summary[0])
+        if cut_length > unpad_exp_length:
+            cut_length = unpad_exp_length
     else:
         cut_length = None
 
@@ -131,6 +133,7 @@ def create_latent_data_df(output_for_summary, gt_features, normalize_values=True
     all_header = header_pos + header_vel
 
     df = pd.DataFrame.from_items(zip(all_header, all_data))
+    df_normalized = pd.DataFrame.from_items(zip(all_header, all_data))
 
     """ testing """
     np.testing.assert_array_equal(df.ix[:,0].tolist(), pos_gt[0])  # check first column
@@ -168,7 +171,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
 
     if export_latent_data and dir_path:
-        df = create_latent_data_df(output, gt_features=features, adjust_pos_ped_range=False, adjust_vel_pred_range=False)
+        df = create_latent_data_df(output, gt_features=features, unpad_exp_length=unpad_exp_length, adjust_pos_ped_range=False, adjust_vel_pred_range=False)
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
