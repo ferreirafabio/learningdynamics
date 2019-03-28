@@ -2,21 +2,14 @@ import os
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 
 from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
 from utils.io import export_summary_images, export_latent_df, create_latent_images
 from skimage import img_as_ubyte, img_as_uint, img_as_int, img_as_float32
 
-# def _denormalize(img, is_old_tfrecords):
-#     if is_old_tfrecords:
-#         image_range_seg = [np.uint8(np.iinfo(np.uint8).min), np.uint8(np.iinfo(np.uint8).max)]
-#     else:
-#         image_range_seg = [np.int16(-54), np.int16(243)]
-#
-#     current_min = np.full(img.shape, image_range_seg[0])
-#     current_max = np.full(img.shape, image_range_seg[1])
-#
-#     return (img * (current_max - current_min)) + current_min
+
 
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it, config):
@@ -168,6 +161,8 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
 
     summaries_pos_dict_images = None
+
+    unpad_exp_length = features[features_index]['unpadded_experiment_length']
 
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
