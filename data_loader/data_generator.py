@@ -179,12 +179,12 @@ class DataGenerator:
 
             object_segments = _normalize_fixed(object_segments, normed_min=0, normed_max=1, shape=object_seg_shape)
 
-            # gripper
-            gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
-            grippervel = _normalize_fixed_pos_vel_data(grippervel, normed_min=0, normed_max=1, shape=grippervel_shape, scaling_factor=240.0)
+            # normalize only images
+            #gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)
+            #grippervel = _normalize_fixed_pos_vel_data(grippervel, normed_min=0, normed_max=1, shape=grippervel_shape, scaling_factor=240.0)
 
-            objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
-            objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objvel_shape, scaling_factor=240.0)
+            #objpos = _normalize_fixed_pos_vel_data(objpos, normed_min=0, normed_max=1, shape=objpos_shape)
+            #objvel = _normalize_fixed_pos_vel_data(objvel, normed_min=0, normed_max=1, shape=objvel_shape, scaling_factor=240.0)
 
 
         return_dict = {

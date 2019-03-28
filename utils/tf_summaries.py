@@ -99,7 +99,7 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
     return summaries_dict_images, features_index
 
 
-def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=False, adjust_vel_pred_range=False, convert_pos_to_vel=False, norm_factor=240):
+def create_latent_data_df(output_for_summary, gt_features, normalize_values=True, adjust_pos_ped_range=False, adjust_vel_pred_range=False, norm_factor=240):
     """ creates a dataframe with rows = timesteps (rollouts) and as columns the predictions / ground truths
      of velocities and columns, e.g.
         0_obj_pred_pos, 0_obj_gt_pos, 1_obj_pred_pos, 1_obj_gt_pos, ... , 0_obj_pred_vel, 0_obj_gt_vel, ...
@@ -118,10 +118,6 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
         cut_length = None
 
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
-
-    if convert_pos_to_vel:
-        vel = [list(ary * norm_factor for ary in lst) for lst in vel]
-        vel_gt = [list(ary * norm_factor for ary in lst) for lst in vel_gt]
 
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
@@ -161,7 +157,6 @@ def create_latent_data_df(output_for_summary, gt_features, adjust_pos_ped_range=
         df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
         df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
-    #print("mean pos obj 0:", df.ix[:, 12][0], "mean vel obj 0:", df.ix[:, 18][0])
     return df
 
 

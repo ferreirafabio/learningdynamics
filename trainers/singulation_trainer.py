@@ -324,7 +324,7 @@ class SingulationTrainer(BaseTrain):
                 last_log_time = start_time
 
                 for i in range(self.config.test_batch_size):
-                    total_loss, outputs, loss_img, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
+                    total_loss, outputs, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
                                                                                                               target_graphs_all_exp[i],
                                                                                                               input_ctrl_graphs_all_exp[
                                                                                                                   i], features[i],
@@ -383,7 +383,7 @@ class SingulationTrainer(BaseTrain):
 
 
     def _do_step_parallel(self, input_graphs_all_exp, target_graphs_all_exp, features, losses, pos_vel_losses):
-        loss, _, pos_vel_loss = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
+        loss, _, pos_vel_loss, _, _, _, _ = self.do_step(input_graphs_all_exp, target_graphs_all_exp, features, train=True)
         if loss is not None:
             losses.append(loss)
             pos_vel_losses.append(pos_vel_loss)
