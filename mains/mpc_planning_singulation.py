@@ -7,7 +7,7 @@ from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
 from utils.utils import get_args
-from models.model_zoo.EncodeProcessDecode_v2 import EncodeProcessDecode_v2
+from models.model_zoo.old.EncodeProcessDecode_v2 import EncodeProcessDecode_v2
 
 
 def main():
