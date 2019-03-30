@@ -80,6 +80,11 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
                 if k in keys:
                     temp_list.append(segments[k])
             stop_object_segments = True
+            # make segmentation images real seg images (map values > 0 to 1)
+            for obj in temp_list:
+                if len(np.unique(obj[:, :, 4])) > 2:
+                    thresh = obj[:, :, 4] > 0
+                    obj[:, :, 4][thresh] = 1
             objects_segments.append(np.stack(temp_list))
         if depth_data_provided:
             depth.append(img_as_uint(trajectory_step['xyz']))
@@ -247,4 +252,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/scr2/test1data", "/scr2/fabiof/data/tfrecords_5_objects_50_rollouts_padded", test_size=0.9, n_sequences_per_batch=100, pad_to=50, use_fixed_rollout=None)
+    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_obj_segs_correct", test_size=0.9, n_sequences_per_batch=100, pad_to=50, use_fixed_rollout=None)

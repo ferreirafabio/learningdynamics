@@ -100,6 +100,11 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             """ we assume shape (image features, vel(3dim), pos(3dim)) """
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
+            # in case the segmentation image is not really a segmentation image (sometimes the seg img have more than two values per object image)
+            if len(np.unique(features['object_segments'][step][obj_id_segs][:,:,4])) > 2:
+                thresh = features['object_segments'][step][obj_id_segs][:,:,4] > 0.0
+                features['object_segments'][step][obj_id_segs][:,:,4][thresh] = 1.0
+
             # obj_seg will have data as following: (rgb, seg, optionally: depth)
             if config.use_object_seg_data_only_for_init:
                 """ in this case, the nodes will have static visual information over time """
@@ -109,7 +114,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
 
-            # # todo: normalize velocity
+            # normalize velocity
             # """ (normalized) velocity is computed here since rolled indexing in
             # tfrecords seems not straightforward """
             # if step == 0:

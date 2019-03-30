@@ -44,7 +44,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
 
     target_summaries_dict_seg = {
     prefix + '_target_seg_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
-        np.expand_dims(lst[..., 3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
+        np.expand_dims(lst[..., 4], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
 
     target_summaries_dict_depth = {
     prefix + '_target_depth_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
@@ -53,10 +53,6 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
     target_summaries_dict_global_img = {
         prefix + '_target_global_img_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it):
             features[features_index]['img']}
-
-    # target_summaries_dict_global_img = {
-    #     prefix + '_target_global_img_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it):
-    #         features[features_index]['img']}
 
     target_summaries_dict_global_seg = {
         prefix + '_target_global_seg_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it): np.expand_dims(
