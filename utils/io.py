@@ -202,13 +202,13 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
 
         img_data_uint = img_as_ubyte(img_data)
 
-        if overlay_images:
-            object_id = file_name.split('_')[-2:]
-            object_id = object_id[0] + '_' + object_id[1]
 
-            key_seg = [k for k in image_dicts.keys() if object_id in k and 'seg' in k and 'target' in k][0]
-            key_rgb = [k for k in image_dicts.keys() if object_id in k and 'rgb' in k and 'target' in k][0]
-            key_depth = [k for k in image_dicts.keys() if object_id in k and 'depth' in k and 'target' in k][0]
+        object_id = file_name.split('_')[-2:]
+        object_id = object_id[0] + '_' + object_id[1]
+
+        key_seg = [k for k in image_dicts.keys() if object_id in k and 'seg' in k and 'target' in k][0]
+        key_rgb = [k for k in image_dicts.keys() if object_id in k and 'rgb' in k and 'target' in k][0]
+        key_depth = [k for k in image_dicts.keys() if object_id in k and 'depth' in k and 'target' in k][0]
 
         if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
             ''' segmentation masks '''
@@ -220,17 +220,27 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 fig.set_size_inches(320.0/float(dpi), 240.0/float(dpi))
                 ax = plt.Axes(fig, [0., 0., 1., 1.])
                 fig.add_axes(ax)
-                cmap = plt.get_cmap()
-                cmap.set_bad(color="black")
                 ims = []
 
-                for i in range(img_data_uint.shape[0]):
+                for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
                     if overlay_images and "predicted" in file_name:
-                        im1 = img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i+1, :, :, 0]))
-                        im1 = plt.imshow(im1, animated=True, interpolation='none', cmap=cmap)
-                        im = [plt.imshow(img_data_uint[i, :, :, 0], alpha=0.7, interpolation='none', cmap=cmap, animated=True), im1]
+                        # treat initial image different: add ground truth init image to the prediction
+                        if i == 0:
+                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), animated=True, interpolation='none')
+                            # take from gt data
+                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), alpha=0.7, animated=True, interpolation='none')
+                            im = [im2, im1]
+
+                        else:
+                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i, :, :, 0])),animated=True, interpolation='none')
+                            # take from GN output, use i-1 since GN output has one less than gt data
+                            im2 = plt.imshow(img_data_uint[i-1, :, :, 0], alpha=0.7, animated=True, interpolation='none')
+                            im = [im2, im1]
                     else:
-                        im = [plt.imshow(img_data_uint[i, :, :, 0], animated=True, interpolation='none', cmap=cmap)]
+                        if i == 0:
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), animated=True, interpolation='none')]
+                        else:
+                            im = [plt.imshow(img_data_uint[i-1, :, :, 0], animated=True, interpolation='none')]
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
 
@@ -245,15 +255,32 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 ax = plt.Axes(fig, [0., 0., 1., 1.])
                 ax.set_axis_off()
                 fig.add_axes(ax)
-                cmap = plt.get_cmap()
-                cmap.set_bad(color="black")
                 ims = []
                 if "depth" in file_name:
                     key = key_depth
                 else:
                     key = key_rgb
 
-                for i in range(img_data_uint.shape[0]):
+                for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
+                    if overlay_images and "predicted" in file_name:
+                        # treat initial image different: add ground truth init image to the prediction
+                        if i == 0:
+                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), animated=True, interpolation='none')
+                            # take from gt data
+                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), alpha=0.7, animated=True, interpolation='none')
+                            im = [im2, im1]
+
+                        else:
+                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][i, :, :, :])),animated=True, interpolation='none')
+                            # take from GN output, use i-1 since GN output has one less than gt data
+                            im2 = plt.imshow(img_data_uint[i-1, :, :, :], alpha=0.7, animated=True, interpolation='none')
+                            im = [im2, im1]
+                    else:
+                        if i == 0:
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), animated=True, interpolation='none')]
+                        else:
+                            im = [plt.imshow(img_data_uint[i-1, :, :, :], animated=True, interpolation='none')]
+
                     # if overlay_images and "predicted" in file_name:
                     #     im1 = img_as_ubyte(_normalize_if_necessary(image_dicts[key][i + 1, :, :, 0]))  # +1 since predicted gifs do not show initial image
                     #     im1 = plt.imshow(im1, animated=True, interpolation='none', cmap=cmap)
@@ -261,7 +288,8 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                     #     im = [plt.imshow(img_data_uint[i, :, :, 0], alpha=0.7, interpolation='none', cmap=cmap, animated=True), im1]
                     #     ims.append(im)
                     # else:
-                    ims.append([plt.imshow(img_data_uint[i, :, :, :], animated=True, interpolation='none')])
+                    ims.append(im)
+                    #ims.append([plt.imshow(img_data_uint[i, :, :, :], animated=True, interpolation='none')])
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
         else:
             continue
