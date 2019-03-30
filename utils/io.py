@@ -238,7 +238,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i, :, :, 0])), animated=True, interpolation='none')]
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i, :, :, 0])), animated=True, interpolation='none')]
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
 
@@ -276,7 +276,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][i, :, :, :])), animated=True, interpolation='none')]
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i, :, :, :])), animated=True, interpolation='none')]
 
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
