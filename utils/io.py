@@ -237,10 +237,8 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im2 = plt.imshow(img_data_uint[i-1, :, :, 0], alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
-                        if i == 0:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), animated=True, interpolation='none')]
-                        else:
-                            im = [plt.imshow(img_data_uint[i-1, :, :, 0], animated=True, interpolation='none')]
+                        if i < img_data_uint.shape[0]:
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i, :, :, 0])), animated=True, interpolation='none')]
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
 
@@ -256,6 +254,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 ax.set_axis_off()
                 fig.add_axes(ax)
                 ims = []
+
                 if "depth" in file_name:
                     key = key_depth
                 else:
@@ -276,20 +275,10 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im2 = plt.imshow(img_data_uint[i-1, :, :, :], alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
-                        if i == 0:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), animated=True, interpolation='none')]
-                        else:
-                            im = [plt.imshow(img_data_uint[i-1, :, :, :], animated=True, interpolation='none')]
+                        if i < img_data_uint.shape[0]:
+                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][i, :, :, :])), animated=True, interpolation='none')]
 
-                    # if overlay_images and "predicted" in file_name:
-                    #     im1 = img_as_ubyte(_normalize_if_necessary(image_dicts[key][i + 1, :, :, 0]))  # +1 since predicted gifs do not show initial image
-                    #     im1 = plt.imshow(im1, animated=True, interpolation='none', cmap=cmap)
-                    #
-                    #     im = [plt.imshow(img_data_uint[i, :, :, 0], alpha=0.7, interpolation='none', cmap=cmap, animated=True), im1]
-                    #     ims.append(im)
-                    # else:
                     ims.append(im)
-                    #ims.append([plt.imshow(img_data_uint[i, :, :, :], animated=True, interpolation='none')])
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
         else:
             continue
