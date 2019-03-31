@@ -113,7 +113,10 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            # todo: change back
+            print("-----------------image loss excluded-----------------")
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            total_loss_ops.append(loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_gdl':
         # todo: change to new condition/padding_flag version

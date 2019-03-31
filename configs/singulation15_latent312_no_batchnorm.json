@@ -8,7 +8,7 @@
   "depth_data_provided": true,
   "n_neurons_nodes_total_dim": 312,
   "edge_output_size": 3,
-  "exp_name": "singulation15_latent312",
+  "exp_name": "singulation15_latent312_no_batchnorm",
   "export_test_images": true,
   "global_output_size": 9,
   "gripper_as_global": true,
@@ -31,7 +31,7 @@
   "num_iter_per_epoch": 10,
   "parallel_batch_processing": false,
   "test_batch_size": 5,
-  "test_interval": 100,
+  "test_interval": 50,
   "tfrecords_dir": "/scr2/fabiof/data/tfrecords_15_rollouts_padded",
   "train_batch_size": 20,
   "use_object_seg_data_only_for_init": false,
@@ -39,5 +39,5 @@
   "mode": "train_test",
   "initial_pos_vel_known": true,
   "loss_type": "mse_iou",
-  "model_zoo_file": "EncodeProcessDecode_v3_312_latent_dim"
+  "model_zoo_file": "EncodeProcessDecode_v3_312_latent_dim_no_batchnorm"
 }
