@@ -109,7 +109,7 @@ class EncodeProcessDecode_v3_1082_visual_latent_dim(snt.AbstractModule, BaseMode
 
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
-        self.global_output_size = config.global_output_size  # note: changed from 134405 to 5 or 8
+        self.global_output_size = config.global_output_size  # note: changed from 134405 to 9
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
@@ -124,7 +124,7 @@ class EncodeProcessDecode_v3_1082_visual_latent_dim(snt.AbstractModule, BaseMode
         output_ops = []
 
         for step in range(0, num_processing_steps-1):
-            global_t = tf.expand_dims(global_T[step], 0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
+            global_t = tf.expand_dims(global_T[step, :], 0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
             latent = latent.replace(globals=global_t)
 
             latent = self._core(latent)
@@ -181,21 +181,22 @@ class EncodeProcessDecode_v3_1082_visual_latent_dim(snt.AbstractModule, BaseMode
 
 
 class MLP_model(snt.AbstractModule):
-    def __init__(self, n_neurons, n_layers, output_size, typ="mlp_layer_norm", name="MLP_model"):
+    def __init__(self, n_neurons, n_layers, output_size, activation_final=True, typ="mlp_layer_norm", name="MLP_model"):
         super(MLP_model, self).__init__(name=name)
         assert typ in ["mlp_layer_norm", "mlp_transform"]
         self.n_neurons = n_neurons
         self.n_layers = n_layers
         self.output_size = output_size
         self.typ = typ
+        self.activation_final = activation_final
 
     def _build(self, inputs):
         if self.typ == "mlp_transform":
             # Transforms the outputs into the appropriate shape.
-            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
+            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
             seq = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(inputs)
         elif self.typ == "mlp_layer_norm":
-            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
+            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
             seq = snt.Sequential([net, snt.LayerNorm()])(inputs)
         return seq
 
@@ -213,6 +214,7 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
                                                                                         n_neurons=EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v3_1082_visual_latent_dim.n_layers_globals,
                                                                                         output_size=None,
+                                                                                        activation_final=False,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_encoder_global"),
             )
@@ -237,11 +239,13 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
             edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
                                                                                          n_neurons=EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_edges,
                                                                                          n_layers=EncodeProcessDecode_v3_1082_visual_latent_dim.n_layers_edges,
-                                                                                         output_size=None, typ="mlp_layer_norm",
+                                                                                         output_size=None,
+                                                                                         typ="mlp_layer_norm",
                                                                                          name="mlp_encoder_edge"),
 
-            node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
-                                                                                                               name="visual_and_latent_node_encoder"),
+            node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
+                                                                                          visual_encoder,
+                                                                                          name="visual_and_latent_node_encoder"),
 
             global_model_fn=None
         )
@@ -265,6 +269,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                                                             n_layers=EncodeProcessDecode_v3_1082_visual_latent_dim.n_layers_edges,
                                                                                             output_size=EncodeProcessDecode_v3_1082_visual_latent_dim.edge_output_size,
                                                                                             typ="mlp_transform",
+                                                                                            activation_final=False,
                                                                                             name="mlp_decoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(
@@ -276,6 +281,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                                                                     n_layers=EncodeProcessDecode_v3_1082_visual_latent_dim.n_layers_globals,
                                                                                                     output_size=EncodeProcessDecode_v3_1082_visual_latent_dim.global_output_size,
                                                                                                     typ="mlp_transform",
+                                                                                                    activation_final=False,
                                                                                                     name="mlp_decoder_global")
          )
 
@@ -585,9 +591,16 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
+        non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
+            n_neurons=EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_nodes_non_visual,
+            n_layers=3,
+            output_size=n_non_visual_elements,
+            typ="mlp_transform",
+            activation_final=False,
+            name="mlp_nonvisual_decoded_output")
+
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_nodes_total_dim, n_non_visual_elements],
-                                                                 activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
+        non_visual_decoded_output = non_visual_mlp(non_visual_latent_output)
 
         outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
 
@@ -610,12 +623,17 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
+        non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
+            n_neurons=EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_nodes_non_visual,
+            n_layers=3,
+            output_size=EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_nodes_non_visual,
+            typ="mlp_transform",
+            activation_final=True,
+            name="mlp_nonvisual_latent_output")
+
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
-        non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode_v3_1082_visual_latent_dim.n_neurons_nodes_non_visual],
-                                                                activate_final=True), snt.LayerNorm()])(non_visual_elements)
-
+        non_visual_latent_output = non_visual_mlp(non_visual_elements)
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
-
 
         if verbose:
             print("final encoder output shape", outputs.get_shape())

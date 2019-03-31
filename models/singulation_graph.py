@@ -77,32 +77,29 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             # pad up to fixed size since sonnet can only handle fixed-sized features
             res = attr['features']
             if config.use_object_seg_data_only_for_init:
-                feature = features['object_segments'][0].flatten()
+                feature = features['object_segments'][1].flatten()
             else:
-                feature = features['object_segments'][step][0].flatten()
+                feature = features['object_segments'][step][1].flatten()
             res[:feature.shape[0]] = feature
             return res
 
         elif attr['type_name'] == 'gripper':
             """ gripper only has obj segs and gripper pos """
             if config.use_object_seg_data_only_for_init:
-                obj_seg = features['object_segments'][1].flatten()
+                obj_seg = features['object_segments'][0].flatten()
             else:
-                obj_seg = features['object_segments'][step][1].flatten()
-            pos = features['gripperpos'][step].flatten()
-            # pad up to fixed size since sonnet can only handle fixed-sized features
-            res = attr['features']
-            res[:obj_seg.shape[0]] = obj_seg
-            res[-3:] = pos
-            return res
+                obj_seg = features['object_segments'][step][0].flatten()
+            pos = features['gripperpos'][step].flatten().astype(np.float32)
+            vel = features['grippervel'][step].flatten().astype(np.float32)
+            return np.concatenate((obj_seg, vel, pos))
 
         elif "manipulable" in attr['type_name']:
             """ we assume shape (image features, vel(3dim), pos(3dim)) """
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
             # in case the segmentation image is not really a segmentation image (sometimes the seg img have more than two values per object image)
-            if len(np.unique(features['object_segments'][step][obj_id_segs][:,:,4])) > 2:
-                thresh = features['object_segments'][step][obj_id_segs][:,:,4] > 0.0
+            if len(np.unique(features['object_segments'][step][obj_id_segs][:, :, 4])) > 2:
+                thresh = features['object_segments'][step][obj_id_segs][:, :, 4] > 0.0
                 features['object_segments'][step][obj_id_segs][:,:,4][thresh] = 1.0
 
             # obj_seg will have data as following: (rgb, seg, optionally: depth)
@@ -146,7 +143,6 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         """ if gripper_as_global = True, graphs will have one node less
          add globals (image, segmentation, depth, gravity, time_step) """
         if gripper_as_global:
-
             if config.global_output_size == 5:
                 global_features = np.concatenate((np.atleast_1d(step),
                                                  np.atleast_1d(constants.g),
@@ -186,10 +182,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             input_control_graphs.append(input_control_graph)
 
         else:
-            target_graphs[step].graph["features"] = np.concatenate((features['img'][step].flatten(), features['seg'][step].flatten(),
-                                                              features['depth'][step].flatten(), np.atleast_1d(step), np.atleast_1d(
-                                                                constants.g))).astype(np.float32)
-            assert target_graphs[step].graph["features"].shape[0]-3 == config.global_output_size
+            if config.global_output_size == 2:
+                target_graphs[step].graph["features"] = np.concatenate((np.atleast_1d(step),
+                                                                        np.atleast_1d( constants.g)
+                                                                        )).astype(np.float32)
+
+            #assert target_graphs[step].graph["features"].shape[0]-3 == config.global_output_size
             input_control_graphs = None
 
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
@@ -200,7 +198,8 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
 
     input_graph = target_graphs[0].copy()
     target_graphs = target_graphs[1:]  # first state is used for init
-    input_control_graphs = input_control_graphs[1:]  # first state is used for init
+    if gripper_as_global:
+        input_control_graphs = input_control_graphs[1:]  # first state is used for init
 
     # todo: following code assumes all nodes are of type 'manipulable'
     """ set velocity and position info to zero """
