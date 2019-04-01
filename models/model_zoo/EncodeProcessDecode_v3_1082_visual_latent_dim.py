@@ -241,6 +241,7 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                                                                                          n_layers=EncodeProcessDecode_v3_1082_visual_latent_dim.n_layers_edges,
                                                                                          output_size=None,
                                                                                          typ="mlp_layer_norm",
+                                                                                         activation_final=False,
                                                                                          name="mlp_encoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
