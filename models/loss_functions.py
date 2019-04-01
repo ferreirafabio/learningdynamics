@@ -28,6 +28,7 @@ def create_loss_ops(config, target_op, output_ops):
 
     if config.normalize_data:
         img_scale = 10
+        non_visual_scale = 100
     else:
         img_scale = 1
 
@@ -44,12 +45,12 @@ def create_loss_ops(config, target_op, output_ops):
                                             )
             """ NONVISUAL LOSS (50% weight) """
             loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
-                                               lambda: tf.losses.mean_squared_error(output_op.edges,
+                                               lambda: non_visual_scale * tf.losses.mean_squared_error(output_op.edges,
                                                                                     target_edge_splits[i],
                                                                                     weights=(1/6))
                                                )
             loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
-                                                   lambda: tf.losses.mean_squared_error(output_op.nodes[:, -3:],
+                                                   lambda: non_visual_scale * tf.losses.mean_squared_error(output_op.nodes[:, -3:],
                                                                                         target_node_splits[i][:, -3:],
                                                                                         weights=(1/6))
                                                    )
@@ -92,12 +93,12 @@ def create_loss_ops(config, target_op, output_ops):
 
             """ NONVISUAL LOSS (50% weight) """
             loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
-                                               lambda: tf.losses.mean_squared_error(output_op.edges,
+                                               lambda: non_visual_scale * tf.losses.mean_squared_error(output_op.edges,
                                                                                     target_edge_splits[i],
                                                                                     weights=(1/6))
                                                )
             loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
-                                                   lambda: tf.losses.mean_squared_error(output_op.nodes[:, -3:],
+                                                   lambda: non_visual_scale * tf.losses.mean_squared_error(output_op.nodes[:, -3:],
                                                                                         target_node_splits[i][:, -3:],
                                                                                         weights=(1/6))
                                                    )
@@ -113,10 +114,11 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            # todo: change back
-            print("-----------------image loss excluded-----------------")
-            #total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
-            total_loss_ops.append(loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+
+            #print("-----------------image loss excluded-----------------")
+            # total_loss_ops.append(loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            total_loss_ops.append(loss_visual_mse_nodes + loss_visual_iou_seg + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+
 
     elif config.loss_type == 'mse_gdl':
         # todo: change to new condition/padding_flag version
