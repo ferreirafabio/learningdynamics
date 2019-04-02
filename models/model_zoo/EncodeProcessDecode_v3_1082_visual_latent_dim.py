@@ -232,7 +232,7 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         """ we want to re-use the cnn encoder for both nodes and global attributes """
-        visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=None, name="visual_encoder")
+        visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
 
         """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
         self._network = modules.GraphIndependent(
@@ -262,7 +262,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
         self.model_id = model_id
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=None, name="visual_decoder")
+        visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
 
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
@@ -323,7 +323,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.6):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
         filter_sizes = [EncodeProcessDecode_v3_1082_visual_latent_dim.n_conv_filters, EncodeProcessDecode_v3_1082_visual_latent_dim.n_conv_filters * 2]
 
         if EncodeProcessDecode_v3_1082_visual_latent_dim.convnet_tanh:
@@ -462,7 +462,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.6):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
 
         if EncodeProcessDecode_v3_1082_visual_latent_dim.convnet_tanh:
             activation = tf.nn.tanh
@@ -536,6 +536,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         ''' layer 8'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
         outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
         l8_shape = outputs.get_shape()
 
         if self.is_training:

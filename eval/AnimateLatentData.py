@@ -12,16 +12,17 @@ import pandas as pd
 import os
 
 class AnimateLatentData():
-    def __init__(self, df, identifier1, identifier2, n_rollouts):
-        #self.df = pd.read_pickle(path_to_df)
+    def __init__(self, df, identifier1, identifier2):
         self.df = df
         self.id1 = identifier1
         self.id2 = identifier2
-        self.n_rollouts = n_rollouts-1
 
-        # cut the first value due to random initialization
-        self.pos_gt = normalize_df_column(self.df, self.id1)[1:].to_frame()
-        self.pos_pred = normalize_df_column(self.df, self.id2)[1:].to_frame()
+        self.interval = 1000
+        self.repeat_delay = 5000
+
+        self.pos_gt = normalize_df_column(self.df, self.id1).to_frame()
+        self.pos_pred = normalize_df_column(self.df, self.id2).to_frame()
+        self.n_unpadded_exp_len = len(self.pos_gt)
         mean_col_name = "mean(" + self.id1 + "-" + self.id2 + ")"
         std_col_name = "std(" + self.id1 + "-" + self.id2 + ")"
         self.mean_stats = self.df[mean_col_name].iloc[0]
@@ -45,8 +46,7 @@ class AnimateLatentData():
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
         self.graph.set_alpha(1)
-        self.colors = cm.tab10(np.linspace(0, 1, len(self.pos_gt)))
-        self.lines = sum([self.ax.plot([], [], [], '-', c=c) for c in self.colors], []) # todo: remove
+        self.colors = cm.tab10(np.linspace(0, 1, self.n_unpadded_exp_len))
 
         self.pos_gt.loc[:, 'x'] = self.pos_gt[self.id1].apply(lambda row: row[0])
         self.pos_gt.loc[:, 'y'] = self.pos_gt[self.id1].apply(lambda row: row[1])
@@ -63,7 +63,7 @@ class AnimateLatentData():
         self.ax.legend(loc='lower left', handles=[legend_handle_gt, legend_handle_pred], labels=["ground truth", "predicted"])
         self.ax.view_init(20, 240)
 
-        ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
+        ani = matplotlib.animation.FuncAnimation(self.fig, self._update_3d_graph, frames=self.n_unpadded_exp_len, interval=self.interval, repeat_delay=self.repeat_delay, blit=False)
         ani.save(output_dir, writer="imagemagick")
 
         # store static final image
@@ -94,7 +94,7 @@ class AnimateLatentData():
         self.ax.set_xlabel("y")
         self.ax.set_ylabel("x")
         self.graph.set_alpha(1)
-        self.colors = cm.tab10(np.linspace(0, 1, len(self.pos_gt)))
+        self.colors = cm.tab10(np.linspace(0, 1, self.n_unpadded_exp_len))
 
         self.pos_gt.loc[:, 'x'] = self.pos_gt[self.id1].apply(lambda row: row[0])
         self.pos_gt.loc[:, 'y'] = self.pos_gt[self.id1].apply(lambda row: row[1])
@@ -109,7 +109,7 @@ class AnimateLatentData():
 
         self.ax.text(0.0, 0.1, "mean diff per dim: " + str(self.mean_stats) + "\n" + "stddev per dim: " + str(self.std_stats), fontsize=6)
 
-        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_rollouts, interval=1000, repeat_delay=5000, blit=False)
+        self.ani = matplotlib.animation.FuncAnimation(self.fig, self._update_2d_graph, frames=self.n_unpadded_exp_len, interval=self.interval, repeat_delay=self.repeat_delay, blit=False)
         self.ani.save(output_dir, writer="imagemagick")
 
         # store static final image
@@ -125,6 +125,7 @@ class AnimateLatentData():
         return fig_as_np_array
 
     def _update_3d_graph(self, num):
+        # num is zero-index --> set to num+1
         x_updated = np.concatenate([self.pos_gt.x[:num+1].tolist(), self.pos_pred.x[:num+1].tolist()])
         y_updated = np.concatenate([self.pos_gt.y[:num+1].tolist(), self.pos_pred.y[:num+1].tolist()])
         z_updated = np.concatenate([self.pos_gt.z[:num+1].tolist(), self.pos_pred.z[:num+1].tolist()])
@@ -132,7 +133,7 @@ class AnimateLatentData():
         paths_gt = []
         paths_ped = []
 
-        for i in range(num+1):
+        for i in range(num):
             marker_gt = mmarkers.MarkerStyle('o')
             marker_ped = mmarkers.MarkerStyle('x')
             path_gt = marker_gt.get_path().transformed(marker_gt.get_transform())
@@ -176,7 +177,7 @@ if __name__ == '__main__':
 
     df = pd.read_pickle(PATH)
     out_dir = "../data/"
-    animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=10)
+    animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
     title = 'Ground truth vs predicted centroid position of object {}'.format(SELECTED_OBJECT_NUMBER)
     path_3d = out_dir + "/3d_obj_pos_3d_object" + ".gif"
     path_2d = out_dir + "/2d_obj_pos_3d_object" + ".gif"

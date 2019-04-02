@@ -28,7 +28,6 @@ from __future__ import division
 from __future__ import print_function
 
 from graph_nets import modules
-from graph_nets import utils_tf
 from base.base_model import BaseModel
 from utils.utils import get_correct_image_shape
 
@@ -108,7 +107,7 @@ class EncodeProcessDecode_v3_172_visual_latent_dim(snt.AbstractModule, BaseModel
 
         self.node_output_size = config.node_output_size
         self.edge_output_size = config.edge_output_size
-        self.global_output_size = config.global_output_size  # note: changed from 134405 to 5 or 8
+        self.global_output_size = config.global_output_size  # note: changed from 134405 to 9
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
@@ -179,9 +178,10 @@ class EncodeProcessDecode_v3_172_visual_latent_dim(snt.AbstractModule, BaseModel
 
 
 class MLP_model(snt.AbstractModule):
-    def __init__(self, n_neurons, n_layers, output_size, typ="mlp_layer_norm", name="MLP_model"):
+    def __init__(self, n_neurons, n_layers, output_size, activation_final=True, typ="mlp_layer_norm", name="MLP_model"):
         super(MLP_model, self).__init__(name=name)
         assert typ in ["mlp_layer_norm", "mlp_transform"]
+        self.activation_final = activation_final
         self.n_neurons = n_neurons
         self.n_layers = n_layers
         self.output_size = output_size
@@ -190,10 +190,10 @@ class MLP_model(snt.AbstractModule):
     def _build(self, inputs):
         if self.typ == "mlp_transform":
             # Transforms the outputs into the appropriate shape.
-            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
+            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
             seq = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(inputs)
         elif self.typ == "mlp_layer_norm":
-            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=True)
+            net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
             seq = snt.Sequential([net, snt.LayerNorm()])(inputs)
         return seq
 
@@ -203,17 +203,20 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
         super(EncoderGlobalsGraphIndependent, self).__init__(name=name)
         self.model_id = model_id
 
+        with self._enter_variable_scope():
+            self._network = modules.GraphIndependent(
+                edge_model_fn=None,
+                node_model_fn=None,
+                global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
+                                                                n_neurons=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_globals,
+                                                                n_layers=EncodeProcessDecode_v3_172_visual_latent_dim.n_layers_globals,
+                                                                output_size=None,
+                                                                activation_final=False,
+                                                                typ="mlp_layer_norm",
+                                                                name="mlp_encoder_global"),
+            )
+
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-
-        self._network = modules.GraphIndependent(
-            edge_model_fn=None,
-            node_model_fn=None,
-            global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_globals,
-                                                                                           n_layers=EncodeProcessDecode_v3_172_visual_latent_dim.n_layers_globals,
-                                                                                           output_size=None,
-                                                                                           typ="mlp_layer_norm",
-                                                                                           name="mlp_encoder_global"), )
-
         return self._network(inputs)
 
 
@@ -225,13 +228,14 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
         self.model_id = model_id
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
+        """ we want to re-use the cnn encoder for both nodes and global attributes """
         visual_encoder = get_model_from_config(model_id=self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_edges,
                                                                                          n_layers=EncodeProcessDecode_v3_172_visual_latent_dim.n_layers_edges,
                                                                                          output_size=None,
                                                                                          typ="mlp_layer_norm",
+                                                                                         activation_final=False,
                                                                                          name="mlp_encoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(visual_encoder,
@@ -252,7 +256,6 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
 
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        """" re-initializing _network because it is currently not possible to pass the is_training flag at init() time """
         visual_decoder = get_model_from_config(self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
 
         self._network = modules.GraphIndependent(
@@ -260,6 +263,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                                                                   n_layers=EncodeProcessDecode_v3_172_visual_latent_dim.n_layers_edges,
                                                                                                   output_size=EncodeProcessDecode_v3_172_visual_latent_dim.edge_output_size,
                                                                                                   typ="mlp_transform",
+                                                                                                  activation_final=False,
                                                                                                   name="mlp_decoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(visual_decoder,
@@ -269,7 +273,9 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                                                                     n_layers=EncodeProcessDecode_v3_172_visual_latent_dim.n_layers_globals,
                                                                                                     output_size=EncodeProcessDecode_v3_172_visual_latent_dim.global_output_size,
                                                                                                     typ="mlp_transform",
-                                                                                                    name="mlp_decoder_global"), )
+                                                                                                    activation_final=False,
+                                                                                                    name="mlp_decoder_global"),
+        )
         return self._network(inputs)
 
 
@@ -307,7 +313,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.6):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
         filter_sizes = [EncodeProcessDecode_v3_172_visual_latent_dim.n_conv_filters, EncodeProcessDecode_v3_172_visual_latent_dim.n_conv_filters * 2]
 
         if EncodeProcessDecode_v3_172_visual_latent_dim.convnet_tanh:
@@ -446,7 +452,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
         self.is_training = is_training
 
-    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.6):
+    def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
 
         if EncodeProcessDecode_v3_172_visual_latent_dim.convnet_tanh:
             activation = tf.nn.tanh
@@ -577,9 +583,16 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
+        non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
+            n_neurons=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_nodes_non_visual,
+            n_layers=3,
+            output_size=n_non_visual_elements,
+            typ="mlp_transform",
+            activation_final=False,
+            name="mlp_nonvisual_decoded_output")
+
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        non_visual_decoded_output = snt.Sequential([snt.nets.MLP([EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_nodes_total_dim, n_non_visual_elements],
-                                                                 activate_final=True), snt.LayerNorm()])(non_visual_latent_output)
+        non_visual_decoded_output = non_visual_mlp(non_visual_latent_output)
 
         outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
 
@@ -602,10 +615,16 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
-        """ map velocity and position into a latent space, concatenate with visual latent space vector """
-        non_visual_latent_output = snt.Sequential([snt.nets.MLP([n_non_visual_elements, EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_nodes_non_visual],
-                                                                activate_final=True), snt.LayerNorm()])(non_visual_elements)
+        non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
+            n_neurons=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_nodes_non_visual,
+            n_layers=3,
+            output_size=EncodeProcessDecode_v3_172_visual_latent_dim.n_neurons_nodes_non_visual,
+            typ="mlp_transform",
+            activation_final=True,
+            name="mlp_nonvisual_latent_output")
 
+        """ map velocity and position into a latent space, concatenate with visual latent space vector """
+        non_visual_latent_output = non_visual_mlp(non_visual_elements)
         outputs = tf.concat([visual_latent_output, non_visual_latent_output], axis=1)
 
 

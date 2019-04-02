@@ -119,6 +119,7 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
     assert (pad_to is not None and use_fixed_rollout is None) or (pad_to is None and use_fixed_rollout is not None) or \
            (pad_to is None and use_fixed_rollout is None), "either pad_to and use_fixed_rollout are both None or just one is set (and not both)"
 
+    print('-------------- DATA WILL BE PADDED TO {} --------------'.format(pad_to))
     use_object_seg_data_only_for_init = config.use_object_seg_data_only_for_init
     depth_data_provided = config.depth_data_provided
     use_compression = config.use_tfrecord_compression
@@ -252,4 +253,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_obj_segs_correct", test_size=0.2, n_sequences_per_batch=100, pad_to=50, use_fixed_rollout=None)
+    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_obj_segs_correct", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)

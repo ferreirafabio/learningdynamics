@@ -192,6 +192,12 @@ def _normalize_if_necessary(img_data):
             # img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
     return img_data
 
+def _normalize_depth(depth_image):
+    from_range = 1.0
+    to_range = 255
+    scaled = np.array((depth_image - 0) / float(from_range), dtype=float)
+    return scaled * to_range
+
 
 def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=False, overlay_images=True):
     if not isinstance(image_dicts, dict) or image_dicts is None:
@@ -201,7 +207,6 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
         img_data = _normalize_if_necessary(img_data)
 
         img_data_uint = img_as_ubyte(img_data)
-
 
         object_id = file_name.split('_')[-2:]
         object_id = object_id[0] + '_' + object_id[1]
@@ -276,7 +281,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i, :, :, :])), animated=True, interpolation='none')]
+                                im = [plt.imshow(_normalize_if_necessary(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
 
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
@@ -333,7 +338,7 @@ def create_latent_images(df, features, features_index, dir_path, config, prefix,
         identifier_gt = "{}_obj_gt_pos".format(i)
         identifier_pred = "{}_obj_pred_pos".format(i)
 
-        animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred, n_rollouts=config.n_rollouts)
+        animate = AnimateLatentData(df=df, identifier1=identifier_gt, identifier2=identifier_pred)
         title = 'Ground truth vs predicted centroid position of object {}'.format(i)
 
         path_3d = os.path.join(dir_path, "3d_obj_pos_object_" + str(i) + ".gif")
