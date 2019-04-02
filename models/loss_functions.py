@@ -31,6 +31,7 @@ def create_loss_ops(config, target_op, output_ops):
         non_visual_scale = 100
     else:
         img_scale = 1
+        non_visual_scale = 1
 
     if config.loss_type == 'mse':
         for i, output_op in enumerate(output_ops):
