@@ -256,5 +256,6 @@ def _intersection_over_union(image_gt, image_pred, config):
     gt_area = tf.cast(gt_area, dtype=tf.float32)
     pred_area = tf.cast(pred_area, dtype=tf.float32)
 
+    # take the negative of IoU to get IoU loss
     union = gt_area + pred_area - inter_area
-    return 1-(inter_area / (union + 1e-05))
+    return -(inter_area / (union + 1e-05))
