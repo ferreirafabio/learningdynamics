@@ -277,7 +277,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                         else:
                             im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][i, :, :, :])),animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
-                            im2 = plt.imshow(img_data_uint[i-1, :, :, :], alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i-1, :, :, :])), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
