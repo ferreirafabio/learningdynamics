@@ -7,7 +7,7 @@ matplotlib.use('Agg')
 
 from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
 from utils.io import export_summary_images, export_latent_df, create_latent_images
-from skimage import img_as_ubyte, img_as_uint, img_as_int, img_as_float32
+from utils.math_ops import normalize_df_column, normalize_df
 
 
 
@@ -151,21 +151,29 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
     np.testing.assert_array_equal(df.ix[:,0].tolist(), pos_gt[0])  # check first column
     np.testing.assert_array_equal(df.ix[:,-1].tolist(), vel[-1])  # check last column
 
-    """ compute statistics of pos """
-    for i in range(0, n_objects*2, 2):  # 2: each one column for pred and gt
-        column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
+    df_normalized = normalize_df(df.copy())
 
-        df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+    def _compute_df_statistics(df, n_objects):
+        """ compute statistics of pos """
+        for i in range(0, n_objects*2, 2):  # 2: each one column for pred and gt
+            column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i+1]
 
-    """ compute statistics of vel """
-    for i in range(n_objects * 2, (n_objects * 2)*2, 2):
-        column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
-        # compute mean / std and repeat (df.index)-lines to construct a pandas series
-        df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
-        df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+            df['mean'+'('+column_name+')'] = [(df.ix[:, i] - df.ix[:, i+1]).mean(axis=0)] * len(df.index)
+            df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
 
-    return df
+        """ compute statistics of vel """
+        for i in range(n_objects * 2, (n_objects * 2)*2, 2):
+            column_name = list(df.columns.values)[i] + '-' + list(df.columns.values)[i + 1]
+            # compute mean / std and repeat (df.index)-lines to construct a pandas series
+            df['mean' + '(' + column_name + ')'] = [(df.ix[:, i] - df.ix[:, i + 1]).mean(axis=0)] * len(df.index)
+            df['std' + '(' + column_name + ')'] = [np.std((df.ix[:, i] - df.ix[:, i+1]).tolist(), axis=0)] * len(df.index)
+
+        return df
+
+    df = _compute_df_statistics(df, n_objects)
+    df_normalized = _compute_df_statistics(df_normalized, n_objects)
+
+    return df, df_normalized
 
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name, reduce_dict=True, overlay_images=True):
@@ -184,7 +192,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
 
     if export_latent_data and dir_path:
         """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
-        df = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
+        df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
