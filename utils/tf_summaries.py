@@ -107,10 +107,10 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
         cut_length = len(output_for_summary[0])
         if cut_length > unpad_exp_length:
             cut_length = unpad_exp_length
-            pos = [pos_of_obj[:unpad_exp_length] for pos_of_obj in pos]
-            vel = [vel_of_obj[:unpad_exp_length] for vel_of_obj in vel]
+        pos = [pos_of_obj[:cut_length] for pos_of_obj in pos]
+        vel = [vel_of_obj[:cut_length] for vel_of_obj in vel]
     else:
-        cut_length = None
+        cut_length = gt_features[features_index]['experiment_length']
 
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
 
@@ -211,7 +211,7 @@ def get_latent_target_data(features, features_index, limit=None):
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     list_obj_pos = np.split(np.swapaxes(features[features_index]['objpos'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
     list_obj_vel = np.split(np.swapaxes(features[features_index]['objvel'], 0, 1)[:n_manipulable_objects], n_manipulable_objects)
-    list_obj_pos = [list(np.squeeze(i))[:limit+1] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
-    list_obj_vel = [list(np.squeeze(i))[:limit+1] for i in list_obj_vel]
+    list_obj_pos = [list(np.squeeze(i))[:limit] for i in list_obj_pos]  # remove 1 dim and transform list of ndarray to list of lists
+    list_obj_vel = [list(np.squeeze(i))[:limit] for i in list_obj_vel]
 
     return list_obj_pos, list_obj_vel
