@@ -82,7 +82,8 @@ def main():
         trainer.test_specific_exp_ids()
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
-        trainer.test_statistics(process_all_nn_outputs=True, export_latent_data=False)
+        trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,
+                                export_latent_data=False, sub_dir_name="test_stats")
 
 if __name__ == '__main__':
     main()

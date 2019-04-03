@@ -178,12 +178,18 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
     return df, df_normalized
 
 
-def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name, reduce_dict=True, overlay_images=True):
+def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name,
+                     reduce_dict=True, overlay_images=True):
+    """ when sum_dict_img_list and df_list are not None, the 1st and 3rd return values are lists"""
 
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it)
 
-    dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
+    if export_images or export_latent_data:
+        """ if any of these flags is True, create a directory """
+        dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
+    else:
+        dir_path = None
 
     summaries_pos_dict_images = None
 
@@ -192,11 +198,10 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
 
-    if dir_path:
-        """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
-        df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
+    """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
+    df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
 
-    if export_latent_data and dir_path and df:
+    if export_latent_data and dir_path and df is not None:
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
@@ -207,7 +212,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     if reduce_dict:
         summaries_dict_images = {summary_key: summaries_dict_images[summary_key] for summary_key in summaries_dict_images.keys() for k in keys if k in summary_key}
 
-    return summaries_dict_images, summaries_pos_dict_images
+    return summaries_dict_images, summaries_pos_dict_images, df
 
 
 def get_latent_target_data(features, features_index, limit=None):
