@@ -1,11 +1,14 @@
 import numpy as np
 import tensorflow as tf
 import time
+import os
 from base.base_train import BaseTrain
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_results
+from utils.io import create_dir
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
+from eval.compute_test_run_statistics import compute_psnr
 
 class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger):
@@ -219,13 +222,19 @@ class SingulationTrainer(BaseTrain):
 
         if outputs_total:
             if self.config.parallel_batch_processing:
-                with parallel_backend('loky', n_jobs=-2):
-                    summaries_dict_images, summaries_pos_dict_images = Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
-                                                                                 export_images, export_latent_data, sub_dir_name) for output in outputs_total)
+                with parallel_backend('threading', n_jobs=-2):
+                    results = Parallel()(delayed(generate_results)(output,
+                                                                      self.config,
+                                                                      prefix,
+                                                                      features,
+                                                                      cur_batch_it,
+                                                                      export_images,
+                                                                      export_latent_data,
+                                                                      sub_dir_name) for output in outputs_total)
 
             else:
                 for output in outputs_total:
-                    summaries_dict_images, summaries_pos_dict_images = generate_results(output=output,
+                    summaries_dict_images, summaries_pos_dict_images, _ = generate_results(output=output,
                                                                          config=self.config,
                                                                          prefix=prefix,
                                                                          features=features,
@@ -238,6 +247,9 @@ class SingulationTrainer(BaseTrain):
             if summaries_dict_images:
                 if self.config.parallel_batch_processing:
                     """ parallel mode returns list, just use first element as a summary for the logger """
+                    summaries_dict_images = results[0]
+                    summaries_pos_dict_images = results[1]
+
                     summaries_dict_images = summaries_dict_images[0]
                     if summaries_pos_dict_images is not None: 
                         summaries_pos_dict_images = summaries_pos_dict_images[0]
@@ -347,12 +359,11 @@ class SingulationTrainer(BaseTrain):
                 if outputs_total:
                     if self.config.parallel_batch_processing:
                         with parallel_backend('loky', n_jobs=-2):
-                            _, _ = Parallel()(
-                                delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
+                            Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
                                                           export_latent_data, sub_dir_name) for output in outputs_for_summary)
                     else:
                         for output in outputs_total:
-                            _, _ = generate_results(output=output,
+                            generate_results(output=output,
                                                     config=self.config,
                                                     prefix=prefix,
                                                     features=features,
@@ -366,24 +377,24 @@ class SingulationTrainer(BaseTrain):
                 print("continue")
                 continue
 
-    def test_statistics(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=True,
-                   sub_dir_name=None,
-                   export_latent_data=True):
+    def test_statistics(self, prefix, initial_pos_vel_known, export_images=False, sub_dir_name="test_statistics", export_latent_data=True):
 
         if not self.config.n_epochs == 1:
             print("test statistics mode --> n_epochs will be set to 1")
             self.config.n_epochs = 1
 
-        losses_total = []
-        losses_img = []
-        losses_iou = []
-        losses_velocity = []
-        losses_position = []
-        losses_distance = []
-        outputs_total = []
+        reduce_dict = False
+        overlay_images = True
+        pos_means = []
+        pos_std = []
+        vel_means = []
+        vel_std = []
+        psnr = []
 
+        create_dir(os.path.join("../experiments", prefix), sub_dir_name)
         while True:
             try:
+                outputs_total = []
                 next_element = self.test_data.get_next_batch()
                 features = self.sess.run(next_element)
 
@@ -395,51 +406,55 @@ class SingulationTrainer(BaseTrain):
                                                                                                        initial_pos_vel_known=initial_pos_vel_known
                                                                                                        )
 
-                start_time = time.time()
-                last_log_time = start_time
-
                 for i in range(self.config.test_batch_size):
-                    total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(
-                                                                                                input_graphs_all_exp[i],
-                                                                                                target_graphs_all_exp[i],
-                                                                                                input_ctrl_graphs_all_exp[i],
-                                                                                                features[i],
-                                                                                                train=False
-                                                                                                )
-                    if total_loss is not None:
-                        losses_total.append(total_loss)
-                        losses_img.append(loss_img)
-                        losses_iou.append(loss_iou)
-                        losses_velocity.append(loss_velocity)
-                        losses_position.append(loss_position)
-                        losses_distance.append(loss_distance)
-
+                    _, output, _, _, _, _, _ = self.do_step(input_graphs_all_exp[i],
+                                                                    target_graphs_all_exp[i],
+                                                                    input_ctrl_graphs_all_exp[i],
+                                                                    features[i],
+                                                                    train=False
+                                                                    )
                     if output:
                         outputs_total.append((output, i))
 
-                the_time = time.time()
-                elapsed_since_last_log = the_time - last_log_time
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
                 if outputs_total:
                     if self.config.parallel_batch_processing:
                         with parallel_backend('loky', n_jobs=-2):
-                            summaries_dict_images, summaries_pos_dict_images = Parallel()(
-                                delayed(generate_results)(output, self.config, prefix, features, cur_batch_it,
-                                                          export_images, export_latent_data, sub_dir_name) for output in outputs_total)
+                            results = Parallel()(delayed(generate_results)(output,
+                                                                self.config,
+                                                                prefix,
+                                                                features,
+                                                                cur_batch_it,
+                                                                export_images,
+                                                                export_latent_data,
+                                                                sub_dir_name,
+                                                                reduce_dict,
+                                                                overlay_images
+                                                                ) for output in outputs_total)
+
+                        for result in results:
+                            images_dict = result[0]
+                            df = result[2]
+
+                            psnr.append(compute_psnr(images_dict))
+                            #print(images_dict, df)
 
                     else:
                         for output in outputs_total:
-                            summaries_dict_images, summaries_pos_dict_images = generate_results(output=output,
-                                                                                                config=self.config,
-                                                                                                prefix=prefix,
-                                                                                                features=features,
-                                                                                                cur_batch_it=cur_batch_it,
-                                                                                                export_images=export_images,
-                                                                                                export_latent_data=export_latent_data,
-                                                                                                dir_name=sub_dir_name,
-                                                                                                reduce_dict=True
-                                                                                                )
+                            summaries_dict_images, _, df = generate_results(output=output,
+                                                                            config=self.config,
+                                                                            prefix=prefix,
+                                                                            features=features,
+                                                                            cur_batch_it=cur_batch_it,
+                                                                            export_images=export_images,
+                                                                            export_latent_data=export_latent_data,
+                                                                            dir_name=sub_dir_name,
+                                                                            reduce_dict=True,
+                                                                            overlay_images=overlay_images
+                                                                            )
+                summaries_dict_images = None
+                df = None
 
             except tf.errors.OutOfRangeError:
                 break
