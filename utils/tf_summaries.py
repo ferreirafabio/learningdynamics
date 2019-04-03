@@ -107,25 +107,26 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
         cut_length = len(output_for_summary[0])
         if cut_length > unpad_exp_length:
             cut_length = unpad_exp_length
-        pos = [pos_of_obj[:cut_length] for pos_of_obj in pos]
-        vel = [vel_of_obj[:cut_length] for vel_of_obj in vel]
     else:
         cut_length = gt_features[features_index]['experiment_length']
+
+    pos = [pos_of_obj[:cut_length] for pos_of_obj in pos]
+    vel = [vel_of_obj[:cut_length] for vel_of_obj in vel]
 
     pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
 
     # pos, vel are predictions given an initial state t=0 --> gt data always has one more sample
     # --> add this sample to predictions
-    if config.initial_pos_vel_known:
-        for i, pos_of_obj in enumerate(pos):
-            pos_of_obj.insert(0, pos_gt[i][0])
-        for i, vel_of_obj in enumerate(vel):
-            vel_of_obj.insert(0, vel_gt[i][0])
-    else:
-        for pos_of_obj in pos:
-            pos_of_obj.insert(0, np.zeros(shape=3))
-        for vel_of_obj in vel:
-            vel_of_obj.insert(0, np.zeros(shape=3))
+    # if config.initial_pos_vel_known:
+    #     for i, pos_of_obj in enumerate(pos):
+    #         pos_of_obj.insert(0, pos_gt[i][0])
+    #     for i, vel_of_obj in enumerate(vel):
+    #         vel_of_obj.insert(0, vel_gt[i][0])
+    # else:
+    #     for pos_of_obj in pos:
+    #         pos_of_obj.insert(0, np.zeros(shape=3))
+    #     for vel_of_obj in vel:
+    #         vel_of_obj.insert(0, np.zeros(shape=3))
 
     n_objects = np.shape(output_for_summary[0][0][0])[0]
 
