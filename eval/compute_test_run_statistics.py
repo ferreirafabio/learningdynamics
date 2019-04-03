@@ -19,5 +19,6 @@ def peak_signal_to_noise_ratio(true, pred, color_depth=255):
 
   return psnr
 
+
 def mean_squared_error(y, y_pred):
   return np.mean((y.flatten() - y_pred.flatten()) ** 2)
