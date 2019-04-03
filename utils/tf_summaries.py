@@ -192,9 +192,11 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
 
-    if export_latent_data and dir_path:
+    if dir_path:
         """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
         df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
+
+    if export_latent_data and dir_path and df:
         export_latent_df(df=df, dir_path=dir_path)
 
         if export_images:
