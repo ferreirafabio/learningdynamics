@@ -286,7 +286,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                                im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
+                            im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
 
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
