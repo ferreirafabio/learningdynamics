@@ -46,7 +46,7 @@ class AnimateLatentData():
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
         self.graph.set_alpha(1)
-        self.colors = cm.tab10(np.linspace(0, 1, self.n_unpadded_exp_len))
+        self.colors = cm.nipy_spectral(np.linspace(0, 1, self.n_unpadded_exp_len+1))
 
         self.pos_gt.loc[:, 'x'] = self.pos_gt[self.id1].apply(lambda row: row[0])
         self.pos_gt.loc[:, 'y'] = self.pos_gt[self.id1].apply(lambda row: row[1])
@@ -84,7 +84,7 @@ class AnimateLatentData():
         dpi = self.fig.get_dpi()
         self.fig.set_size_inches(640.0 / float(dpi), 480.0 / float(dpi))
         self.ax = self.fig.add_subplot(111)
-        self.graph = self.ax.scatter([], [], s=70, marker="o" , animated=True)
+        self.graph = self.ax.scatter([], [], s=70, marker="o", animated=True)
         self.ax.set_xlim(0, 1)
         self.ax.set_ylim(0, 1)
 
@@ -94,7 +94,7 @@ class AnimateLatentData():
         self.ax.set_xlabel("y")
         self.ax.set_ylabel("x")
         self.graph.set_alpha(1)
-        self.colors = cm.tab10(np.linspace(0, 1, self.n_unpadded_exp_len))
+        self.colors = cm.nipy_spectral(np.linspace(0, 1, self.n_unpadded_exp_len+1))
 
         self.pos_gt.loc[:, 'x'] = self.pos_gt[self.id1].apply(lambda row: row[0])
         self.pos_gt.loc[:, 'y'] = self.pos_gt[self.id1].apply(lambda row: row[1])
@@ -133,7 +133,7 @@ class AnimateLatentData():
         paths_gt = []
         paths_ped = []
 
-        for i in range(num):
+        for i in range(num+1):
             marker_gt = mmarkers.MarkerStyle('o')
             marker_ped = mmarkers.MarkerStyle('x')
             path_gt = marker_gt.get_path().transformed(marker_gt.get_transform())

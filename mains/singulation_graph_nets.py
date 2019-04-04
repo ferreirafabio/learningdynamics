@@ -80,6 +80,9 @@ def main():
     elif config.mode == "test_specific_exp_ids":
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
         trainer.test_specific_exp_ids()
+    elif config.mode == "test_5_objects":
+        print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
+        trainer.test_5_objects()
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
         trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,

@@ -192,6 +192,12 @@ def _normalize_if_necessary(img_data):
             # img_data = 2*(img_data - np.min(img_data))/np.ptp(img_data)-1
     return img_data
 
+
+def _normalize_0_1(img_data):
+    ''' normalize [0, 1]'''
+    return (img_data - np.min(img_data)) / np.ptp(img_data)
+
+
 def _normalize_depth(depth_image):
     from_range = 1.0
     to_range = 255
@@ -231,19 +237,19 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                     if overlay_images and "predicted" in file_name:
                         # treat initial image different: add ground truth init image to the prediction
                         if i == 0:
-                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), animated=True, interpolation='none')
+                            im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][0, :, :, 0]), animated=True, interpolation='none')
                             # take from gt data
-                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][0, :, :, 0])), alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(_normalize_0_1(image_dicts[key_seg][0, :, :, 0]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
 
                         else:
-                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key_seg][i, :, :, 0])),animated=True, interpolation='none')
+                            im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i, :, :, 0]),animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
-                            im2 = plt.imshow(img_data_uint[i-1, :, :, 0], alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(_normalize_0_1(img_data_uint[i-1, :, :, 0]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                            im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i, :, :, 0])), animated=True, interpolation='none')]
+                            im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, 0]), animated=True, interpolation='none')]
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
 
@@ -269,19 +275,18 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                     if overlay_images and "predicted" in file_name:
                         # treat initial image different: add ground truth init image to the prediction
                         if i == 0:
-                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), animated=True, interpolation='none')
+                            im1 = plt.imshow(_normalize_0_1(image_dicts[key][0, :, :, :]), animated=True, interpolation='none')
                             # take from gt data
-                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][0, :, :, :])), alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(_normalize_0_1(image_dicts[key][0, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
-
                         else:
-                            im1 = plt.imshow(img_as_ubyte(_normalize_if_necessary(image_dicts[key][i, :, :, :])),animated=True, interpolation='none')
+                            im1 = plt.imshow(_normalize_0_1(image_dicts[key][i, :, :, :]), animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
-                            im2 = plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i-1, :, :, :])), alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(_normalize_0_1(img_data_uint[i - 1, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
                         if i < img_data_uint.shape[0]:
-                                im = [plt.imshow(img_as_ubyte(_normalize_if_necessary(img_data_uint[i, :, :, :])), animated=True, interpolation='none')]
+                                im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
 
                     ims.append(im)
                 clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)

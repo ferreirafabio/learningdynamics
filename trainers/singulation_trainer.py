@@ -81,6 +81,25 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
+
+    def test_5_objects(self):
+        if not self.config.n_epochs == 1:
+            print("test mode --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+        prefix = self.config.exp_name
+        print("Running 5 object test with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        while True:
+            try:
+                self.test_batch(prefix=prefix,
+                                export_images=self.config.export_test_images,
+                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                process_all_nn_outputs=True,
+                                sub_dir_name="test_5_objects_{}_iterations_trained".format(cur_batch_it))
+            except tf.errors.OutOfRangeError:
+                break
+
     def train_batch(self, prefix):
         losses = []
         losses_img = []
