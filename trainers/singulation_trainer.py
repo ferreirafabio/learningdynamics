@@ -16,6 +16,8 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
+        print("using {} rollout steps".format(self.config.n_rollouts))
+
         while True:
             try:
                 _, _, _, _, _, cur_batch_it = self.train_batch(prefix)
@@ -84,8 +86,11 @@ class SingulationTrainer(BaseTrain):
 
     def test_5_objects(self):
         if not self.config.n_epochs == 1:
-            print("test mode --> n_epochs will be set to 1")
+            print("test mode 5 objects --> n_epochs will be set to 1")
             self.config.n_epochs = 1
+        if not self.config.n_rollouts == 50:
+            print("test mode 5 objects --> n_rollouts will be set to 50")
+            self.config.rollouts = 50
         prefix = self.config.exp_name
         print("Running 5 object test with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -249,7 +254,9 @@ class SingulationTrainer(BaseTrain):
                                                                       cur_batch_it,
                                                                       export_images,
                                                                       export_latent_data,
-                                                                      sub_dir_name) for output in outputs_total)
+                                                                      sub_dir_name,
+                                                                      True,
+                                                                      ['seg']) for output in outputs_total)
 
             else:
                 for output in outputs_total:
@@ -260,7 +267,9 @@ class SingulationTrainer(BaseTrain):
                                                                          cur_batch_it=cur_batch_it,
                                                                          export_images=export_images,
                                                                          export_latent_data=export_latent_data,
-                                                                         dir_name=sub_dir_name
+                                                                         dir_name=sub_dir_name,
+                                                                         reduce_dict=True,
+                                                                         output_selection=['seg', 'rgb', 'depth']
                                                                         )
 
             if summaries_dict_images:
@@ -371,7 +380,7 @@ class SingulationTrainer(BaseTrain):
                     pos_batch_loss = np.mean(losses_position)
                     dis_batch_loss = np.mean(losses_distance)
 
-                    print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
+                    print('total test batch loss: {:<8.6f} | img loss: {:<10.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
                             batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
                             elapsed_since_last_log))
 

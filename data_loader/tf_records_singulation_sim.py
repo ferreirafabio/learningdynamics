@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-from skimage import img_as_uint
+from skimage import img_as_uint, img_as_ubyte, img_as_float
 from utils.utils import chunks
 from utils.io import get_all_experiment_file_paths_from_dir, load_all_experiments_from_dir
 from data_prep.segmentation import get_segments_from_experiment_step
@@ -67,9 +67,9 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
 
     for j, trajectory_step in enumerate(experiment.values()):
         image_data = {
-            'img': trajectory_step['img'],
+            'img': img_as_float(trajectory_step['img']),
             'seg': trajectory_step['seg'],
-            'depth': trajectory_step['xyz']
+            'depth': img_as_float(trajectory_step['xyz'])
         }
         segments = get_segments_from_experiment_step(image_data, depth_data_provided=depth_data_provided)
 
@@ -82,15 +82,15 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
             stop_object_segments = True
             # make segmentation images real seg images (map values > 0 to 1)
             for obj in temp_list:
-                if len(np.unique(obj[:, :, 4])) > 2:
-                    thresh = obj[:, :, 4] > 0
-                    obj[:, :, 4][thresh] = 1
+                if len(np.unique(obj[:, :, 3])) > 2:
+                    thresh = obj[:, :, 3] > 0
+                    obj[:, :, 3][thresh] = 1
             objects_segments.append(np.stack(temp_list))
         if depth_data_provided:
-            depth.append(img_as_uint(trajectory_step['xyz']))
+            depth.append(img_as_float(trajectory_step['xyz']))
 
-        seg.append(img_as_uint(trajectory_step['seg']))
-        img.append(img_as_uint(trajectory_step['img']))
+        seg.append(img_as_float(trajectory_step['seg']))
+        img.append(img_as_float(trajectory_step['img']))
         gripperpos.append(trajectory_step['gripperpos'])
         grippervel.append(trajectory_step['grippervel'])
         objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
@@ -253,4 +253,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_obj_segs_correct", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)
+    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_correct2test", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)

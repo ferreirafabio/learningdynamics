@@ -179,11 +179,18 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
 
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name,
-                     reduce_dict=True, overlay_images=True):
+                     reduce_dict=True, overlay_images=True, output_selection=['seg', 'rgb', 'depth']):
     """ when sum_dict_img_list and df_list are not None, the 1st and 3rd return values are lists"""
+
+    assert isinstance(output_selection, list), 'output_selection should be a list'
 
     summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it)
+    if 'global_img' not in output_selection:
+        output_selection.append('global_img')
+
+    if reduce_dict:
+        summaries_dict_images = {summary_key: summaries_dict_images[summary_key] for summary_key in summaries_dict_images.keys() for k in output_selection if k in summary_key}
 
     if export_images or export_latent_data:
         """ if any of these flags is True, create a directory """
@@ -196,7 +203,7 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
     unpad_exp_length = features[features_index]['unpadded_experiment_length']
 
     if export_images and dir_path:  # skip if directory exists
-        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images)
+        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images, unpad_exp_length=unpad_exp_length)
 
     """ this will generate a pandas dataframe of unnormalized values. 'create_latent_images' then uses this df, normalizes the values and plots them"""
     df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)

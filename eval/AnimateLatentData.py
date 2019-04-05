@@ -18,7 +18,7 @@ class AnimateLatentData():
         self.id2 = identifier2
 
         self.interval = 1000
-        self.repeat_delay = 5000
+        self.repeat_delay = 2000
 
         self.pos_gt = normalize_df_column(self.df, self.id1).to_frame()
         self.pos_pred = normalize_df_column(self.df, self.id2).to_frame()
