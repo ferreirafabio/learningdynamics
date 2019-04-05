@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.io import get_all_experiment_image_data_from_dir, get_experiment_image_data_from_dir, save_image_data_to_disk
 from utils.utils import get_all_experiment_image_data_from_dir
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, img_as_float
 
 def get_segments_from_experiment_step(images, depth_data_provided=False):
     """
@@ -34,47 +34,47 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
 
     n_segments = get_number_of_segment(seg)
     masks = get_segments_indices(seg)
-    seg_rgb_data = {
+    rgb_seg_data = {
         "n_segments": n_segments,
-        "full_seg": images['seg'],
-        "full_rgb": images['img']
+        "full_seg": img_as_ubyte(images['seg']),
+        "full_rgb": img_as_float(img_as_ubyte(images['img']))
     }
 
     if depth_data_provided:
         assert 'depth' in images.keys(), "no depth data given but flag 'depth_data_provided' is set to True"
-        seg_rgb_data['full_depth'] = images['depth']
+        rgb_seg_data['full_depth'] = img_as_float(img_as_ubyte(images['depth']))
         depth = images['depth']
         if depth.dtype == np.float32:
-            depth = img_as_ubyte(images['depth']) # depth image requires int16 rescaling
+            depth = img_as_float(img_as_ubyte(images['depth'])) # first convert to ubytes and than to signed float [0,1]
 
     for i in range(n_segments):
         # get full images
         full_seg_masked = (seg == masks[i]).astype(np.uint8)
-        full_rgb_masked = img_as_ubyte(get_segment_by_mask(rgb, full_seg_masked))
+        full_rgb_masked = img_as_float(img_as_ubyte(get_segment_by_mask(rgb, full_seg_masked)))
 
         if depth_data_provided:
-            full_depth_masked = img_as_ubyte(get_segment_by_mask(depth, full_seg_masked))
+            full_depth_masked = img_as_float(img_as_ubyte(get_segment_by_mask(depth, full_seg_masked)))
 
 
         full_seg_masked_expanded = np.expand_dims(full_seg_masked, axis=2)
         identifier = "full_seg_rgb"
         if depth_data_provided:
-            full_seg_rgb_depth_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked, full_depth_masked), axis=2)
+            full_rgb_seg_depth_masked = np.concatenate((full_rgb_masked, full_seg_masked_expanded, full_depth_masked), axis=2)
             identifier = "full_seg_rgb_depth"
         else:
-            full_seg_rgb_depth_masked = np.concatenate((full_seg_masked_expanded, full_rgb_masked), axis=2)
+            full_rgb_seg_depth_masked = np.concatenate((full_rgb_masked, full_seg_masked_expanded), axis=2)
 
-        # channel 0: seg, channel 1..3: rgb
-        seg_rgb_data[str(i) + "_object_" + identifier] = full_seg_rgb_depth_masked
+        # channel 1..3: rgb, channel 0: seg
+        rgb_seg_data[str(i) + "_object_" + identifier] = full_rgb_seg_depth_masked
 
         """ get crops """
-        crop = img_as_ubyte(crop_by_mask(full_seg_masked))
-        rgb_crop = img_as_ubyte(get_segment_by_mask(rgb, mask=full_seg_masked, crop=True))
+        crop = img_as_ubyte(crop_by_mask(full_seg_masked)).astype(np.float)
+        rgb_crop = img_as_float(img_as_ubyte(get_segment_by_mask(rgb, mask=full_seg_masked, crop=True)))
 
         depth_crop = None
         identifier = "crop_seg_rgb"
         if depth_data_provided:
-            depth_crop = img_as_ubyte(get_segment_by_mask(depth, mask=full_seg_masked, crop=True))
+            depth_crop = img_as_float(img_as_ubyte(get_segment_by_mask(depth, mask=full_seg_masked, crop=True)))
 
         crop_seg_masked_expanded = np.expand_dims(crop, axis=2)
         if depth_data_provided:
@@ -84,15 +84,9 @@ def get_segments_from_experiment_step(images, depth_data_provided=False):
             crop_rgb_seg_depth_masked = np.concatenate((rgb_crop, crop_seg_masked_expanded), axis=2)
 
         # channel 0: seg, channel 1..3: rgb
-        seg_rgb_data[str(i) + "_object_" + identifier] = crop_rgb_seg_depth_masked
+        rgb_seg_data[str(i) + "_object_" + identifier] = crop_rgb_seg_depth_masked
 
-    # # todo: remove
-    # for v in seg_rgb_data.values():
-    #    if type(v) == np.ndarray:
-    #        plt.imshow(v)
-    #        plt.show()
-
-    return seg_rgb_data
+    return rgb_seg_data
 
 
 def get_segments_from_single_experiment(data):

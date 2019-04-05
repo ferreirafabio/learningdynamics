@@ -40,8 +40,6 @@ class DataGenerator:
         self.dataset = self.dataset.map(self._parse_function, num_parallel_calls=multiprocessing.cpu_count())
         self.dataset = self.dataset.apply(tf.data.experimental.shuffle_and_repeat(30, self.config.n_epochs))
 
-
-
         # Dataset.batch() works only for tensors that all have the same size
         # given shapes are for: img, seg, depth, gripperpos, objpos, objvel, obj_segs, experiment_length, experiment_id, n_total_objects,
         # n_manipulable_objects
@@ -109,14 +107,14 @@ class DataGenerator:
         experiment_id = context['experiment_id']
         n_total_objects = context['n_total_objects']
 
-        img = tf.decode_raw(sequence['img'], out_type=tf.uint16)
+        img = tf.decode_raw(sequence['img'], out_type=tf.float64)
         img = tf.reshape(img, tf.stack([experiment_length, 120, 160, 3]))
 
-        seg = tf.decode_raw(sequence['seg'], out_type=tf.uint16)
+        seg = tf.decode_raw(sequence['seg'], out_type=tf.float64)
         seg = tf.reshape(seg, tf.stack([experiment_length, 120, 160]))
 
         if self.depth_data_provided:
-            depth = tf.decode_raw(sequence['depth'], out_type=tf.uint16)
+            depth = tf.decode_raw(sequence['depth'], out_type=tf.float32)
             depth = tf.reshape(depth, tf.stack([experiment_length, 120, 160, 3]))
 
             if not self.use_object_seg_data_only_for_init:
@@ -156,28 +154,29 @@ class DataGenerator:
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             # object_segments
-            img_type = tf.uint8
+            #img_type = tf.uint8
+            img_type = tf.float64
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 
-        if self.config.normalize_data:
+        #if self.config.normalize_data:
             # cast necessary because _normalize_fixed requires minuend and subtrahend to be of the same type
-            img_shape = img.get_shape()[-3:]
-            seg_shape = seg.get_shape()[-2:]
-            object_seg_shape = object_segments.get_shape()[-3:]
-            gripperpos_shape = gripperpos.get_shape()[-1:]
-            grippervel_shape = grippervel.get_shape()[-1:]
-            objpos_shape = objpos.get_shape()[-1:]
-            objvel_shape = objvel.get_shape()[-1:]
+        #    img_shape = img.get_shape()[-3:]
+        #    seg_shape = seg.get_shape()[-2:]
+        #    object_seg_shape = object_segments.get_shape()[-3:]
+        #    gripperpos_shape = gripperpos.get_shape()[-1:]
+        #    grippervel_shape = grippervel.get_shape()[-1:]
+        #    objpos_shape = objpos.get_shape()[-1:]
+        #    objvel_shape = objvel.get_shape()[-1:]
 
-            img = _normalize_fixed(img, normed_min=0, normed_max=1, shape=img_shape)
-            seg = _normalize_fixed(seg, normed_min=0, normed_max=1, shape=seg_shape)
+            #img = _normalize_fixed(img, normed_min=0, normed_max=1, shape=img_shape)
+            #seg = _normalize_fixed(seg, normed_min=0, normed_max=1, shape=seg_shape)
 
-            if self.depth_data_provided:
-                depth_shape = depth.get_shape()[-3:]
-                depth = _normalize_fixed(depth, normed_min=0, normed_max=1, shape=depth_shape)
+            #if self.depth_data_provided:
+            #    depth_shape = depth.get_shape()[-3:]
+            #    depth = _normalize_fixed(depth, normed_min=0, normed_max=1, shape=depth_shape)
 
-            object_segments = _normalize_fixed(object_segments, normed_min=0, normed_max=1, shape=object_seg_shape)
+            #object_segments = _normalize_fixed(object_segments, normed_min=0, normed_max=1, shape=object_seg_shape)
 
             # normalize only images
             #gripperpos = _normalize_fixed_pos_vel_data(gripperpos, normed_min=0, normed_max=1, shape=gripperpos_shape)

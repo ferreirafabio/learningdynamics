@@ -205,7 +205,7 @@ def _normalize_depth(depth_image):
     return scaled * to_range
 
 
-def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=False, overlay_images=True):
+def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=10, use_moviepy=False, overlay_images=True):
     if not isinstance(image_dicts, dict) or image_dicts is None:
         return None
 
@@ -232,7 +232,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                 ax = plt.Axes(fig, [0., 0., 1., 1.])
                 fig.add_axes(ax)
                 ims = []
-
+                #for i in range(unpad_exp_length + 1):
                 for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
                     if overlay_images and "predicted" in file_name:
                         # treat initial image different: add ground truth init image to the prediction
@@ -243,11 +243,12 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im = [im2, im1]
 
                         else:
-                            im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i, :, :, 0]),animated=True, interpolation='none')
+                            im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i-1, :, :, 0]),animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
                             im2 = plt.imshow(_normalize_0_1(img_data_uint[i-1, :, :, 0]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
+                        #if i < unpad_exp_length:
                         if i < img_data_uint.shape[0]:
                             im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, 0]), animated=True, interpolation='none')]
                     ims.append(im)
@@ -270,7 +271,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                     key = key_depth
                 else:
                     key = key_rgb
-
+                #for i in range(unpad_exp_length + 1):
                 for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
                     if overlay_images and "predicted" in file_name:
                         # treat initial image different: add ground truth init image to the prediction
@@ -280,11 +281,11 @@ def save_to_gif_from_dict(image_dicts, destination_path, fps=10, use_moviepy=Fal
                             im2 = plt.imshow(_normalize_0_1(image_dicts[key][0, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                         else:
-                            im1 = plt.imshow(_normalize_0_1(image_dicts[key][i, :, :, :]), animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
                             im2 = plt.imshow(_normalize_0_1(img_data_uint[i - 1, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
+                        #if i < unpad_exp_length:
                         if i < img_data_uint.shape[0]:
                             im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
 
@@ -320,8 +321,8 @@ def create_dir(output_dir, dir_name, verbose=False):
     return output_dir, exists
 
 
-def export_summary_images(config, summaries_dict_images, dir_path, overlay_images=True):
-    save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=config.n_rollouts, overlay_images=overlay_images)
+def export_summary_images(config, summaries_dict_images, dir_path, unpad_exp_length, overlay_images=True):
+    save_to_gif_from_dict(image_dicts=summaries_dict_images, destination_path=dir_path, fps=10, overlay_images=overlay_images, unpad_exp_length=unpad_exp_length)
 
 
 def export_latent_df(df, dir_path):
