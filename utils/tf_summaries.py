@@ -13,20 +13,24 @@ from utils.math_ops import normalize_df_column, normalize_df
 
 
 def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it, config):
-    predicted_summaries_dict_seg = {
-    prefix + '_predicted_seg_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
-        obj for i, obj in enumerate(images_seg)}
+    predicted_summaries_dict_seg = {}
+    predicted_summaries_dict_depth = {}
+    predicted_summaries_dict_rgb = {}
 
-    #if not config.normalize_data else img_as_int(obj)
+    if images_seg:
+        predicted_summaries_dict_seg = {
+        prefix + '_predicted_seg_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
+            obj for i, obj in enumerate(images_seg)}
 
-    predicted_summaries_dict_depth = {
-    prefix + '_predicted_depth_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
-        obj for i, obj in enumerate(images_depth)}
+    if images_depth:
+        predicted_summaries_dict_depth = {
+        prefix + '_predicted_depth_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
+            obj for i, obj in enumerate(images_depth)}
 
-
-    predicted_summaries_dict_rgb = {
-    prefix + '_predicted_rgb_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
-        obj for i, obj in enumerate(images_rgb)}
+    if images_rgb:
+        predicted_summaries_dict_rgb = {
+        prefix + '_predicted_rgb_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
+            obj for i, obj in enumerate(images_rgb)}
 
     return predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb
 
@@ -44,7 +48,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
 
     target_summaries_dict_seg = {
     prefix + '_target_seg_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
-        np.expand_dims(lst[..., 4], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
+        np.expand_dims(lst[..., 3], axis=4), axis=0) for i, lst in enumerate(lists_obj_segs)}
 
     target_summaries_dict_depth = {
     prefix + '_target_depth_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i): np.squeeze(
@@ -68,7 +72,12 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
 
 def create_image_summary(output_for_summary, config, prefix, features, cur_batch_it):
     ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
-    images_rgb, images_seg, images_depth = get_images_from_gn_output(output_for_summary[0], config.depth_data_provided)
+    if config.loss_type == "cross_entropy_seg_only":
+        seg_only = True
+    else:
+        seg_only = False
+
+    images_rgb, images_seg, images_depth = get_images_from_gn_output(output_for_summary[0], config.depth_data_provided, segmentation_only=seg_only)
     features_index = output_for_summary[1]  # assumes outside caller uses for loop to iterate over outputs --> use always first index
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(

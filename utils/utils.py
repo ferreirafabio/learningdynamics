@@ -60,28 +60,39 @@ def make_all_runnable_in_session(*args):
   return [utils_tf.make_runnable_in_session(a) for a in args]
 
 
-def get_images_from_gn_output(outputs, depth=True):
+def get_images_from_gn_output(outputs, depth=True, segmentation_only=False):
     images_rgb = []
     images_seg = []
     images_depth = []
 
+    if segmentation_only:
+        img_type = "seg"
+    else:
+        img_type = "all"
+
     n_objects = np.shape(outputs[0][0])[0]
-    img_shape = get_correct_image_shape(config=None, n_leading_Nones=0, get_type='all', depth_data_provided=depth)
+    img_shape = get_correct_image_shape(config=None, n_leading_Nones=0, get_type=img_type, depth_data_provided=depth)
 
     for n in range(n_objects):
         rgb = []
         seg = []
         depth_lst = []
         for data_t in outputs:
-            image = data_t[0][n][:-6].reshape(img_shape)  # always get the n node features without vel+pos
-            rgb.append(image[:, :, :3])
-            seg.append(np.expand_dims(image[:, :, 3], axis=2))
+            image = data_t.nodes[n][:-6].reshape(img_shape)  # always get the n node features without vel+pos
+            if segmentation_only:
+                seg.append(np.expand_dims(image[:, :, 0], axis=2))
+            else:
+                rgb.append(image[:, :, :3])
+                seg.append(np.expand_dims(image[:, :, 3], axis=2))
+                if depth:
+                    depth_lst.append(image[:, :, -3:])
+        if segmentation_only:
+            images_seg.append(np.stack(seg))
+        else:
+            images_rgb.append(np.stack(rgb))
+            images_seg.append(np.stack(seg))
             if depth:
-                depth_lst.append(image[:, :, -3:])
-        images_rgb.append(np.stack(rgb))
-        images_seg.append(np.stack(seg))
-        if depth:
-            images_depth.append(np.stack(depth_lst))
+                images_depth.append(np.stack(depth_lst))
     # todo: possibly expand_dims before stacking since (exp_length, w, h, c) might become (w,h,c) if exp_length = 1
     return images_rgb, images_seg, images_depth
 

@@ -195,6 +195,8 @@ def _normalize_if_necessary(img_data):
 
 def _normalize_0_1(img_data):
     ''' normalize [0, 1]'''
+    if np.all(img_data == 0):
+        return img_data  # prevents nan
     return (img_data - np.min(img_data)) / np.ptp(img_data)
 
 
