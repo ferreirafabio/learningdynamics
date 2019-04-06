@@ -16,7 +16,7 @@
   "max_checkpoints_to_keep": 30,
   "model_save_step_interval": 100,
   "model_type": "cnn2d",
-  "n_conv_filters": 20,
+  "n_conv_filters": 15,
   "n_epochs": 1000,
   "n_images_shown_in_tensorboard": 10,
   "n_layers_globals": 4,

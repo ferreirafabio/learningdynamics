@@ -90,10 +90,16 @@ def create_loss_ops(config, target_op, output_ops):
                                                        segmentation_data_gt.get_shape()[1] *
                                                        segmentation_data_gt.get_shape()[2]])
 
+            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
+            #                                    lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            #                                            labels=labels,
+            #                                            logits=logits))
+            #                                )
+
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-                                                lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                                                        labels=labels,
-                                                        logits=logits))
+                                            lambda: img_scale * tf.losses.mean_squared_error(logits,
+                                                                                 labels,
+                                                                                 weights=0.5)
                                             )
 
             loss_visual_iou_seg = 0.0  # no iou loss computed
@@ -120,8 +126,10 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
-
-            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+           
+            print("---- only image loss ----")
+            total_loss_ops.append(loss_visual_mse_nodes)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
 
     elif config.loss_type == 'mse_iou':
