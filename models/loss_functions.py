@@ -74,16 +74,16 @@ def create_loss_ops(config, target_op, output_ops):
 
             total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
-    elif config.loss_type == 'mse_iou':
+    elif config.loss_type == 'cross_entropy_seg_only':
         for i, output_op in enumerate(output_ops):
             ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
             condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
 
             """ VISUAL LOSS """
-            predicted_node_reshaped = _transform_into_images(config, output_op.nodes)
-            target_node_reshaped = _transform_into_images(config, target_node_splits[i])
-            segmentation_data_predicted = predicted_node_reshaped[:, :, :, 3]
-            segmentation_data_gt = target_node_reshaped[:, :, :, 3]
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes, img_type="seg")  # returns shape (?, 120,160,1)
+            target_node_reshaped = _transform_into_images(config, target_node_splits[i], img_type="all")  # returns shape (?, 120,160,7)
+            segmentation_data_predicted = predicted_node_reshaped[:, :, :, 0]  # --> transform into (?,120,160)
+            segmentation_data_gt = target_node_reshaped[:, :, :, 3]  # --> transform into (?,120,160)
 
 
             logits = tf.reshape(segmentation_data_predicted, [-1,
@@ -104,13 +104,17 @@ def create_loss_ops(config, target_op, output_ops):
             #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
             #                                lambda: 0.5 * img_scale * tf.boolean_mask(loss_sig_cross_ent, bool_mask)
             #                                )
+            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
+            #                                    lambda: img_scale *
+            #                                        tf.losses.sigmoid_cross_entropy(
+            #                                            multi_class_labels=labels,
+            #                                            logits=logits, weights=0.5)
+            #                                )
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-                                                lambda: img_scale *
-                                                    tf.losses.sigmoid_cross_entropy(
-                                                        multi_class_labels=labels,
-                                                        logits=logits, weights=0.5)
+                                                lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                                                        labels=labels,
+                                                        logits=logits))
                                             )
-
 
             loss_visual_iou_seg = 0.0  # no iou loss computed
 
@@ -140,7 +144,7 @@ def create_loss_ops(config, target_op, output_ops):
             total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
 
-    elif config.loss_type == 'mse_iou_old':
+    elif config.loss_type == 'mse_iou':
         for i, output_op in enumerate(output_ops):
             ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
             condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
@@ -261,10 +265,10 @@ def difference_gradient(image, vertical=True):
     return tf.abs(image[:, :, 0:s[2]-1, :] - image[:, :, 1:s[2], :])
 
 
-def _transform_into_images(config, data):
+def _transform_into_images(config, data, img_type="all"):
     """ reshapes data (shape: (batch_size, feature_length)) into the required image shape with an
     additional batch_dimension, e.g. (1,120,160,7) """
-    data_shape = get_correct_image_shape(config, get_type="all")
+    data_shape = get_correct_image_shape(config, get_type=img_type)
     data = data[:, :-6]
     data = tf.reshape(data, [-1, *data_shape])
     return data
