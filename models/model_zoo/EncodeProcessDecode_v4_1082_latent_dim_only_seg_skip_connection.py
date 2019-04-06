@@ -474,19 +474,15 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.concat([outputs, self.skip1], axis=3)
         after_skip1 = outputs.get_shape()
 
-        ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
-        outputs = activation(outputs)
-        l11_shape = outputs.get_shape()
-
-        # --------------- SKIP CONNECTION --------------- #
-        #outputs = tf.concat([outputs, self.skip1], axis=3)
-        #after_skip1 = outputs.get_shape()
-
-        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        #''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
         #outputs = activation(outputs)
-        #outputs = tf.contrib.layers.layer_norm(outputs)
-        #l12_shape = outputs.get_shape()
+        #l11_shape = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l12_shape = outputs.get_shape()
 
         outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same')
         l13_shape = outputs.get_shape()
