@@ -107,10 +107,10 @@ class DataGenerator:
         experiment_id = context['experiment_id']
         n_total_objects = context['n_total_objects']
 
-        img = tf.decode_raw(sequence['img'], out_type=tf.float64)
+        img = tf.decode_raw(sequence['img'], out_type=tf.float32)
         img = tf.reshape(img, tf.stack([experiment_length, 120, 160, 3]))
 
-        seg = tf.decode_raw(sequence['seg'], out_type=tf.float64)
+        seg = tf.decode_raw(sequence['seg'], out_type=tf.float32)
         seg = tf.reshape(seg, tf.stack([experiment_length, 120, 160]))
 
         if self.depth_data_provided:
@@ -154,8 +154,7 @@ class DataGenerator:
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         else:
             # object_segments
-            #img_type = tf.uint8
-            img_type = tf.float64
+            img_type = tf.float32
             object_segments = tf.decode_raw(sequence['object_segments'], out_type=img_type)
         object_segments = tf.reshape(object_segments, shape_if_depth_provided)
 

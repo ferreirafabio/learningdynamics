@@ -25,7 +25,7 @@
   "n_neurons_edges": 32,
   "n_neurons_globals": 32,
   "n_neurons_nodes_non_visual": 32,
-  "n_rollouts": 15,
+  "n_rollouts": 50,
   "node_as_cnn": true,
   "node_output_size": 134406,
   "num_iter_per_epoch": 10,

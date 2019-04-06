@@ -28,16 +28,14 @@ from __future__ import division
 from __future__ import print_function
 
 from graph_nets import modules
-from graph_nets import utils_tf
 from base.base_model import BaseModel
 from utils.utils import get_correct_image_shape
 
 import sonnet as snt
 import tensorflow as tf
-from graph_nets.demos import models
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection(snt.AbstractModule, BaseModel):
     """
@@ -114,7 +112,9 @@ class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection(snt.Abstra
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
     def _build(self, input_op, input_ctrl_ph, num_processing_steps, is_training):
-        print("Data used as global attribute: position only")
+        print("----- Data used as global attribute: (t, gravity, grippervel, gripperpos) only -----")
+        print("----- Visual prediction: segmentation -----")
+        print("----- Model uses skip connection: True -----")
         latent = self._encoder(input_op, is_training)
         skip1 = self._encoder.visual_encoder.skip1
         skip2 = self._encoder.visual_encoder.skip2
