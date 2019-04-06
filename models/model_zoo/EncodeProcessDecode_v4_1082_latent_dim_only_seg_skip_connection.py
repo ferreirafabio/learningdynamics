@@ -18,7 +18,7 @@
 ###
 # Description
 # ============================================================================
-#    as opposed to v3, this model file assumes global attributes to be only the gripper position
+#    as opposed to v2, this model file assumes global attributes to be only the gripper position
 #    (instead of position and depth/seg/rgb images)
 # ============================================================================
 ###
@@ -37,9 +37,9 @@ import tensorflow as tf
 from graph_nets.demos import models
 
 
-VERBOSITY = False
+VERBOSITY = True
 
-class EncodeProcessDecode_v4_1082_latent_dim_one_step(snt.AbstractModule, BaseModel):
+class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection(snt.AbstractModule, BaseModel):
     """
     Full encode-process-decode model.
 
@@ -64,26 +64,26 @@ class EncodeProcessDecode_v4_1082_latent_dim_one_step(snt.AbstractModule, BaseMo
     """
     def __init__(self, config, name="EncodeProcessDecode"):
 
-        super(EncodeProcessDecode_v4_1082_latent_dim_one_step, self).__init__(name=name)
+        super(EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection, self).__init__(name=name)
 
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_pooling = config.convnet_pooling
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_tanh = config.convnet_tanh
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.depth_data_provided = config.depth_data_provided
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_conv_filters = config.n_conv_filters
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.model_id = config.model_type
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.latent_state_noise = config.latent_state_noise
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_pooling = config.convnet_pooling
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_tanh = config.convnet_tanh
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.depth_data_provided = config.depth_data_provided
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_conv_filters = config.n_conv_filters
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.model_id = config.model_type
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.latent_state_noise = config.latent_state_noise
 
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.edge_output_size = config.edge_output_size
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.node_output_size = config.node_output_size
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.global_output_size = config.global_output_size
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.edge_output_size = config.edge_output_size
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.node_output_size = config.node_output_size
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.global_output_size = config.global_output_size
 
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_globals = config.n_layers_globals
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_nodes = config.n_layers_nodes
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_edges = config.n_layers_edges
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_edges = config.n_neurons_edges
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_globals = config.n_neurons_globals
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
-        EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_globals = config.n_layers_globals
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_nodes = config.n_layers_nodes
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_globals = config.n_neurons_globals
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
 
 
         self.config = config
@@ -107,18 +107,19 @@ class EncodeProcessDecode_v4_1082_latent_dim_one_step(snt.AbstractModule, BaseMo
 
         self.init_ops()
 
-        self.node_output_size = config.node_output_size
-        self.edge_output_size = config.edge_output_size
-        self.global_output_size = config.global_output_size  # note: changed from 134405 to 9
+        self.node_output_size = config.node_output_size  # for future, currently not needed
+        self.edge_output_size = config.edge_output_size  # for future, currently not needed
+        self.global_output_size = config.global_output_size  # needed
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
     def _build(self, input_op, input_ctrl_ph, num_processing_steps, is_training):
         print("Data used as global attribute: position only")
         latent = self._encoder(input_op, is_training)
+        skip1 = self._encoder.visual_encoder.skip1
+        skip2 = self._encoder.visual_encoder.skip2
+        skip3 = self._encoder.visual_encoder.skip3
 
-
-        """ control input """
         latent_global = self._encoder_globals(input_op, is_training)
         latent = latent.replace(globals=latent_global.globals)
 
@@ -131,7 +132,7 @@ class EncodeProcessDecode_v4_1082_latent_dim_one_step(snt.AbstractModule, BaseMo
 
             latent = self._core(latent)
 
-            decoded_op = self._decoder(latent, is_training)
+            decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
             output_ops.append(decoded_op)
 
         return output_ops
@@ -213,8 +214,8 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
                 edge_model_fn=None,
                 node_model_fn=None,
                 global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                        n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_globals,
+                                                                                        n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_globals,
                                                                                         output_size=None,
                                                                                         activation_final=False,
                                                                                         typ="mlp_layer_norm",
@@ -234,20 +235,20 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         """ we want to re-use the cnn encoder for both nodes and global attributes """
-        visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
+        self.visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
 
         """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                         n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_edges,
-                                                                                         n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_edges,
+                                                                                         n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_edges,
+                                                                                         n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_edges,
                                                                                          output_size=None,
                                                                                          typ="mlp_layer_norm",
                                                                                          activation_final=False,
                                                                                          name="mlp_encoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
-                                                                                          visual_encoder,
+                                                                                          self.visual_encoder,
                                                                                           name="visual_and_latent_node_encoder"),
 
             global_model_fn=None
@@ -263,26 +264,31 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
         super(CNNMLPDecoderGraphIndependent, self).__init__(name=name)
         self.model_id = model_id
 
-    def _build(self, inputs, is_training, verbose=VERBOSITY):
-        visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
+    def _build(self, inputs, is_training, skip1, skip2, skip3, verbose=VERBOSITY):
+        self.visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
+
+        # --------------- SKIP CONNECTION --------------- #
+        self.visual_decoder.skip1 = skip1
+        self.visual_decoder.skip2 = skip2
+        self.visual_decoder.skip3 = skip3
 
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                                                            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_edges,
-                                                                                            n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_edges,
-                                                                                            output_size=EncodeProcessDecode_v4_1082_latent_dim_one_step.edge_output_size,
+                                                                                            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_edges,
+                                                                                            n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_edges,
+                                                                                            output_size=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.edge_output_size,
                                                                                             typ="mlp_transform",
                                                                                             activation_final=False,
                                                                                             name="mlp_decoder_edge"),
 
             node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(
-                                                                                            visual_decoder,
+                                                                                            self.visual_decoder,
                                                                                             name="visual_and_latent_node_decoder"),
 
             global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                                                                    n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_globals,
-                                                                                                    n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_globals,
-                                                                                                    output_size=EncodeProcessDecode_v4_1082_latent_dim_one_step.global_output_size,
+                                                                                                    n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_globals,
+                                                                                                    n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_globals,
+                                                                                                    output_size=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.global_output_size,
                                                                                                     typ="mlp_transform",
                                                                                                     activation_final=False,
                                                                                                     name="mlp_decoder_global")
@@ -298,18 +304,18 @@ class MLPGraphNetwork(snt.AbstractModule):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
           self._network = modules.GraphNetwork(
-              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_edges,
-                                                                                      n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_edges,
+              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_edges,
+                                                                                      n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_edges,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_total_dim,
-                                                                                      n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_nodes,
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_total_dim,
+                                                                                      n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_nodes,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_node"),
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_layers_globals,
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_layers_globals,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_core_global")
@@ -326,18 +332,17 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         self.is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
-        filter_sizes = [EncodeProcessDecode_v4_1082_latent_dim_one_step.n_conv_filters, EncodeProcessDecode_v4_1082_latent_dim_one_step.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_conv_filters, EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_conv_filters * 2]
 
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_tanh:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
-
-        img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v4_1082_latent_dim_one_step.depth_data_provided)
+        img_shape = get_correct_image_shape(config=None, get_type='all', depth_data_provided=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.depth_data_provided)
 
         """ get image data, get everything >except< last n elements which are non-visual (position and velocity) """
-        image_data = inputs[:, :-EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual]
+        image_data = inputs[:, :-EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual]
 
         #visual_latent_space_dim = EncodeProcessDecode_v3.n_neurons_nodes_total_dim - EncodeProcessDecode_v3.n_neurons_nodes_total_dim
 
@@ -351,6 +356,21 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l1_shape = outputs.get_shape()
+
+        ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
+        # --------------- SKIP CONNECTION --------------- #
+        outputs = tf.concat([outputs, self.skip3], axis=3)
+        after_skip3 = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l1_2_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid')
@@ -369,6 +389,10 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l3_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 2 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
@@ -387,24 +411,36 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
 
-
         ''' layer 4 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l6_shape = outputs.get_shape()
 
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l1_2_shape = outputs.get_shape()
+
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
-
 
         ''' layer 5 (30,40,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same')
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l7_shape = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs = tf.concat([outputs, self.skip2], axis=3)
+        after_skip2 = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l7_2_shape = outputs.get_shape()
 
         ''' layer 5 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
@@ -435,26 +471,48 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=img_shape[2], kernel_size=1, strides=1, padding='same')
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
         outputs = activation(outputs)
         l11_shape = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs = tf.concat([outputs, self.skip1], axis=3)
+        after_skip1 = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l12_shape = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same')
+        l13_shape = outputs.get_shape()
 
         visual_latent_output = tf.layers.flatten(outputs)
 
         if verbose:
             print("Image data shape", image_data.get_shape())
             print("Layer1 decoder output shape", l1_shape)
+            print("Layer1_2 decoder output shape", l1_2_shape)
             print("Layer2 decoder output shape", l2_shape)
             print("Layer3 decoder output shape", l3_shape)
             print("Layer4 decoder output shape", l4_shape)
             print("Layer5 decoder output shape", l5_shape)
             print("Layer6 decoder output shape", l6_shape)
             print("Layer7 decoder output shape", l7_shape)
+            print("Layer7_2 decoder output shape", l7_2_shape)
             print("Layer8 decoder output shape", l8_shape)
             print("Layer9 decoder output shape", l9_shape)
             print("Layer10 decoder output shape", l10_shape)
             print("Layer11 decoder output shape", l11_shape)
+            print("Layer12 decoder output shape", l12_shape)
+            print("Layer13 decoder output shape", l13_shape)
             print("decoder shape before adding non-visual data", visual_latent_output.get_shape())
+            print("shape before skip3 {}".format(l1_shape))
+            print("shape after skip3 {}".format(after_skip3))
+            print("shape before skip2 {}".format(l7_shape))
+            print("shape after skip2 {}".format(after_skip2))
+            print("shape before skip1 {}".format(l11_shape))
+            print("shape after skip1 {}".format(after_skip1))
 
         return visual_latent_output
 
@@ -466,23 +524,22 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
 
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_tanh:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
-
         n_non_visual_elements = 6 # velocity (x,y,z) and position (x,y,z)
 
-        filter_sizes = [EncodeProcessDecode_v4_1082_latent_dim_one_step.n_conv_filters, EncodeProcessDecode_v4_1082_latent_dim_one_step.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_conv_filters, EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_conv_filters * 2]
 
         img_data = inputs[:, :-n_non_visual_elements]  # shape: (batch_size, features)
-        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode_v4_1082_latent_dim_one_step.depth_data_provided)
+        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' layer 1'''
-        outputs = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = activation(outputs)
+        outputs1 = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
+        outputs = activation(outputs1)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l1_shape = outputs.get_shape()
 
@@ -498,7 +555,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 3'''
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_pooling:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -508,13 +565,16 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l4_shape = outputs.get_shape()
 
+        # --------------- SKIP CONNECTION --------------- #
+        outputs2 = outputs
+
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 5'''
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_pooling:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l5_shape = outputs.get_shape()
 
@@ -531,7 +591,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 7'''
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_pooling:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l7_shape = outputs.get_shape()
 
@@ -558,9 +618,12 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 10'''
-        if EncodeProcessDecode_v4_1082_latent_dim_one_step.convnet_pooling:
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l10_shape = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs3 = outputs
 
         if verbose:
             print("Layer0 encoder output shape", l1_shape)
@@ -578,7 +641,13 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         visual_latent_output = tf.layers.flatten(outputs)
 
         ''' layer 11'''
-        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual)
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual)
+
+        # --------------- SKIP CONNECTION --------------- #
+        self.skip1 = outputs1
+        self.skip2 = outputs2
+        self.skip3 = outputs3
+
         return visual_latent_output
 
 
@@ -596,7 +665,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
-            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual,
+            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual,
             n_layers=3,
             output_size=n_non_visual_elements,
             typ="mlp_transform",
@@ -628,9 +697,9 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
-            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual,
+            n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual,
             n_layers=3,
-            output_size=EncodeProcessDecode_v4_1082_latent_dim_one_step.n_neurons_nodes_non_visual,
+            output_size=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection.n_neurons_nodes_non_visual,
             typ="mlp_transform",
             activation_final=True,
             name="mlp_nonvisual_latent_output")

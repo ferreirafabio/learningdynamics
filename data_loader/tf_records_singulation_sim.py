@@ -52,7 +52,7 @@ def check_if_skip(experiment):
     return True
 
 
-def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_only_for_init, depth_data_provided):
+def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_only_for_init, depth_data_provided, float_data_type=np.float32):
 
     stop_object_segments = False
 
@@ -78,19 +78,19 @@ def add_experiment_data_to_lists(experiment, identifier, use_object_seg_data_onl
         if not use_object_seg_data_only_for_init or not stop_object_segments:
             for k in segments.keys():
                 if k in keys:
-                    temp_list.append(segments[k])
+                    temp_list.append(segments[k].astype(float_data_type))
             stop_object_segments = True
-            # make segmentation images real seg images (map values > 0 to 1)
+            # create the segmentation images
             for obj in temp_list:
                 if len(np.unique(obj[:, :, 3])) > 2:
                     thresh = obj[:, :, 3] > 0
                     obj[:, :, 3][thresh] = 1
             objects_segments.append(np.stack(temp_list))
         if depth_data_provided:
-            depth.append(img_as_float(trajectory_step['xyz']))
+            depth.append(img_as_float(img_as_ubyte(trajectory_step['xyz'])).astype(float_data_type))
 
-        seg.append(img_as_float(trajectory_step['seg']))
-        img.append(img_as_float(trajectory_step['img']))
+        seg.append(img_as_float(trajectory_step['seg']).astype(float_data_type))
+        img.append(img_as_float(trajectory_step['img']).astype(float_data_type))
         gripperpos.append(trajectory_step['gripperpos'])
         grippervel.append(trajectory_step['grippervel'])
         objpos.append(np.stack(list(trajectory_step['objpos'].tolist().values())))
@@ -253,4 +253,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_correct2test", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)
+    create_tfrecords_from_dir(config, "/scr2/seg_dir", "/scr2/fabiof/data/tfrecords_15_rollouts_padded_float32", test_size=0.2, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)
