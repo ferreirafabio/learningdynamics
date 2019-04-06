@@ -39,5 +39,5 @@
   "mode": "train_test",
   "initial_pos_vel_known": true,
   "loss_type": "mse_iou",
-  "model_zoo_file": "EncodeProcessDecode_v3_1082_visual_latent_dim"
+  "model_zoo_file": "EncodeProcessDecode_v3_1114_latent_dim"
 }

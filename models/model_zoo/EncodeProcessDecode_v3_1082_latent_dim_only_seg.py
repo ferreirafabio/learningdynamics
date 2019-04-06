@@ -264,6 +264,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
 
+
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
                                                                                             n_neurons=EncodeProcessDecode_v3_1082_latent_dim_only_seg.n_neurons_edges,
@@ -351,6 +352,17 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         l1_shape = outputs.get_shape()
 
         ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l1_2_shape = outputs.get_shape()
+
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid')
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
@@ -367,6 +379,10 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l3_shape = outputs.get_shape()
 
+        if self.is_training:
+            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        else:
+            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 2 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
@@ -385,7 +401,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
 
-
         ''' layer 4 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
         outputs = activation(outputs)
@@ -403,6 +418,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l7_shape = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l7_2_shape = outputs.get_shape()
 
         ''' layer 5 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
@@ -433,25 +453,37 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 6 (120,160,filter_sizes[0]) -> (120,160,3 or 4 or 7]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=1, kernel_size=1, strides=1, padding='same')
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
         outputs = activation(outputs)
         l11_shape = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l12_shape = outputs.get_shape()
+
+        outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same')
+        l13_shape = outputs.get_shape()
 
         visual_latent_output = tf.layers.flatten(outputs)
 
         if verbose:
             print("Image data shape", image_data.get_shape())
             print("Layer1 decoder output shape", l1_shape)
+            print("Layer1 decoder output shape", l1_2_shape)
             print("Layer2 decoder output shape", l2_shape)
             print("Layer3 decoder output shape", l3_shape)
             print("Layer4 decoder output shape", l4_shape)
             print("Layer5 decoder output shape", l5_shape)
             print("Layer6 decoder output shape", l6_shape)
             print("Layer7 decoder output shape", l7_shape)
+            print("Layer7_2 decoder output shape", l7_2_shape)
             print("Layer8 decoder output shape", l8_shape)
             print("Layer9 decoder output shape", l9_shape)
             print("Layer10 decoder output shape", l10_shape)
             print("Layer11 decoder output shape", l11_shape)
+            print("Layer12 decoder output shape", l12_shape)
+            print("Layer13 decoder output shape", l13_shape)
             print("decoder shape before adding non-visual data", visual_latent_output.get_shape())
 
         return visual_latent_output
@@ -577,6 +609,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 11'''
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v3_1082_latent_dim_only_seg.n_neurons_nodes_total_dim - EncodeProcessDecode_v3_1082_latent_dim_only_seg.n_neurons_nodes_non_visual)
+
         return visual_latent_output
 
 

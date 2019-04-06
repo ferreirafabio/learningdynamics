@@ -28,14 +28,11 @@ def create_loss_ops(config, target_op, output_ops):
     loss_ops_img_iou = []
 
     if config.normalize_data:
-        img_scale = 100
-        non_visual_scale = 100
+        img_scale = 10
+        non_visual_scale = 10
     else:
         img_scale = 1
         non_visual_scale = 1
-
-    #img_scale = 1
-    #non_visual_scale = 1
 
     if config.loss_type == 'mse':
         for i, output_op in enumerate(output_ops):
@@ -93,23 +90,6 @@ def create_loss_ops(config, target_op, output_ops):
                                                        segmentation_data_gt.get_shape()[1] *
                                                        segmentation_data_gt.get_shape()[2]])
 
-            #loss_sig_cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
-
-            #zero_vector = tf.zeros(shape=(1,), dtype=tf.float32)
-
-            #loss_sig_cross_ent_sum = tf.reduce_sum(loss_sig_cross_ent, axis=1)
-
-            #bool_mask = tf.squeeze(tf.not_equal(loss_sig_cross_ent_sum, zero_vector))
-
-            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-            #                                lambda: 0.5 * img_scale * tf.boolean_mask(loss_sig_cross_ent, bool_mask)
-            #                                )
-            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-            #                                    lambda: img_scale *
-            #                                        tf.losses.sigmoid_cross_entropy(
-            #                                            multi_class_labels=labels,
-            #                                            logits=logits, weights=0.5)
-            #                                )
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
                                                 lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
                                                         labels=labels,
