@@ -151,7 +151,7 @@ def create_loss_ops(config, target_op, output_ops):
 
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
                                             lambda: img_scale * tf.losses.mean_squared_error(
-                                                lables=labels,
+                                                labels=labels,
                                                 predictions=logits,
                                                 weights=0.5)
                                             )
@@ -183,8 +183,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
-
-            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            print("---- image loss only ----")
+            total_loss_ops.append(loss_visual_mse_nodes)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_iou':
         for i, output_op in enumerate(output_ops):
