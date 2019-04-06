@@ -114,7 +114,9 @@ class EncodeProcessDecode_v3_312_visual_latent_dim(snt.AbstractModule, BaseModel
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
     def _build(self, input_op, input_ctrl_ph, num_processing_steps, is_training):
-        print("Data used as global attribute: position only")
+        print("----- Data used as global attribute: (t, gravity, grippervel, gripperpos) only -----")
+        print("----- Visual prediction: rgb, depth, segmentation -----")
+        print("----- Model uses skip connection: False -----")
         latent = self._encoder(input_op, is_training)
 
         latent_global = self._encoder_globals(input_op, is_training)
