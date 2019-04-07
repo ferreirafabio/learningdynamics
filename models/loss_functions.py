@@ -5,7 +5,7 @@ from utils.utils import get_correct_image_shape
 
 def create_loss_ops(config, target_op, output_ops):
     """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
-    is a list of graph tuples with shape (n_nodes, exp_len) --> split at the first dimension in order to compute node-wise MSE error
+    is a list of graph tuples with shape (n_nodes, node_output_size) --> split at the first dimension in order to compute node-wise MSE error
     --> same applies for edges
     we further assume object/node features are given in the following order (pixels/visual information, velocity(3dim), pos (3dim))
 
@@ -127,7 +127,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            print("---- image loss only ----")
+            total_loss_ops.append(loss_visual_mse_nodes)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_seg_only':
         for i, output_op in enumerate(output_ops):
@@ -183,9 +185,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
-            print("---- image loss only ----")
-            total_loss_ops.append(loss_visual_mse_nodes)
-            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            #print("---- image loss only ----")
+            #total_loss_ops.append(loss_visual_mse_nodes)
+            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_iou':
         for i, output_op in enumerate(output_ops):
