@@ -276,7 +276,7 @@ def create_placeholders(config, batch_data):
                                                                                      initial_pos_vel_known=config.initial_pos_vel_known)
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True)
-    target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True)
+    target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=False)
     input_ctrl_ph = utils_tf.placeholders_from_networkxs(input_control_graphs[0], force_dynamic_num_graphs=True)
 
     return input_ph, target_ph, input_ctrl_ph
