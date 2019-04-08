@@ -99,6 +99,7 @@ def create_loss_ops(config, target_op, output_ops):
                                                         logits=logits))
                                             )
 
+
             loss_visual_iou_seg = 0.0  # no iou loss computed
 
             """ NONVISUAL LOSS (50% weight) """
