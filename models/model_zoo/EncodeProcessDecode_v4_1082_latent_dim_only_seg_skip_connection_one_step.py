@@ -123,22 +123,21 @@ class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step(s
         latent_global = self._encoder_globals(input_op, is_training)
         latent = latent.replace(globals=latent_global.globals)
 
-        global_T = self._encoder_globals(input_ctrl_ph, is_training).globals
+        global_T = self._encoder_globals(input_ctrl_ph, is_training).globals   # todo: check if this is ok
         output_ops = []
-
-        """ get target values for one-step (reset node input state after every rollout step) """
-        ground_truth_graphs = self._encoder(target_op, is_training)
-        ground_truth_nodes_T = ground_truth_graphs.nodes
 
         """ It is necessary to tile the node data since at construction time, the node shape is (?, latent_dim)
         while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry 
         the unknown dimension """
-        n_nodes = [tf.shape(ground_truth_nodes_T)[0]]
+        n_nodes = [tf.shape(target_op.n_nodes)[0]]  # todo: check if this is ok
         mult = tf.constant([num_processing_steps])
-
-        ground_truth_nodes_splits = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+        ground_truth_nodes_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
 
         for step in range(num_processing_steps-1):
+            """ get target values for one-step (reset node input state after every rollout step) """
+            ground_truth_graph = self._encoder(ground_truth_nodes_splits[step], is_training)
+            #ground_truth_nodes_T = ground_truth_graphs.nodes
+
             global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
             latent = latent.replace(globals=global_t)
 
