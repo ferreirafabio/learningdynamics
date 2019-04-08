@@ -496,8 +496,8 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         l17_shape = outputs.get_shape()
 
         # --------------- SKIP CONNECTION --------------- #
-        outputs = tf.concat([outputs, self.skip1], axis=3)
-        after_skip1 = outputs.get_shape()
+        #outputs = tf.concat([outputs, self.skip1], axis=3)
+        #after_skip1 = outputs.get_shape()
 
         ''' layer 18 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
@@ -535,7 +535,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             print("shape before skip2 {}".format(l11_shape))
             print("shape after skip2 {}".format(after_skip2))
             print("shape before skip1 {}".format(l17_shape))
-            print("shape after skip1 {}".format(after_skip1))
+            #print("shape after skip1 {}".format(after_skip1))
 
         return visual_latent_output
 

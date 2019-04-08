@@ -66,6 +66,7 @@ class BaseTrain:
 
         self.model.is_training = True
         self.model.output_ops_train = self.model(self.model.input_ph, self.model.input_ctrl_ph, self.model.target_ph, self.config.n_rollouts, self.model.is_training)
+        #self.model.output_ops_train = self.model(self.model.input_ph, self.model.input_ctrl_ph, self.config.n_rollouts, self.model.is_training)
         total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         ''' remove all inf values --> correspond to padded entries '''
         self.model.loss_op_train_total = tf.reduce_mean(tf.boolean_mask(total_loss_ops, tf.logical_not(tf.is_inf(total_loss_ops))))
@@ -91,6 +92,7 @@ class BaseTrain:
 
         self.model.is_training = False
         self.model.output_ops_test = self.model(self.model.input_ph_test, self.model.input_ctrl_ph_test, self.model.target_ph_test, self.config.n_rollouts, self.model.is_training)
+        #self.model.output_ops_test = self.model(self.model.input_ph_test, self.model.input_ctrl_ph_test, self.config.n_rollouts, self.model.is_training)
         total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
 
         ''' remove all inf values --> correspond to padded entries '''
