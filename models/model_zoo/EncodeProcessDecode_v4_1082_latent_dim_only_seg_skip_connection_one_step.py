@@ -35,7 +35,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = False
+VERBOSITY = True
 
 class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step(snt.AbstractModule, BaseModel):
     """
@@ -111,7 +111,7 @@ class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step(s
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
-    def _build(self, input_op, input_ctrl_ph, target_op, num_processing_steps, is_training):
+    def _build(self, input_op, input_ctrl_op, target_op, num_processing_steps, is_training):
         print("----- Data used as global attribute: (t, gravity, grippervel, gripperpos) only -----")
         print("----- Visual prediction: segmentation -----")
         print("----- Model uses skip connection: True -----")
@@ -123,27 +123,35 @@ class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step(s
         latent_global = self._encoder_globals(input_op, is_training)
         latent = latent.replace(globals=latent_global.globals)
 
-        global_T = self._encoder_globals(input_ctrl_ph, is_training).globals   # todo: check if this is ok
+        global_T = self._encoder_globals(input_ctrl_op, is_training).globals
         output_ops = []
 
         """ It is necessary to tile the node data since at construction time, the node shape is (?, latent_dim)
         while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry 
         the unknown dimension """
-        n_nodes = [tf.shape(target_op.n_nodes)[0]]  # todo: check if this is ok
-        mult = tf.constant([num_processing_steps])
-        ground_truth_nodes_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+        ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
+        ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
+
+        # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
+        #n_nodes = [tf.shape(input_op.nodes)-134406]
+        n_nodes = [3]
+        n_edges = [6]
+        # we generated n_rollouts-1 target graphs
+        mult = tf.constant([num_processing_steps-1])
+
+        ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+        ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
         for step in range(num_processing_steps-1):
-            """ get target values for one-step (reset node input state after every rollout step) """
-            ground_truth_graph = self._encoder(ground_truth_nodes_splits[step], is_training)
-            #ground_truth_nodes_T = ground_truth_graphs.nodes
-
+            """ get target values for one-step (reset node input state to gt after every rollout step) """
             global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
             latent = latent.replace(globals=global_t)
 
-            #if step > 0:  # todo: add is_training flag
-            ground_truth_t = ground_truth_nodes_splits[step]
-            latent = latent.replace(nodes=ground_truth_t)
+            if step > 0:  # input_graph = target_graphs[0] --> reset to gt after first step
+                ground_truth_nodes_t = ground_truth_nodes_split[step]
+                ground_truth_edges_t = ground_truth_edges_split[step]
+                latent = latent.replace(nodes=ground_truth_nodes_t)
+                latent = latent.replace(edges=ground_truth_edges_t)
 
             latent = self._core(latent)
             decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
@@ -371,16 +379,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l1_shape = outputs.get_shape()
 
-        ''' layer 1_2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
-        # --------------- SKIP CONNECTION --------------- #
-        outputs = tf.concat([outputs, self.skip3], axis=3)
-        after_skip3 = outputs.get_shape()
-
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
-        outputs = activation(outputs)
-        outputs = tf.contrib.layers.layer_norm(outputs)
-        l1_2_shape = outputs.get_shape()
-
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
@@ -391,6 +389,23 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l2_shape = outputs.get_shape()
+
+        outputsl2 = outputs
+
+        ''' layer 2_2 (15,20,filter_sizes[1] -> (15,20,filter_sizes[1]) '''
+        # --------------- SKIP CONNECTION --------------- #
+        #outputs = tf.concat([outputs, self.skip3], axis=3)
+        #outputs = outputs + self.skip3
+        #after_skip3 = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs = tf.layers.conv2d(self.skip3, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l1_2_shape = outputs.get_shape()
+
+        outputs = outputsl2 + outputs
+        after_skip3 = outputs.get_shape()
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
@@ -419,7 +434,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
-
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
@@ -460,10 +474,6 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l11_shape = outputs.get_shape()
 
-        # --------------- SKIP CONNECTION --------------- #
-        outputs = tf.concat([outputs, self.skip2], axis=3)
-        after_skip2 = outputs.get_shape()
-
         ''' layer 12 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
         outputs = activation(outputs)
@@ -481,11 +491,22 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l13_shape = outputs.get_shape()
 
+        outputsl13 = outputs
+
+        # --------------- SKIP CONNECTION --------------- #
+        #outputs = tf.concat([outputs, self.skip2], axis=3)
+        #outputs = outputs + self.skip2
+        #after_skip2 = outputs.get_shape()
+
         ''' layer 14 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l14_shape = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs = outputsl13 + outputs
+        after_skip2 = outputs.get_shape()
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
@@ -503,14 +524,9 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
-        ''' layer 17 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
-        outputs = activation(outputs)
-        outputs = tf.contrib.layers.layer_norm(outputs)
-        l17_shape = outputs.get_shape()
-
         # --------------- SKIP CONNECTION --------------- #
-        outputs = tf.concat([outputs, self.skip1], axis=3)
+        outputs = outputs + self.skip1
+        #outputs = tf.concat([outputs, self.skip1], axis=3)
         after_skip1 = outputs.get_shape()
 
         ''' layer 18 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
@@ -518,6 +534,14 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l18_shape = outputs.get_shape()
+
+
+        ''' layer 17 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l17_shape = outputs.get_shape()
+
 
         outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same')
         l19_shape = outputs.get_shape()
@@ -604,12 +628,13 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 5'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = activation(outputs)
-        outputs = tf.contrib.layers.layer_norm(outputs)
-        l5_shape = outputs.get_shape()
 
         # --------------- SKIP CONNECTION --------------- #
         outputs2 = outputs
+
+        outputs = activation(outputs)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        l5_shape = outputs.get_shape()
 
         ''' layer 6'''
         if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.convnet_pooling:
@@ -651,6 +676,8 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 11'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
+        # --------------- SKIP CONNECTION --------------- #
+        outputs3 = outputs
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l11_shape = outputs.get_shape()
@@ -664,9 +691,6 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
-
-        # --------------- SKIP CONNECTION --------------- #
-        outputs3 = outputs
 
         if verbose:
             print("Layer1 encoder output shape", l1_shape)
