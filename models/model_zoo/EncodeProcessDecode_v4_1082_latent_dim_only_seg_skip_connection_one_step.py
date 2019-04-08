@@ -35,7 +35,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step(snt.AbstractModule, BaseModel):
     """
@@ -336,6 +336,9 @@ class MLPGraphNetwork(snt.AbstractModule):
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_node"),
+
+              #node_model_fn=lambda: get_model_from_config(model_id, model_type="minicnn")(name="minicnn"),
+
               global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_layers_globals,
                                                                                         output_size=None,
@@ -525,9 +528,9 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         # --------------- SKIP CONNECTION --------------- #
-        outputs = outputs + self.skip1
+        #outputs = outputs + self.skip1
         #outputs = tf.concat([outputs, self.skip1], axis=3)
-        after_skip1 = outputs.get_shape()
+        #after_skip1 = outputs.get_shape()
 
         ''' layer 18 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same')
@@ -535,13 +538,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l18_shape = outputs.get_shape()
 
-
         ''' layer 17 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same')
         outputs = activation(outputs)
         outputs = tf.contrib.layers.layer_norm(outputs)
         l17_shape = outputs.get_shape()
-
 
         outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same')
         l19_shape = outputs.get_shape()
@@ -573,7 +574,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             print("shape before skip2 {}".format(l11_shape))
             print("shape after skip2 {}".format(after_skip2))
             print("shape before skip1 {}".format(l17_shape))
-            print("shape after skip1 {}".format(after_skip1))
+            #print("shape after skip1 {}".format(after_skip1))
 
         return visual_latent_output
 
@@ -720,6 +721,50 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         return visual_latent_output
 
 
+class MiniCNN(snt.AbstractModule):
+    def __init__(self, name="encoder_convnet2d"):
+        super(MiniCNN, self).__init__(name=name)
+
+    def _build(self, inputs, verbose=VERBOSITY):
+
+        if EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.convnet_tanh:
+            activation = tf.nn.tanh
+        else:
+            activation = tf.nn.relu
+
+        filter_sizes = [EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_conv_filters,
+                        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_conv_filters * 2]
+
+        shape = EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim - \
+        EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual
+
+        image_data = inputs[:, :1050]
+        inputs = tf.expand_dims(image_data, axis=1)
+        inputs = tf.expand_dims(inputs, axis=1)  # yields shape (?,1,1,latent_dim)
+        inputs = tf.reshape(inputs, (-1, 7, 10, 15))
+
+        ''' layer 1'''
+        outputs1 = tf.layers.conv2d(inputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same',
+                                    activation=activation)
+        outputs = activation(outputs1)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+
+        ''' layer 2'''
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
+        outputs = tf.contrib.layers.layer_norm(outputs)
+
+        ''' layer 3'''
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
+
+        outputs = tf.contrib.layers.layer_norm(outputs)
+
+        visual_latent_output = tf.layers.flatten(outputs)
+
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_1082_latent_dim_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual)
+
+        return visual_latent_output
+
+
 class VisualAndLatentDecoder(snt.AbstractModule):
     def __init__(self, visual_dec, name='VisualAndLatentDecoder'):
         super(VisualAndLatentDecoder, self).__init__(name=name)
@@ -800,3 +845,5 @@ def get_model_from_config(model_id, model_type="mlp"):
         return VisualAndLatentDecoder
     if "cnn2d" in model_id and model_type == "mlp":
         return MLP_model
+    if "cnn2d" in model_id and model_type == "minicnn":
+        return MiniCNN
