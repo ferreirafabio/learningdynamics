@@ -104,13 +104,6 @@ def create_loss_ops(config, target_op, output_ops):
             pos_weights = tf.where(comparison, ones*0.1, ones)
 
             #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-            #                                    lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            #                                            labels=labels,
-            #                                           logits=logits))
-            #                                )
-
-
-            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
             #                                    lambda: img_scale * tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(  # todo: * 0.5
             #                                            targets=labels,
             #                                            logits=logits,
