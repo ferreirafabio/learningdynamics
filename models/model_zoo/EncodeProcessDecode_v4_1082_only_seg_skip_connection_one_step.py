@@ -384,7 +384,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         """ in order to apply 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,latent_dim)
-        image_data = tf.reshape(image_data, (-1, 7, 10, 2))
+        image_data = tf.reshape(image_data, (-1, 7, 10, 15))
 
         ''' layer 1 (7,10,x) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
