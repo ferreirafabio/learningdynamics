@@ -35,7 +35,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step(snt.AbstractModule, BaseModel):
     """
@@ -79,10 +79,10 @@ class EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step(snt.Abstract
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_nodes = config.n_layers_nodes
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_edges = config.n_layers_edges
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes = config.n_neurons_nodes
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_globals = config.n_neurons_globals
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
         EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
-
 
         self.config = config
         # init the global step
@@ -219,7 +219,8 @@ class MLP_model(snt.AbstractModule):
         if self.typ == "mlp_transform":
             # Transforms the outputs into the appropriate shape.
             net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
-            seq = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(inputs)
+            #seq = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(inputs)
+            seq = snt.Sequential([net, snt.Linear(self.output_size)])(inputs) # todo: layer norm removed, get it back
         elif self.typ == "mlp_layer_norm":
             net = snt.nets.MLP([self.n_neurons] * self.n_layers, activate_final=self.activation_final)
             seq = snt.Sequential([net, snt.LayerNorm()])(inputs)
@@ -254,27 +255,30 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
     def __init__(self, model_id, name="CNNMLPEncoderGraphIndependent"):
         super(CNNMLPEncoderGraphIndependent, self).__init__(name=name)
         self.model_id = model_id
+        with self._enter_variable_scope():
+            """ we want to re-use the cnn encoder for both nodes and global attributes """
+            self.visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(
+                is_training=True, name="visual_encoder")
+
+            """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
+            self._network = modules.GraphIndependent(
+                edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
+                    n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_edges,
+                    n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_edges,
+                    output_size=None,
+                    typ="mlp_layer_norm",
+                    activation_final=False,
+                    name="mlp_encoder_edge"),
+
+                node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
+                    self.visual_encoder,
+                    name="visual_and_latent_node_encoder"),
+
+                global_model_fn=None
+            )
 
     def _build(self, inputs, is_training, verbose=VERBOSITY):
-        """ we want to re-use the cnn encoder for both nodes and global attributes """
-        self.visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(is_training=is_training, name="visual_encoder")
 
-        """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
-        self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                         n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_edges,
-                                                                                         n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_edges,
-                                                                                         output_size=None,
-                                                                                         typ="mlp_layer_norm",
-                                                                                         activation_final=False,
-                                                                                         name="mlp_encoder_edge"),
-
-            node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
-                                                                                          self.visual_encoder,
-                                                                                          name="visual_and_latent_node_encoder"),
-
-            global_model_fn=None
-        )
 
         return self._network(inputs)
 
@@ -282,39 +286,46 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
 class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
     """Graph decoder network with Transpose CNN node and MLP edge / global models."""
 
-    def __init__(self, model_id, name="CNNMLPDecoderGraphIndependent"):
+    def __init__(self, model_id,  name="CNNMLPDecoderGraphIndependent"):
         super(CNNMLPDecoderGraphIndependent, self).__init__(name=name)
         self.model_id = model_id
 
-    def _build(self, inputs, is_training, skip1, skip2, skip3, verbose=VERBOSITY):
-        self.visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(is_training=is_training, name="visual_decoder")
+        with self._enter_variable_scope():
+            self.visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(
+                is_training=True, name="visual_decoder")
 
-        # --------------- SKIP CONNECTION --------------- #
+            # --------------- SKIP CONNECTION --------------- #
+            self.visual_decoder.skip1 = None
+            self.visual_decoder.skip2 = None
+            self.visual_decoder.skip3 = None
+
+            self._network = modules.GraphIndependent(
+                edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
+                    n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_edges,
+                    n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_edges,
+                    output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.edge_output_size,
+                    typ="mlp_transform",
+                    activation_final=False,
+                    name="mlp_decoder_edge"),
+
+                node_model_fn=lambda: get_model_from_config(model_id=self.model_id,
+                                                            model_type="visual_and_latent_decoder")(
+                    self.visual_decoder,
+                    name="visual_and_latent_node_decoder"),
+
+                global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
+                    n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_globals,
+                    n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_globals,
+                    output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.global_output_size,
+                    typ="mlp_transform",
+                    activation_final=False,
+                    name="mlp_decoder_global")
+            )
+
+    def _build(self, inputs, is_training, skip1, skip2, skip3, verbose=VERBOSITY):
         self.visual_decoder.skip1 = skip1
         self.visual_decoder.skip2 = skip2
         self.visual_decoder.skip3 = skip3
-
-        self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                                                            n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_edges,
-                                                                                            n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_edges,
-                                                                                            output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.edge_output_size,
-                                                                                            typ="mlp_transform",
-                                                                                            activation_final=False,
-                                                                                            name="mlp_decoder_edge"),
-
-            node_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="visual_and_latent_decoder")(
-                                                                                            self.visual_decoder,
-                                                                                            name="visual_and_latent_node_decoder"),
-
-            global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                                                                    n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_globals,
-                                                                                                    n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_globals,
-                                                                                                    output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.global_output_size,
-                                                                                                    typ="mlp_transform",
-                                                                                                    activation_final=False,
-                                                                                                    name="mlp_decoder_global")
-         )
 
         return self._network(inputs)
 
@@ -331,13 +342,12 @@ class MLPGraphNetwork(snt.AbstractModule):
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim,
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes,  #n_neurons_nodes_total_dim
                                                                                       n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_nodes,
-                                                                                      output_size=None,
-                                                                                      typ="mlp_layer_norm",
+                                                                                      output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim,
+                                                                                      typ="mlp_transform",  # todo: was earlier "mlp_layer_norm"
+                                                                                      activation_final=False,
                                                                                       name="mlp_core_node"),
-
-              #node_model_fn=lambda: get_model_from_config(model_id, model_type="minicnn")(name="minicnn"),
 
               global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_globals,
                                                                                         n_layers=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_layers_globals,
@@ -371,24 +381,24 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         #visual_latent_space_dim = EncodeProcessDecode_v3.n_neurons_nodes_total_dim - EncodeProcessDecode_v3.n_neurons_nodes_total_dim
 
-        """ in order to apply 1x1 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
+        """ in order to apply 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,latent_dim)
-        image_data = tf.reshape(image_data, (-1, 7, 10, 15))
+        image_data = tf.reshape(image_data, (-1, 7, 10, 2))
 
-        ''' layer 1 (7,10,5) -> (7,10,filter_sizes[1])'''
+        ''' layer 1 (7,10,x) -> (7,10,filter_sizes[1])'''
         outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l1_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l2_shape = outputs.get_shape()
 
         outputsl2 = outputs
@@ -401,85 +411,85 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         # --------------- SKIP CONNECTION --------------- #
         outputs = tf.layers.conv2d(self.skip3, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l1_2_shape = outputs.get_shape()
 
         outputs = outputsl2 + outputs
         after_skip3 = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 3 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l3_shape = outputs.get_shape()
 
         ''' layer 4 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l4_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 5 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 7 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l7_shape = outputs.get_shape()
 
         ''' layer 8 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l8_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 9 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l9_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 11 (30,40,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l11_shape = outputs.get_shape()
 
         ''' layer 12 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l12_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 13 (60,80,filter_sizes[0])  -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l13_shape = outputs.get_shape()
 
         outputsl13 = outputs
@@ -492,48 +502,55 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         ''' layer 14 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(self.skip2, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l14_shape = outputs.get_shape()
 
+        # --------------- SKIP CONNECTION --------------- #
         outputs = outputsl13 + outputs
         after_skip2 = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 15 (60,80,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l15_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         # --------------- SKIP CONNECTION --------------- #
         #outputs = outputs + self.skip1
         #outputs = tf.concat([outputs, self.skip1], axis=3)
         #after_skip1 = outputs.get_shape()
 
+
+        # --------------- SKIP CONNECTION --------------- #
+        #outputs1 = outputs
+
         ''' layer 18 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=1, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l18_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #outputs = outputs1 + outputs
+
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 17 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l17_shape = outputs.get_shape()
 
-        outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same', activation=None)  # activation None for logits)
+        outputs = tf.layers.conv2d(outputs, filters=1, kernel_size=1, strides=1, padding='same', activation=None, use_bias=False)
         l19_shape = outputs.get_shape()
 
         visual_latent_output = tf.layers.flatten(outputs)
@@ -580,7 +597,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         else:
             activation = tf.nn.relu
 
-        n_non_visual_elements = 6 # velocity (x,y,z) and position (x,y,z)
+        n_non_visual_elements = 6  # velocity (x,y,z) and position (x,y,z)
 
         filter_sizes = [EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_conv_filters, EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_conv_filters * 2]
 
@@ -590,12 +607,12 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 1'''
         outputs1 = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs1)
-        l1_shape = outputs.get_shape()
+        #outputs = tf.contrib.layers.layer_norm(outputs1)
+        l1_shape = outputs1.get_shape()
 
         ''' layer 2'''
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        outputs = tf.layers.conv2d(outputs1, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l2_shape = outputs.get_shape()
 
         ''' layer 3'''
@@ -603,14 +620,14 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 4'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l4_shape = outputs.get_shape()
 
         ''' layer 5'''
@@ -619,7 +636,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs2 = outputs
 
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
 
         ''' layer 6'''
@@ -627,19 +644,19 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 7'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l7_shape = outputs.get_shape()
 
         ''' layer 8'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l8_shape = outputs.get_shape()
 
         ''' layer 9'''
@@ -647,21 +664,21 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
-        if self.is_training:
-            outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
-        else:
-            outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+        #if self.is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 10'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l10_shape = outputs.get_shape()
 
         ''' layer 11'''
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
         # --------------- SKIP CONNECTION --------------- #
         outputs3 = outputs
-        outputs = tf.contrib.layers.layer_norm(outputs)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
         l11_shape = outputs.get_shape()
 
         ''' layer 12'''
@@ -714,10 +731,10 @@ class MiniCNN(snt.AbstractModule):
         shape = EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim - \
                 EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual
 
-        image_data = inputs[:, :1050]
+        image_data = inputs[:, :EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_total_dim]
         inputs = tf.expand_dims(image_data, axis=1)
         inputs = tf.expand_dims(inputs, axis=1)  # yields shape (?,1,1,latent_dim)
-        inputs = tf.reshape(inputs, (-1, 7, 10, 15))
+        inputs = tf.reshape(inputs, (-1, 7, 10, 1))
 
         ''' layer 1'''
         outputs1 = tf.layers.conv2d(inputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same',
@@ -752,7 +769,8 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         visual_decoded_output = self.visual_dec(inputs, name=self._name)
 
         n_non_visual_elements = 6
-        non_visual_latent_output = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
+        # get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual:]
 
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
             n_neurons=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual,
@@ -764,7 +782,6 @@ class VisualAndLatentDecoder(snt.AbstractModule):
 
         """ map latent position/velocity (nodes) from 32d to original 6d space """
         non_visual_decoded_output = non_visual_mlp(non_visual_latent_output)
-
         outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
 
         if verbose:
@@ -791,7 +808,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
             n_layers=3,
             output_size=EncodeProcessDecode_v4_1082_only_seg_skip_connection_one_step.n_neurons_nodes_non_visual,
             typ="mlp_transform",
-            activation_final=True,
+            activation_final=False,
             name="mlp_nonvisual_latent_output")
 
         """ map velocity and position into a latent space, concatenate with visual latent space vector """

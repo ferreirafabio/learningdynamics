@@ -46,7 +46,9 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_train_iou,
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
-                                  "loss_distance": self.model.loss_ops_train_distance
+                                  "loss_distance": self.model.loss_ops_train_distance,
+                                  "lables": self.model.labels_train,
+                                  "logits": self.model.logits_train
                                   }, feed_dict=feed_dict)
 
         else:
@@ -60,7 +62,9 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_test_iou,
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
-                                  "loss_distance": self.model.loss_ops_test_distance
+                                  "loss_distance": self.model.loss_ops_test_distance,
+                                  "lables": self.model.labels_test,
+                                  "logits": self.model.logits_test
                                   }, feed_dict=feed_dict)
 
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
