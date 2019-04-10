@@ -6,6 +6,7 @@ from base.base_train import BaseTrain
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_results
 from utils.io import create_dir
+from utils.math_ops import sigmoid
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 from eval.compute_test_run_statistics import compute_psnr
@@ -32,7 +33,7 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
-    def do_step(self, input_graph, target_graphs, input_ctrl_graphs, feature, train=True):
+    def do_step(self, input_graph, target_graphs, input_ctrl_graphs, feature, train=True, convert_seg_to_unit_step=True):
 
         if train:
             feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, self.model.input_ctrl_ph,
@@ -46,9 +47,7 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_train_iou,
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
-                                  "loss_distance": self.model.loss_ops_train_distance,
-                                  "lables": self.model.labels_train,
-                                  "logits": self.model.logits_train
+                                  "loss_distance": self.model.loss_ops_train_distance
                                   }, feed_dict=feed_dict)
 
         else:
@@ -62,12 +61,22 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_test_iou,
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
-                                  "loss_distance": self.model.loss_ops_test_distance,
-                                  "lables": self.model.labels_test,
-                                  "logits": self.model.logits_test
+                                  "loss_distance": self.model.loss_ops_test_distance
                                   }, feed_dict=feed_dict)
 
+            if convert_seg_to_unit_step:
+                """ currently we are interested in values in {0,1} since we train binary cross entropy (segmentation images). 
+                tf.nn.sigmoid_cross_entropy_with_logits runs the logits through sigmoid() which is why for outputs we also 
+                need to run a sigmoid(). """
+                for output in data['outputs']:
+                    seg_data = output.nodes[:, :-6]
+                    #seg_data = sigmoid(seg_data)
+                    seg_data[seg_data >= 0.5] = 1.0
+                    seg_data[seg_data < 0.5] = 0.0
+                    output.nodes[:, :-6] = seg_data
+
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
+
 
     def test_rollouts(self):
         if not self.config.n_epochs == 1:

@@ -582,7 +582,8 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             print("shape before skip1 {}".format(l17_shape))
             #print("shape after skip1 {}".format(after_skip1))
 
-        return visual_latent_output
+
+        return  visual_latent_output if self.is_training else tf.nn.sigmoid(visual_latent_output)
 
 
 class Encoder5LayerConvNet2D(snt.AbstractModule):

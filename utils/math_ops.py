@@ -1,5 +1,4 @@
 import math
-
 import numpy as np
 
 X_MIN = 0.344
@@ -8,6 +7,11 @@ Z_MIN = -0.149
 X_MAX = 0.856
 Y_MAX = 0.256
 Z_MAX = -0.0307
+
+
+def sigmoid(x):
+  return 1 / (1 + np.exp(-x))
+
 
 def normalize_df_column(df, column_name):
     """ normalizes an entire pandas column (series) in which each row r contains a 3-dim ndarray s.t. all values of r in range (0,1) """
