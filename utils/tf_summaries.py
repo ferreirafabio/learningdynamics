@@ -161,7 +161,7 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
     np.testing.assert_array_equal(df.ix[:,0].tolist(), pos_gt[0])  # check first column
     np.testing.assert_array_equal(df.ix[:,-1].tolist(), vel[-1])  # check last column
 
-    df_normalized = normalize_df(df.ix[:, :6].copy())  # only normalize positions, leave velocities normalized
+    df_normalized = normalize_df(df.ix[:, :6].copy())  # only normalize positions, leave velocities unnormalized
     df_normalized = df_normalized.join(df.ix[:, -6:])  # append velocities
 
     def _compute_df_statistics(df, n_objects):

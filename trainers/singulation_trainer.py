@@ -47,7 +47,8 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_train_iou,
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
-                                  "loss_distance": self.model.loss_ops_train_distance
+                                  "loss_distance": self.model.loss_ops_train_distance,
+                                  "targ_train": self.model.targ_train
                                   }, feed_dict=feed_dict)
 
         else:
@@ -61,7 +62,8 @@ class SingulationTrainer(BaseTrain):
                                   "loss_iou": self.model.loss_ops_test_iou,
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
-                                  "loss_distance": self.model.loss_ops_test_distance
+                                  "loss_distance": self.model.loss_ops_test_distance,
+                                  "targ_test": self.model.targ_test
                                   }, feed_dict=feed_dict)
 
             if convert_seg_to_unit_step:
@@ -70,7 +72,7 @@ class SingulationTrainer(BaseTrain):
                 need to run a sigmoid(). """
                 for output in data['outputs']:
                     seg_data = output.nodes[:, :-6]
-                    #seg_data = sigmoid(seg_data)
+                    seg_data = sigmoid(seg_data)
                     seg_data[seg_data >= 0.5] = 1.0
                     seg_data[seg_data < 0.5] = 0.0
                     output.nodes[:, :-6] = seg_data
