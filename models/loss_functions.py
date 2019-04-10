@@ -26,8 +26,10 @@ def create_loss_ops(config, target_op, output_ops):
     loss_ops_distance = []
     loss_ops_img_iou = []
 
+    targ = target_op
+
     if config.normalize_data:
-        img_scale = 100
+        img_scale = 10
         non_visual_scale = 1
     else:
         img_scale = 1
@@ -84,30 +86,23 @@ def create_loss_ops(config, target_op, output_ops):
             segmentation_data_predicted = predicted_node_reshaped[:, :, :, 0]  # --> transform into (?,120,160)
             segmentation_data_gt = target_node_reshaped[:, :, :, 3]  # --> transform into (?,120,160)
 
-            predicted_probabilities = tf.reshape(segmentation_data_predicted, [-1,
+            logits = tf.reshape(segmentation_data_predicted, [-1,
                                                               segmentation_data_predicted.get_shape()[1] *
                                                               segmentation_data_predicted.get_shape()[2]])
             labels = tf.reshape(segmentation_data_gt, [-1,
                                                        segmentation_data_gt.get_shape()[1] *
                                                        segmentation_data_gt.get_shape()[2]])
 
-            #ones = tf.ones_like(labels)
-            #comparison = tf.equal(labels, tf.constant(1.0))
-            #pos_weight = tf.where(comparison, ones*2, ones)  # decrease false negative count
+            ones = tf.ones_like(labels)
+            comparison = tf.equal(labels, tf.constant(1.0))
+            pos_weight = tf.where(comparison, ones*2, ones)  # decrease false negative count
 
-            #loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-            #                                    lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
-            #                                            targets=labels,
-            #                                            logits=predicted_logits,
-            #                                            pos_weight=pos_weight))
-            #                                )
-            tf.nn.weighted_cross_entropy_with_logits
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-                                                       lambda: img_scale * 0.5 * tf.reduce_mean(tf.keras.backend.binary_crossentropy(
-                                                                                    target=labels,
-                                                                                    output=predicted_probabilities,
-                                                                                    from_logits=False))
-                                    )
+                                                lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
+                                                        targets=labels,
+                                                        logits=logits,
+                                                        pos_weight=pos_weight))
+                                            )
 
             tf.losses.add_loss(loss_visual_mse_nodes)
 
@@ -281,7 +276,10 @@ def create_loss_ops(config, target_op, output_ops):
     else:
         raise ValueError("loss type must be in [\"mse\", \"mse_gdl\" but is {}".format(config.loss_type))
 
-    return total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance
+    l2_loss = tf.losses.get_regularization_loss()
+    total_loss_ops += l2_loss
+
+    return total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance, targ
 
 
 def gradient_difference_loss(true, pred, alpha=2.0):
