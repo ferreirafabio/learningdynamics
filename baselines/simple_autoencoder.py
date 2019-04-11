@@ -38,20 +38,20 @@ def cnnmodel(inp_rgb, inp_stepsize=None, is_training=True):
     step_high = tf.reshape(step_high, (-1, 1, 1, 64))
     step_high = tf.tile(step_high, [1, 8, 8, 1])
 
-
-
     #network_fn = get_network_fn('resnet_v2_50', num_classes=None, weight_decay=1e-5, is_training=is_training)
     #net, end_points = network_fn(inp_rgb)
 
-
-    net, end_points = tf.contrib.slim.nets.resnet_v2_50(inp_rgb, num_classes=None, is_training=is_training)
+    net, end_points = tf.contrib.slim.nets.resnet_v2.resnet_v2_50(inp_rgb, num_classes=None, is_training=is_training)
 
     feat_C4 = end_points['resnet_v2_50/block4']
     feat_C3 = end_points['resnet_v2_50/block3']
     feat_C2 = end_points['resnet_v2_50/block2']
     feat_C1 = end_points['resnet_v2_50/block1']
     print("feat_C4", feat_C4)
+    print("feat_C3", feat_C3)
+    print("feat_C2", feat_C2)
     print("feat_C1", feat_C1)
+    print("step_high", step_high)
 
     feat_C4 = tf.concat([feat_C4, step_high], axis=-1)
 
@@ -139,10 +139,13 @@ def main():
     control = tf.placeholder("float", [None, 6])
     gt_seg = tf.placeholder("float", [None, 120, 160])
 
-    pred = cnnmodel(inp_rgb, control)
+    #pred = cnnmodel(inp_rgb, control)
 
-    loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=gt_seg, predictions=pred))
-    optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate).minimize(loss)
+    #predictions = tf.reshape(pred, [-1, pred.get_shape()[1] * pred.get_shape()[2]])
+    #labels = tf.reshape(gt_seg, [-1, gt_seg.get_shape()[1] * gt_seg.get_shape()[2]])
+
+    #loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, predictions=predictions))
+    #optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate).minimize(loss)
 
     cur_batch_it = 0
     while True:
@@ -155,18 +158,20 @@ def main():
 
 
             with sess:
-                for i in range(config.train_batch_size):
-                    for feature in features[i]:
-                        for step in range(config.n_rollouts):
+                for _ in range(config.train_batch_size):
+                    rgb_batch = []
+                    target_seg_batch = []
+                    for feature in features:
+                        for step in range(config.n_rollouts-1):
                             # get object 0
-                            rgb_input = feature["obect_segments"][step][3][:,:,:3] # get rgb
+                            rgb_batch.append(feature["obect_segments"][step][3][:,:,:3])
                             target_seg = feature["obect_segments"][step][3][:,:,3] # get seg
-                            if step < config.n_rollouts-1: # 13
-                                gripper_pos = feature["gripperpos"][step+1]
-                                gripper_vel = feature["grippervel"][step+1]
-                                gripper_pos_vel = np.concatenate([gripper_pos, gripper_vel])
 
-                            loss = sess.run([optimizer, pred], feed_dict={inp_rgb: rgb_input, control: gripper_pos_vel})
+                            gripper_pos = feature["gripperpos"][step+1]
+                            gripper_vel = feature["grippervel"][step+1]
+                            gripper_pos_vel = np.concatenate([gripper_pos, gripper_vel])
+
+                            #loss = sess.run([optimizer, pred], feed_dict={inp_rgb: rgb_input, control: gripper_pos_vel, gt_seg: target_seg})
 
 
 

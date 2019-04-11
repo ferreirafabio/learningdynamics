@@ -17,7 +17,7 @@ class SingulationTrainer(BaseTrain):
 
     def train_epoch(self):
         prefix = self.config.exp_name
-        print("using {} rollout steps".format(self.config.n_rollouts))
+        print("using {} rollout steps (n_rollouts={})".format(self.config.n_rollouts-1, self.config.n_rollouts))
 
         while True:
             try:
