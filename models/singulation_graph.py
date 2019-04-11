@@ -97,7 +97,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             """ we assume shape (image features, vel(3dim), pos(3dim)) """
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
-            # in case the segmentation image is not really a segmentation image (sometimes the seg img have more than two values per object image)
+
             if len(np.unique(features['object_segments'][step][obj_id_segs][:, :, 3])) > 2:
                 thresh = features['object_segments'][step][obj_id_segs][:, :, 3] > 0.0
                 features['object_segments'][step][obj_id_segs][:, :, 3][thresh] = 1.0
@@ -199,7 +199,10 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     input_graph = target_graphs[0].copy()
     target_graphs = target_graphs[1:]  # first state is used for init
     if gripper_as_global:
-        input_control_graphs = input_control_graphs[1:]  # first state is used for init
+        """ gripperpos and grippervel always reflect the current step. However, we are interested in predicting 
+        the effects of a new/next control command --> shift by one """
+        input_control_graphs = input_control_graphs[1:]
+
 
     # todo: following code assumes all nodes are of type 'manipulable'
     """ set velocity and position info to zero """
