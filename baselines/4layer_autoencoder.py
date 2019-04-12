@@ -185,7 +185,7 @@ def main():
                         loss_train, _ = _process_rollouts(feature)
                         loss_batch.append([loss_train])
                 loss_avg = np.mean(loss_batch)
-                print('train loss batch {} is: {.2f}'.format(cur_batch_it, loss_avg))
+                print('train loss batch {0:} is: {1:.2f}'.format(cur_batch_it, loss_avg))
 
                 if cur_batch_it % config.test_interval == 1:
                     loss_batch_test = []
@@ -200,7 +200,7 @@ def main():
                     seg_img_batch.append(data)
                     loss_batch_test.append(loss_valid)
                     loss_avg_test = np.mean(loss_batch_test)
-                    print('test loss batch {} is: {.2f}'.format(cur_batch_it, loss_avg_test))
+                    print('test loss batch {0:} is: {1:.2f}'.format(cur_batch_it, loss_avg_test))
                     """ create gif here """
 
                 if cur_batch_it % config.model_save_step_interval == 1:
