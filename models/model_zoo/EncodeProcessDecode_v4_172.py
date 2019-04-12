@@ -416,12 +416,12 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 3 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l3_shape = outputs.get_shape()
 
         ''' layer 4 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l4_shape = outputs.get_shape()
 
@@ -431,7 +431,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 5 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l5_shape = outputs.get_shape()
 
@@ -441,7 +441,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 6 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l6_shape = outputs.get_shape()
 
@@ -521,7 +521,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #outputs1 = outputs
 
         ''' layer 13 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l13_shape = outputs.get_shape()
 
@@ -533,7 +533,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 14 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l14_shape = outputs.get_shape()
 
@@ -596,12 +596,12 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
-        outputs1 = tf.layers.conv2d(img_data, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs1)
         l1_shape = outputs1.get_shape()
 
         ''' Layer2 encoder output shape (?, 120, 160, filter_sizes[0]) '''
-        outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
+        outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l2_shape = outputs.get_shape()
 
