@@ -207,7 +207,7 @@ def _normalize_depth(depth_image):
     return scaled * to_range
 
 
-def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=10, use_moviepy=False, overlay_images=True):
+def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=10, use_moviepy=False, overlay_images=True, only_seg=False):
     if not isinstance(image_dicts, dict) or image_dicts is None:
         return None
 
@@ -220,8 +220,12 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
         object_id = object_id[0] + '_' + object_id[1]
 
         key_seg = [k for k in image_dicts.keys() if object_id in k and 'seg' in k and 'target' in k][0]
-        key_rgb = [k for k in image_dicts.keys() if object_id in k and 'rgb' in k and 'target' in k][0]
-        key_depth = [k for k in image_dicts.keys() if object_id in k and 'depth' in k and 'target' in k][0]
+        if only_seg:
+            key_rgb = None
+            key_depth = None
+        else:
+            key_rgb = [k for k in image_dicts.keys() if object_id in k and 'rgb' in k and 'target' in k][0]
+            key_depth = [k for k in image_dicts.keys() if object_id in k and 'depth' in k and 'target' in k][0]
 
         if len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 1:
             ''' segmentation masks '''

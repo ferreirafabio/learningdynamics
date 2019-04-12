@@ -11,6 +11,8 @@ from utils.dirs import create_dirs
 from utils.utils import get_args
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.io import save_to_gif_from_dict
+from utils.utils import check_exp_folder_exists_and_create
+from utils.math_ops import sigmoid
 
 def cnnmodel(inp_rgb, control=None):
     step = control
@@ -133,75 +135,95 @@ def main():
     loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=predictions))
     optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate).minimize(loss, global_step=global_step_tensor)
 
-    cur_batch_it = 0
-
     with tf.variable_scope('cur_epoch'):
         cur_epoch_tensor = tf.Variable(0, trainable=False, name='cur_epoch')
         increment_cur_epoch_tensor = tf.assign(cur_epoch_tensor, cur_epoch_tensor + 1)
+
+    with tf.variable_scope('global_step'):
+        cur_batch_tensor = tf.Variable(0, trainable=False, name='cur_batch')
+        increment_cur_batch_tensor = tf.assign(cur_batch_tensor, cur_batch_tensor+1)
 
     next_element_train = train_data.get_next_batch()
     next_element_test = test_data.get_next_batch()
 
     saver = tf.train.Saver(max_to_keep=config.max_checkpoints_to_keep)
 
+    latest_checkpoint = tf.train.latest_checkpoint(config.checkpoint_dir)
+    if latest_checkpoint:
+        print("Loading model checkpoint {} ...\n".format(latest_checkpoint))
+        saver.restore(sess, latest_checkpoint)
+        print("Model loaded")
+
     init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     sess.run(init)
 
-    def _process_rollouts(feature):
+    def _process_rollouts(feature, train=True):
         gt_merged_seg_rollout_batch = []
         input_merged_images_rollout_batch = []
         gripper_pos_vel_rollout_batch = []
         for step in range(config.n_rollouts - 1):
-            obj_segments = feature["object_segments"][step]
-            """ transform (3,120,160,7) into (1,120,160,7) by merging the rgb,depth and seg masks """
-            input_merged_images = create_full_images_of_object_masks(obj_segments)
+            if step < feature["unpadded_experiment_length"]:
+                obj_segments = feature["object_segments"][step]
+                """ transform (3,120,160,7) into (1,120,160,7) by merging the rgb,depth and seg masks """
+                input_merged_images = create_full_images_of_object_masks(obj_segments)
 
-            obj_segments_gt = feature["object_segments"][step + 1]
-            gt_merged_seg = create_full_images_of_object_masks(obj_segments_gt)[:, :, 3]
+                obj_segments_gt = feature["object_segments"][step + 1]
+                gt_merged_seg = create_full_images_of_object_masks(obj_segments_gt)[:, :, 3]
 
-            gripper_pos = feature["gripperpos"][step + 1]
-            gripper_vel = feature["grippervel"][step + 1]
-            gripper_pos_vel = np.concatenate([gripper_pos, gripper_vel])
+                gripper_pos = feature["gripperpos"][step + 1]
+                gripper_vel = feature["grippervel"][step + 1]
+                gripper_pos_vel = np.concatenate([gripper_pos, gripper_vel])
 
-            gt_merged_seg_rollout_batch.append(gt_merged_seg)
-            input_merged_images_rollout_batch.append(input_merged_images)
-            gripper_pos_vel_rollout_batch.append(gripper_pos_vel)
+                gt_merged_seg_rollout_batch.append(gt_merged_seg)
+                input_merged_images_rollout_batch.append(input_merged_images)
+                gripper_pos_vel_rollout_batch.append(gripper_pos_vel)
 
         retrn = sess.run([optimizer, loss, pred], feed_dict={inp_rgb: input_merged_images_rollout_batch,
                                                              control: gripper_pos_vel_rollout_batch,
                                                              gt_seg: gt_merged_seg_rollout_batch})
+        if not train:
+            """ sigmoid cross entropy runs logits through sigmoid but only during train time """
+            seg_data = sigmoid(retrn[2])
+            seg_data[seg_data >= 0.5] = 1.0
+            seg_data[seg_data < 0.5] = 0.0
+            return retrn[1], seg_data, gt_merged_seg_rollout_batch
+
         return retrn[1], retrn[2]
 
     for cur_epoch in range(cur_epoch_tensor.eval(sess), config.n_epochs + 1, 1):
         while True:
             try:
-                cur_batch_it += 1
 
                 features = sess.run(next_element_train)
                 features = convert_dict_to_list_subdicts(features, config.train_batch_size)
                 loss_batch = []
+                sess.run(increment_cur_batch_tensor)
                 for _ in range(config.train_batch_size):
                     for feature in features:
                         loss_train, _ = _process_rollouts(feature)
                         loss_batch.append([loss_train])
+
+                cur_batch_it = cur_batch_tensor.eval(sess)
                 loss_avg = np.mean(loss_batch)
-                print('train loss batch {0:} is: {1:.2f}'.format(cur_batch_it, loss_avg))
+                print('train loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_avg))
 
                 if cur_batch_it % config.test_interval == 1:
                     loss_batch_test = []
 
                     print("Executing test batch")
+                    features_idx = 0  # always take first element for testing
                     features = sess.run(next_element_test)
-                    feature = convert_dict_to_list_subdicts(features, config.test_batch_size)
+                    features = convert_dict_to_list_subdicts(features, config.test_batch_size)
                     seg_img_batch = []
 
-                    loss_valid, data = _process_rollouts(feature[0])  # always take first element for testing
+                    loss_valid, data, gt_seg_data = _process_rollouts(features[features_idx], train=False)
 
                     seg_img_batch.append(data)
                     loss_batch_test.append(loss_valid)
                     loss_avg_test = np.mean(loss_batch_test)
-                    print('test loss batch {0:} is: {1:.2f}'.format(cur_batch_it, loss_avg_test))
+                    print('test loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_avg_test))
                     """ create gif here """
+                    create_seg_gif(features, features_idx, config, seg_img_batch[0], gt_seg_data, dir_name="test", cur_batch_it=cur_batch_it)
 
                 if cur_batch_it % config.model_save_step_interval == 1:
                     print("Saving model...")
@@ -214,6 +236,7 @@ def main():
 
         sess.run(increment_cur_epoch_tensor)
 
+
         return None
 
 
@@ -225,8 +248,23 @@ def create_full_images_of_object_masks(object_segments):
     return np.dstack((rgb_all_objects, seg_all_objects, depth_all_objects))
 
 
-def create_seg_gif():
-    return NotImplementedError
+def create_seg_gif(features, features_idx, config, dnn_seg_output, gt_seg_data, dir_name, cur_batch_it):
+    prefix = config.exp_name
+    dir_path = check_exp_folder_exists_and_create(features=features, features_index=features_idx, prefix=config.exp_name, dir_name=dir_name, cur_batch_it=cur_batch_it)
+
+    unpad_exp_length = features[features_idx]["unpadded_experiment_length"]
+
+    target_summaries_dict_seg = {
+        prefix + '_target_seg_exp_id_{}_batch_{}_object_0'.format(features[features_idx]['experiment_id'],
+                                                                  cur_batch_it): np.expand_dims(np.asarray(gt_seg_data), axis=4)}
+
+    predicted_summaries_dict_seg = {
+        prefix + '_predicted_seg_exp_id_{}_batch_{}_object_0'.format(int(features[features_idx]['experiment_id']),
+                                                                      cur_batch_it): dnn_seg_output}
+
+
+    image_dicts = {**target_summaries_dict_seg, **predicted_summaries_dict_seg}
+    save_to_gif_from_dict(image_dicts, destination_path=dir_path, unpad_exp_length=unpad_exp_length, only_seg=True)
 
 if __name__ == '__main__':
     main()
