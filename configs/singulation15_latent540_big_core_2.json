@@ -22,7 +22,7 @@
   "n_layers_globals": 2,
   "n_layers_nodes": 3,
   "n_layers_edges": 2,
-  "n_neurons_nodes": 256,
+  "n_neurons_nodes": 128,
   "n_neurons_edges": 32,
   "n_neurons_globals": 64,
   "n_neurons_nodes_non_visual": 50,
