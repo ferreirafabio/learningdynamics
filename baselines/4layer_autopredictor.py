@@ -117,9 +117,7 @@ def main():
     train_data = DataGenerator(config, sess, train=True)
     test_data = DataGenerator(config, sess, train=False)
 
-    prefix = config.exp_name
     print("using {} rollout steps".format(config.n_rollouts))
-
 
     inp_rgb = tf.placeholder("float", [None, 120, 160, 7])
     control = tf.placeholder("float", [None, 6])
