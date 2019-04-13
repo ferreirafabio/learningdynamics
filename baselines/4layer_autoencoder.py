@@ -223,7 +223,7 @@ def main():
                     loss_avg_test = np.mean(loss_batch_test)
                     print('test loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_avg_test))
                     """ create gif here """
-                    create_seg_gif(features, features_idx, config, seg_img_batch[0], gt_seg_data, dir_name="test", cur_batch_it=cur_batch_it)
+                    create_seg_gif(features, features_idx, config, seg_img_batch[0], gt_seg_data, dir_name="tests_during_training", cur_batch_it=cur_batch_it)
 
                 if cur_batch_it % config.model_save_step_interval == 1:
                     print("Saving model...")

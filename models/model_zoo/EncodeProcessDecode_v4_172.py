@@ -752,7 +752,6 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
-        # todo: in future, try mapping visual and latent data into joint latent space, i.e. one fc that "merges" visual and latent data
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
             n_neurons=EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual,
             n_layers=2,

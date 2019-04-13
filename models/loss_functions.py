@@ -276,8 +276,8 @@ def create_loss_ops(config, target_op, output_ops):
     else:
         raise ValueError("loss type must be in [\"mse\", \"mse_gdl\", \"mse_iou\", \"mse_seg_only\", \"cross_entropy_seg_only\" but is {}".format(config.loss_type))
 
-    #l2_loss = tf.losses.get_regularization_loss()
-    #total_loss_ops += l2_loss
+    l2_loss = tf.losses.get_regularization_loss()
+    total_loss_ops += l2_loss
 
     return total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance, targ
 
