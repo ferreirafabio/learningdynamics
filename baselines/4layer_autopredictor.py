@@ -250,6 +250,10 @@ def create_seg_gif(features, features_idx, config, dnn_seg_output, gt_seg_data, 
     prefix = config.exp_name
     dir_path = check_exp_folder_exists_and_create(features=features, features_index=features_idx, prefix=config.exp_name, dir_name=dir_name, cur_batch_it=cur_batch_it)
 
+    # results already exist
+    if not dir_path:
+        return None
+
     unpad_exp_length = features[features_idx]["unpadded_experiment_length"]
 
     target_summaries_dict_seg = {
