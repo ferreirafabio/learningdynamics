@@ -241,7 +241,8 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                 #for i in range(unpad_exp_length + 1):
                 for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
                     if overlay_images and "predicted" in file_name:
-                        # treat initial image different: add ground truth init image to the prediction
+                        # wanna show the initial image as well but it must be treated differently since we have one gt image more than predicted images
+                        # --> add ground truth init image to the prediction
                         if i == 0:
                             im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][0, :, :, 0]), animated=True, interpolation='none')
                             # take from gt data
@@ -249,7 +250,12 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                             im = [im2, im1]
 
                         else:
-                            im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i-1, :, :, 0]),animated=True, interpolation='none')
+                            # gt dict images are input to what the model predicts and thus the prediction images are positively shifted by 1 (i vs i-1)
+                            # no gt image exists for i==img_data_uint.shape[0]+1, thus output the last gt image twice
+                            if i == img_data_uint.shape[0]+1:
+                                im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i-1, :, :, 0]), animated=True, interpolation='none')
+                            else:
+                                im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i, :, :, 0]), animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
                             im2 = plt.imshow(_normalize_0_1(img_data_uint[i-1, :, :, 0]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
@@ -287,8 +293,14 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                             im2 = plt.imshow(_normalize_0_1(image_dicts[key][0, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                         else:
+                            # gt dict images are input to what the model predicts and thus the prediction images are positively shifted by 1 (i vs i-1)
+                            # no gt image exists for i==img_data_uint.shape[0]+1, thus output the last gt image twice
+                            if i == img_data_uint.shape[0] + 1:
+                                im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i - 1, :, :, 0]), animated=True, interpolation='none')
+                            else:
+                                im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i, :, :, 0]), animated=True, interpolation='none')
                             # take from GN output, use i-1 since GN output has one less than gt data
-                            im2 = plt.imshow(_normalize_0_1(img_data_uint[i - 1, :, :, :]), alpha=0.7, animated=True, interpolation='none')
+                            im2 = plt.imshow(_normalize_0_1(img_data_uint[i-1, :, :, :]), alpha=0.7, animated=True, interpolation='none')
                             im = [im2, im1]
                     else:
                         #if i < unpad_exp_length:

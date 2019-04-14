@@ -70,7 +70,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
            target_summaries_dict_global_seg, target_summaries_dict_global_depth
 
 
-def create_image_summary(output_for_summary, config, prefix, features, cur_batch_it):
+def create_image_summary(output_for_summary, features_index, config, prefix, features, cur_batch_it):
     ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
     if config.loss_type == "cross_entropy_seg_only" or config.loss_type == "mse_seg_only":
         seg_only = True
@@ -78,7 +78,6 @@ def create_image_summary(output_for_summary, config, prefix, features, cur_batch
         seg_only = False
 
     images_rgb, images_seg, images_depth = get_images_from_gn_output(output_for_summary[0], config.depth_data_provided, segmentation_only=seg_only)
-    features_index = output_for_summary[1]  # assumes outside caller uses for loop to iterate over outputs --> use always first index
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
         images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,
@@ -122,7 +121,16 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
     pos = [pos_of_obj[:cut_length] for pos_of_obj in pos]
     vel = [vel_of_obj[:cut_length] for vel_of_obj in vel]
 
-    pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
+    # assuming ground truth always has one more step than the number of predicted steps
+    if cut_length < gt_features[features_index]["experiment_length"]:
+        pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length+1)
+        # if there is one more in gt available, add it to predicted pos/vel to show init step in visualization
+        [pos_of_obj_pred.insert(0, pos_gt[i][0]) for i, pos_of_obj_pred in enumerate(pos)]
+        [vel_of_obj_pred.insert(0, vel_gt[i][0]) for i, vel_of_obj_pred in enumerate(vel)]
+    else:
+        pos_gt, vel_gt = get_latent_target_data(gt_features, features_index, cut_length)
+
+
 
     # pos, vel are predictions given an initial state t=0 --> gt data always has one more sample
     # --> add this sample to predictions
@@ -188,12 +196,21 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
 
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name,
-                     reduce_dict=True, overlay_images=True, output_selection=['seg', 'rgb', 'depth']):
+                     reduce_dict=True, overlay_images=True, output_selection=['seg', 'rgb', 'depth'], return_latent_df_only=False):
     """ when sum_dict_img_list and df_list are not None, the 1st and 3rd return values are lists"""
 
     assert isinstance(output_selection, list), 'output_selection should be a list'
 
-    summaries_dict_images, features_index = create_image_summary(output, config=config, prefix=prefix, features=features,
+    features_index = output[1]  # assumes outside caller uses for loop to iterate over outputs --> use always first index
+    unpad_exp_length = features[features_index]['unpadded_experiment_length']
+
+    if return_latent_df_only:
+        df, _ = create_latent_data_df(config, output, gt_features=features, unpad_exp_length=unpad_exp_length)
+        return df
+
+    summaries_pos_dict_images = None
+
+    summaries_dict_images, features_index = create_image_summary(output, features_index=features_index, config=config, prefix=prefix, features=features,
                                                  cur_batch_it=cur_batch_it)
     if 'global_img' not in output_selection:
         output_selection.append('global_img')
@@ -206,10 +223,6 @@ def generate_results(output, config, prefix, features, cur_batch_it, export_imag
         dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
     else:
         dir_path = None
-
-    summaries_pos_dict_images = None
-
-    unpad_exp_length = features[features_index]['unpadded_experiment_length']
 
     if export_images and dir_path:  # skip if directory exists
         export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path, overlay_images=overlay_images, unpad_exp_length=unpad_exp_length)
