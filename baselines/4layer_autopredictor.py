@@ -142,7 +142,7 @@ def main():
 
     with tf.variable_scope('global_step'):
         cur_batch_tensor = tf.Variable(0, trainable=False, name='cur_batch')
-        increment_cur_batch_tensor = tf.assign(cur_batch_tensor, cur_batch_tensor+1)
+        increment_cur_batch_tensor = tf.assign(cur_batch_tensor, cur_batch_tensor + 1)
 
     next_element_train = train_data.get_next_batch()
     next_element_test = test_data.get_next_batch()
@@ -216,13 +216,10 @@ def main():
                 logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
 
                 if cur_batch_it % config.test_interval == 1:
-
-
                     print("Executing test batch")
                     features_idx = 0  # always take first element for testing
                     features = sess.run(next_element_test)
                     features = convert_dict_to_list_subdicts(features, config.test_batch_size)
-                    seg_img_batch = []
                     loss_test_batch = []
 
                     for i in range(config.test_batch_size):
@@ -233,7 +230,6 @@ def main():
                     summaries_dict = {config.exp_name + '_test_loss': loss_test_mean_batch}
                     logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
-
                     print('test loss is: {0:.4f}'.format(loss_test_mean_batch))
                     if seg_data is not None and gt_seg_data is not None:
                         """ create gif here """
@@ -243,7 +239,6 @@ def main():
                     print("Saving model...")
                     saver.save(sess, config.checkpoint_dir, global_step_tensor)
                     print("Model saved")
-
 
             except tf.errors.OutOfRangeError:
                 break

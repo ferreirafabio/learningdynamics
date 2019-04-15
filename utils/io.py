@@ -241,7 +241,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                 #for i in range(unpad_exp_length + 1):
                 for i in range(img_data_uint.shape[0]+1):  # +1 because of the extra init image
                     if overlay_images and "predicted" in file_name:
-                        # wanna show the initial image as well but it must be treated differently since we have one gt image more than predicted images
+                        # want to show the initial image as well but it must be treated differently since we have one gt image more than predicted images
                         # --> add ground truth init image to the prediction
                         if i == 0:
                             im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][0, :, :, 0]), animated=True, interpolation='none')
@@ -264,7 +264,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                         if i < img_data_uint.shape[0]:
                             im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, 0]), animated=True, interpolation='none')]
                     ims.append(im)
-                clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
+                clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=500)
 
         elif len(img_data_uint.shape) == 4 and img_data_uint.shape[3] == 3:
             ''' all 3-channel data (rgb, depth etc.)'''
@@ -308,7 +308,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                             im = [plt.imshow(_normalize_0_1(img_data_uint[i, :, :, :]), animated=True, interpolation='none')]
 
                     ims.append(im)
-                clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
+                clip = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=500)
         else:
             continue
 

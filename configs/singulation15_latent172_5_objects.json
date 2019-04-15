@@ -40,5 +40,6 @@
   "mode": "test_5_objects_one_step",
   "initial_pos_vel_known": true,
   "loss_type": "cross_entropy_seg_only",
-  "model_zoo_file": "EncodeProcessDecode_v4_172"
+  "model_zoo_file": "EncodeProcessDecode_v4_172",
+  "do_multi_step_prediction": false
 }
