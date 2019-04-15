@@ -147,10 +147,10 @@ def main():
     next_element_train = train_data.get_next_batch()
     next_element_test = test_data.get_next_batch()
 
-    saver = tf.train.Saver(max_to_keep=config.max_checkpoints_to_keep)
-
     init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     sess.run(init)
+
+    saver = tf.train.Saver(max_to_keep=config.max_checkpoints_to_keep)
 
     latest_checkpoint = tf.train.latest_checkpoint(config.checkpoint_dir)
     if latest_checkpoint:
