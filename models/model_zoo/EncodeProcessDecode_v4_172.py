@@ -137,8 +137,8 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
 
         # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
         #n_nodes = [tf.shape(input_op.nodes)-134406]
-        n_nodes = [3]
-        n_edges = [6]
+        n_nodes = [5]#[tf.reduce_sum(input_op.n_node[0])] #[3]  [5]
+        n_edges = [20] #[tf.reduce_sum(input_op.n_edge[0])] # [6] [20]
         """ we generated "n_rollouts-1" target graphs """
         mult = tf.constant([num_processing_steps-1])
 

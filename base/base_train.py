@@ -6,7 +6,7 @@ from models.loss_functions import create_loss_ops
 
 
 class BaseTrain:
-    def __init__(self, sess, model, train_data, test_data, config, logger):
+    def __init__(self, sess, model, train_data, test_data, config, logger, only_test=False):
         self.model = model
         self.logger = logger
         self.config = config
@@ -14,7 +14,8 @@ class BaseTrain:
         self.train_data = train_data
         self.test_data = test_data
 
-        self.initialize_train_model()
+        if not only_test:
+            self.initialize_train_model()
         self.initialize_test_model()
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
