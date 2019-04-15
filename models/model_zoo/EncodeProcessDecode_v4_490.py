@@ -112,7 +112,7 @@ class EncodeProcessDecode_v4_490(snt.AbstractModule, BaseModel):
 
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
-    def _build(self, input_op, input_ctrl_op, target_op, num_processing_steps, is_training):
+    def _build(self, input_op, input_ctrl_op, target_op, num_processing_steps, is_training, do_multi_step_prediction=False):
         print("----- Data used as global attribute: (t, gravity, grippervel, gripperpos) only -----")
         print("----- Visual prediction: segmentation -----")
         print("----- Model uses skip connection: True -----")
@@ -136,22 +136,26 @@ class EncodeProcessDecode_v4_490(snt.AbstractModule, BaseModel):
         ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
 
         # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
-        #n_nodes = [tf.shape(input_op.nodes)-134406]
-        n_nodes = [3]
-        n_edges = [6]
+        n_nodes = [target_op.n_node[0]]  #manually: [3] or [5]
+        n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
+
         """ we generated "n_rollouts-1" target graphs """
         mult = tf.constant([num_processing_steps-1])
 
         ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
         ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
+        if do_multi_step_prediction:
+            print("--- multi-step prediction mode ---")
+        else:
+            print("--- single-step prediction mode ---")
+
         for step in range(num_processing_steps-1):
             """ get target values for one-step (reset node input state to gt after every rollout step) """
             global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
             latent = latent.replace(globals=global_t)
 
-            # todo: deactivate if is_training == False?
-            if step > 0:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
+            if step > 0 and not do_multi_step_prediction:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
                 ground_truth_nodes_t = ground_truth_nodes_split[step]
                 ground_truth_edges_t = ground_truth_edges_split[step]
                 latent = latent.replace(nodes=ground_truth_nodes_t)
