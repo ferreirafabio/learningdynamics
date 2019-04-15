@@ -323,6 +323,7 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
             else:
                 name += ".gif"
                 clip.save(name, writer='imagemagick')
+            plt.close()
 
 
 def create_dir(output_dir, dir_name, verbose=False):
