@@ -250,9 +250,9 @@ def save_to_gif_from_dict(image_dicts, destination_path, unpad_exp_length, fps=1
                             im = [im2, im1]
 
                         else:
-                            # gt dict images are input to what the model predicts and thus the prediction images are positively shifted by 1 (i vs i-1)
+                            # gt dict images are input to what the model predicts and thus the prediction images are negatively shifted by 1 (i vs i-1)
                             # no gt image exists for i==img_data_uint.shape[0]+1, thus output the last gt image twice
-                            if i == img_data_uint.shape[0]+1:
+                            if i == img_data_uint.shape[0]:
                                 im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i-1, :, :, 0]), animated=True, interpolation='none')
                             else:
                                 im1 = plt.imshow(_normalize_0_1(image_dicts[key_seg][i, :, :, 0]), animated=True, interpolation='none')
