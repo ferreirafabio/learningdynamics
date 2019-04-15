@@ -13,6 +13,7 @@ from utils.conversions import convert_dict_to_list_subdicts
 from utils.io import save_to_gif_from_dict
 from utils.utils import check_exp_folder_exists_and_create
 from utils.math_ops import sigmoid
+from utils.logger import Logger
 
 def cnnmodel(inp_rgb, control=None):
     step = control
@@ -97,6 +98,7 @@ def main():
     # create tensorflow session
     sess = tf.Session()
 
+
     try:
         args = get_args()
         config = process_config(args.config)
@@ -109,13 +111,14 @@ def main():
         print(e)
         exit(0)
 
-
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir, config.config_file_dir])
 
     # create your data generator
     train_data = DataGenerator(config, sess, train=True)
     test_data = DataGenerator(config, sess, train=False)
+
+    logger = Logger(sess, config)
 
     print("using {} rollout steps".format(config.n_rollouts))
 
@@ -176,22 +179,26 @@ def main():
                 input_merged_images_rollout_batch.append(input_merged_images)
                 gripper_pos_vel_rollout_batch.append(gripper_pos_vel)
 
-        retrn = sess.run([optimizer, loss, pred], feed_dict={inp_rgb: input_merged_images_rollout_batch,
-                                                             control: gripper_pos_vel_rollout_batch,
-                                                             gt_seg: gt_merged_seg_rollout_batch})
-        if not train:
+        if train:
+            retrn = sess.run([optimizer, loss, pred], feed_dict={inp_rgb: input_merged_images_rollout_batch,
+                                                                 control: gripper_pos_vel_rollout_batch,
+                                                                 gt_seg: gt_merged_seg_rollout_batch})
+            return retrn[1], retrn[2]
+
+        else:
+            retrn = sess.run([loss, pred], feed_dict={inp_rgb: input_merged_images_rollout_batch,
+                                                                 control: gripper_pos_vel_rollout_batch,
+                                                                 gt_seg: gt_merged_seg_rollout_batch})
+
             """ sigmoid cross entropy runs logits through sigmoid but only during train time """
-            seg_data = sigmoid(retrn[2])
+            seg_data = sigmoid(retrn[1])
             seg_data[seg_data >= 0.5] = 1.0
             seg_data[seg_data < 0.5] = 0.0
-            return retrn[1], seg_data, gt_merged_seg_rollout_batch
-
-        return retrn[1], retrn[2]
+            return retrn[0], seg_data, gt_merged_seg_rollout_batch
 
     for cur_epoch in range(cur_epoch_tensor.eval(sess), config.n_epochs + 1, 1):
         while True:
             try:
-
                 features = sess.run(next_element_train)
                 features = convert_dict_to_list_subdicts(features, config.train_batch_size)
                 loss_batch = []
@@ -202,26 +209,35 @@ def main():
                         loss_batch.append([loss_train])
 
                 cur_batch_it = cur_batch_tensor.eval(sess)
-                loss_avg = np.mean(loss_batch)
-                print('train loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_avg))
+                loss_mean_batch = np.mean(loss_batch)
+
+                print('train loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_mean_batch))
+                summaries_dict = {config.exp_name + '_loss': loss_mean_batch}
+                logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
 
                 if cur_batch_it % config.test_interval == 1:
-                    loss_batch_test = []
+
 
                     print("Executing test batch")
                     features_idx = 0  # always take first element for testing
                     features = sess.run(next_element_test)
                     features = convert_dict_to_list_subdicts(features, config.test_batch_size)
                     seg_img_batch = []
+                    loss_test_batch = []
 
-                    loss_valid, data, gt_seg_data = _process_rollouts(features[features_idx], train=False)
+                    for i in range(config.test_batch_size):
+                        loss_test, seg_data, gt_seg_data = _process_rollouts(features[features_idx], train=False)
+                        loss_test_batch.append(loss_test)
 
-                    seg_img_batch.append(data)
-                    loss_batch_test.append(loss_valid)
-                    loss_avg_test = np.mean(loss_batch_test)
-                    print('test loss batch {0:} is: {1:.4f}'.format(cur_batch_it, loss_avg_test))
-                    """ create gif here """
-                    create_seg_gif(features, features_idx, config, seg_img_batch[0], gt_seg_data, dir_name="tests_during_training", cur_batch_it=cur_batch_it)
+                    loss_test_mean_batch = np.mean(loss_test_batch)
+                    summaries_dict = {config.exp_name + '_test_loss': loss_test_mean_batch}
+                    logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
+
+
+                    print('test loss is: {0:.4f}'.format(loss_test_mean_batch))
+                    if seg_data is not None and gt_seg_data is not None:
+                        """ create gif here """
+                        create_seg_gif(features, features_idx, config, seg_data, gt_seg_data, dir_name="tests_during_training", cur_batch_it=cur_batch_it)
 
                 if cur_batch_it % config.model_save_step_interval == 1:
                     print("Saving model...")
@@ -233,7 +249,6 @@ def main():
                 break
 
         sess.run(increment_cur_epoch_tensor)
-
 
         return None
 
@@ -263,7 +278,6 @@ def create_seg_gif(features, features_idx, config, dnn_seg_output, gt_seg_data, 
     predicted_summaries_dict_seg = {
         prefix + '_predicted_seg_exp_id_{}_batch_{}_object_0'.format(int(features[features_idx]['experiment_id']),
                                                                       cur_batch_it): dnn_seg_output}
-
 
     image_dicts = {**target_summaries_dict_seg, **predicted_summaries_dict_seg}
     save_to_gif_from_dict(image_dicts, destination_path=dir_path, unpad_exp_length=unpad_exp_length, only_seg=True)
