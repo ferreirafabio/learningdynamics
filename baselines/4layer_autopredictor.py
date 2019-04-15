@@ -147,6 +147,9 @@ def main():
     next_element_train = train_data.get_next_batch()
     next_element_test = test_data.get_next_batch()
 
+    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    sess.run(init)
+
     saver = tf.train.Saver(max_to_keep=config.max_checkpoints_to_keep)
 
     latest_checkpoint = tf.train.latest_checkpoint(config.checkpoint_dir)
@@ -154,9 +157,6 @@ def main():
         print("Loading model checkpoint {} ...\n".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
         print("Model loaded")
-
-    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-    sess.run(init)
 
     def _process_rollouts(feature, train=True):
         gt_merged_seg_rollout_batch = []
