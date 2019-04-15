@@ -34,6 +34,7 @@ def cnnmodel(inp_rgb, control=None):
                                            regularizer='L2')
     feat_e_0 = tflearn.layers.conv.max_pool_2d(feat_e_0, [2, 2], [2, 2], padding='VALID')
     feat_e_0 = tf.contrib.layers.layer_norm(feat_e_0)
+    feat_e_0 = tflearn.layers.core.dropout(feat_e_0, keep_prob=0.9)
     #print(feat_e_0)
 
     feat_e_1 = tflearn.layers.conv.conv_2d(feat_e_0, 64, (1, 1), strides=1, activation='relu', weight_decay=1e-5,
@@ -46,6 +47,7 @@ def cnnmodel(inp_rgb, control=None):
                                            regularizer='L2')
     feat_e_2 = tflearn.layers.conv.max_pool_2d(feat_e_2, [2, 2], [2, 2], padding='VALID')
     feat_e_2 = tf.contrib.layers.layer_norm(feat_e_2)
+    feat_e_2 = tflearn.layers.core.dropout(feat_e_2, keep_prob=0.9)
     #print(feat_e_2)
 
     feat_e_3 = tflearn.layers.conv.conv_2d(feat_e_2, 256, (1, 1), strides=(1, 1), activation='relu', weight_decay=1e-5,
@@ -58,6 +60,7 @@ def cnnmodel(inp_rgb, control=None):
                                            regularizer='L2')
     feat_e_4 = tflearn.layers.conv.max_pool_2d(feat_e_4, [2, 2], [6, 6], padding='VALID')
     feat_e_4 = tf.contrib.layers.layer_norm(feat_e_4)
+    feat_e_4 = tflearn.layers.core.dropout(feat_e_4, keep_prob=0.9)
     #print(feat_e_4)  # --> (?,1,1,496)
 
 
@@ -68,7 +71,24 @@ def cnnmodel(inp_rgb, control=None):
     #print("feat", feat)  # --> (1,1,560)
 
     """ small decoder-cnn: """
-    feat = tf.reshape(feat, (-1, 7, 10, 8))
+    #feat = tf.reshape(feat, (-1, 7, 10, 8))
+
+    feat = tflearn.layers.conv.conv_2d_transpose(feat, 8, [2, 2], [2, 2], strides=2, activation='relu',
+                                                 weight_decay=1e-5, regularizer='L2', padding="valid")
+    feat = tf.contrib.layers.layer_norm(feat)
+    feat = tflearn.layers.core.dropout(feat, keep_prob=0.9)
+    #print("feat", feat)
+
+    feat = tflearn.layers.conv.conv_2d_transpose(feat, 8, [2, 2], [4, 4], strides=2, activation='relu',
+                                                 weight_decay=1e-5, regularizer='L2', padding="valid")
+    feat = tf.contrib.layers.layer_norm(feat)
+    #print("feat", feat)
+
+    feat = tflearn.layers.conv.conv_2d_transpose(feat, 8, [1, 4], [7, 10], strides=2, activation='relu',
+                                                 weight_decay=1e-5, regularizer='L2', padding="valid")
+    feat = tf.contrib.layers.layer_norm(feat)
+    feat = tflearn.layers.core.dropout(feat, keep_prob=0.9)
+    #print("feat", feat)
 
     feat = tflearn.layers.conv.conv_2d_transpose(feat, 496, [3, 2], [15, 20], strides=2, activation='relu',
                                                  weight_decay=1e-5, regularizer='L2', padding="valid")
@@ -78,6 +98,7 @@ def cnnmodel(inp_rgb, control=None):
     feat = tflearn.layers.conv.conv_2d_transpose(feat, 496, [2, 2], [30, 40], strides=2, activation='relu',
                                                  weight_decay=1e-5, regularizer='L2')  # padding same
     feat = tf.contrib.layers.layer_norm(feat)
+    feat = tflearn.layers.core.dropout(feat, keep_prob=0.9)
     #print("feat", feat)
 
     feat = tflearn.layers.conv.conv_2d_transpose(feat, 256, [3, 3], [60, 80], strides=2, activation='relu',
@@ -91,7 +112,6 @@ def cnnmodel(inp_rgb, control=None):
     #print("feat", feat)
 
     return feat
-
 
 
 def main():
