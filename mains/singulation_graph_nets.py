@@ -12,7 +12,7 @@ matplotlib.use('Agg')
 
 
 def main():
-    tf.set_random_seed(1234)
+    tf.set_random_seed(12345)
     # capture the config path from the run arguments
     # then process the json configuration file
     try:

@@ -191,10 +191,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             input_control_graphs = None
 
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
+    #print("=== WARNING: graph has no edges! ===")
     for step in range(experiment_length):
         for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
             edge_feature = create_edge_feature(receiver, sender, target_graphs[step])
-            target_graphs[step].add_edge(sender, receiver, features=edge_feature)
+            target_graphs[step].add_edge(sender, receiver, features=edge_feature)  # todo: uncomment
+            #target_graphs[step][sender][receiver]['features'] = None
 
     input_graph = target_graphs[0].copy()
     target_graphs = target_graphs[1:]  # first state is used for init
@@ -237,7 +239,7 @@ def get_graph_ph(graph_dicts):
 
 def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     labels = nx.get_node_attributes(graph_nx, label_keyword)
-    plt.figure(1, figsize=(11, 11))
+    plt.figure(figsize=(11, 11))
     nx.draw(graph_nx, labels=labels, node_size=1000, font_size=15)
     plt.show()
 
