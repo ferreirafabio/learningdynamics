@@ -15,6 +15,8 @@ class Logger:
         self.test_summary_writer = tf.summary.FileWriter(os.path.join(self.config.summary_dir, "test"))
 
         copy2(self.config.file_name, self.config.config_file_dir)
+        copy2(os.path.join("../models/model_zoo/", self.config.model_zoo_file + ".py"), self.config.config_file_dir)
+        copy2(os.path.join("../models/", "loss_functions.py"), self.config.config_file_dir)
 
 
     # it can summarize scalars and images.
