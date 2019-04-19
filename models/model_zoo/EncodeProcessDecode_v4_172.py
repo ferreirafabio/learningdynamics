@@ -156,8 +156,8 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
             latent = latent.replace(globals=global_t)
 
             if step > 0 and not do_multi_step_prediction:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
-                ground_truth_nodes_t = ground_truth_nodes_split[step]
-                ground_truth_edges_t = ground_truth_edges_split[step]
+                ground_truth_nodes_t = ground_truth_nodes_split[step-1]
+                ground_truth_edges_t = ground_truth_edges_split[step-1]
                 latent = latent.replace(nodes=ground_truth_nodes_t)
                 latent = latent.replace(edges=ground_truth_edges_t)
 
