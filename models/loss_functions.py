@@ -11,10 +11,10 @@ def create_loss_ops(config, target_op, output_ops):
     """
     mult = tf.constant([len(output_ops)])
     n_nodes = [tf.shape(output_ops[0].nodes)[0]]
-    #n_edges = [tf.shape(output_ops[0].edges)[0]]
+    n_edges = [tf.shape(output_ops[0].edges)[0]]
 
     target_node_splits = tf.split(target_op.nodes, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-    #target_edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
+    target_edge_splits = tf.split(target_op.edges, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
     """ if object seg data is only used for init, the ground truth features in the rest of the sequence are static except position 
     --> in this case compute loss only over the position since image prediction is infeasible """
@@ -107,12 +107,12 @@ def create_loss_ops(config, target_op, output_ops):
             loss_visual_iou_seg = 0.0  # no iou loss computed
 
             """ NONVISUAL LOSS (50% weight) """
-            #loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
-            #                                   lambda: non_visual_scale * tf.losses.mean_squared_error(
-            #                                       labels=target_edge_splits[i],
-            #                                       predictions=output_op.edges,
-            #                                       weights=0.1)
-            #                                   )
+            loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
+                                               lambda: non_visual_scale * tf.losses.mean_squared_error(
+                                                   labels=target_edge_splits[i],
+                                                   predictions=output_op.edges,
+                                                   weights=0.1)
+                                               )
 
             loss_nonvisual_mse_edges = 0.0
 

@@ -103,15 +103,15 @@ class SingulationTrainer(BaseTrain):
             self.config.n_epochs = 1
         if not self.config.n_rollouts == 50:
             print("test mode 5 objects --> n_rollouts will be set to 50")
-            self.config.rollouts = 50
+            self.config.rollouts = 15  # todo: change to 50
         prefix = self.config.exp_name
         print("Running 5 object test with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        if self.config.do_multi_step_prediction_at_test:
+        if self.config.do_multi_step_prediction:
             sub_dir_name = "test_5_objects_multi_step_{}_iterations_trained".format(cur_batch_it)
         else:
-            sub_dir_name = "test_5_objects_single_step_{}_iterations_trained".format(cur_batch_it)
+            sub_dir_name = "test_5_novel_object_shapes_single_step_{}_iterations_trained".format(cur_batch_it)
 
         while True:
             try:
@@ -270,22 +270,21 @@ class SingulationTrainer(BaseTrain):
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-        print("=== WARNING: shuffling within single trajectories is activated! (TEST) ===")
-        #np.random.seed(0)
-        s = np.arange(self.config.n_rollouts)
-        np.random.shuffle(s)
-        for feature in features:
-            feature['img'] = feature['img'][s]
-            feature['seg'] = feature['seg'][s]
-            feature['depth'] = feature['depth'][s]
-            for s_i in s:
-                if s_i + 1 == self.config.n_rollouts:
-                    continue
-                feature['gripperpos'][s_i] = feature['gripperpos'][s_i+1]
-                feature['grippervel'][s_i] = feature['grippervel'][s_i+1]
-            feature['objpos'] = feature['objpos'][s]
-            feature['objvel'] = feature['objvel'][s]
-            feature['object_segments'] = feature['object_segments'][s]
+        #print("=== WARNING: shuffling within single trajectories is activated! (TEST) ===")
+        #s = np.arange(self.config.n_rollouts)
+        #np.random.shuffle(s)
+        #for feature in features:
+        #    feature['img'] = feature['img'][s]
+        #    feature['seg'] = feature['seg'][s]
+        #    feature['depth'] = feature['depth'][s]
+        #    for s_i in s:
+        #        if s_i + 1 == self.config.n_rollouts:
+        #            continue
+        #        feature['gripperpos'][s_i] = feature['gripperpos'][s_i+1]
+        #        feature['grippervel'][s_i] = feature['grippervel'][s_i+1]
+        #    feature['objpos'] = feature['objpos'][s]
+        #    feature['objvel'] = feature['objvel'][s]
+        #    feature['object_segments'] = feature['object_segments'][s]
 
         input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
                                                                                     batch_data=features,
@@ -397,14 +396,14 @@ class SingulationTrainer(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        exp_ids_to_export = [14573, 15671, 11699, 11529, 14293, 10765, 1143, 19859, 8388, 14616, 16854, 17272, 1549,
-                           8961, 14756, 11167, 18828, 10689, 17192, 10512, 10667]
+        exp_ids_to_export = [8570, 7354, 7797, 5031, 18825, 5479, 17677, 3706, 18863, 10557, 21525, 6689, 21732, 10557,
+                             21525, 2661, 6689, 4060, 21732, 8869, 16622, 2661, 21266, 4060, 8869, 4065, 18776, 16622]
 
-        export_images = self.config.export_test_images,
+        export_images = self.config.export_test_images
         initial_pos_vel_known = self.config.initial_pos_vel_known
         export_latent_data = True
         process_all_nn_outputs = True
-        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained".format(self.config.n_rollouts, cur_batch_it)
+        sub_dir_name = "test_specific_exp_ids_{}_iterations_trained_no_perturbations".format(cur_batch_it)
 
         while True:
             try:
@@ -431,23 +430,35 @@ class SingulationTrainer(BaseTrain):
                     features = features_to_export
 
                 if exp_ids_to_export and not features_to_export:
-                    return
+                    continue
 
-                # if add_noise_to_gripper:
-                #     print("adding noise to the gripperpos")
-                #     for dct in features:
-                #         #dct['gripperpos'] = dct['gripperpos'] + np.random.normal(0, 1.0, (10, 3))
-                #         dct['objpos'] = dct['objpos'] + np.random.normal(0, 1.0, (10, 3, 3))
+
+                #print("reversing the gripper behaviour")
+                #for dct in features:
+                #    for i in range(self.config.n_rollouts-1):
+                #        if i < self.config.n_rollouts:
+                #            diff = dct["gripperpos"][i+1] - dct["gripperpos"][i]
+                #            dct['gripperpos'][i] = dct["gripperpos"][i] - diff
+                #    dct['grippervel'] = -1 * dct['grippervel']
+
+                #print("gripper zero")
+                #for dct in features:
+                #    for i in range(self.config.n_rollouts):
+                #        dct['gripperpos'][i] = np.ones(np.shape(dct['gripperpos'][i])) * np.random.normal(100000, 500.0, 1)
+                #    dct['grippervel'] = np.ones(np.shape(dct['grippervel'])) * np.random.normal(100000, 500.0, 1)
+                    #dct['objvel'] = np.ones(np.shape(dct['objvel']))*1000
+                    #dct['objpos'] = np.ones(np.shape(dct['objpos']))*1000
+
 
                 input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
                                                                                                        batch_data=features,
-                                                                                                       batch_size=self.config.test_batch_size,
+                                                                                                       batch_size=len(features),
                                                                                                        initial_pos_vel_known=initial_pos_vel_known)
 
                 start_time = time.time()
                 last_log_time = start_time
 
-                for i in range(self.config.test_batch_size):
+                for i in range(len(features)):
                     total_loss, outputs, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
                                                                                                               target_graphs_all_exp[i],
                                                                                                               input_ctrl_graphs_all_exp[
