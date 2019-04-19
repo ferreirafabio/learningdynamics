@@ -59,7 +59,6 @@ class BaseTrain:
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
         input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
-        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
 
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
@@ -70,7 +69,7 @@ class BaseTrain:
                                                  self.config.n_rollouts, self.model.is_training,
                                                  do_multi_step_prediction=self.config.do_multi_step_prediction)
 
-        total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance, targ = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
+        total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         ''' remove all inf values --> correspond to padded entries '''
         self.model.loss_op_train_total = tf.reduce_mean(tf.boolean_mask(total_loss_ops, tf.logical_not(tf.is_inf(total_loss_ops))))
         self.model.loss_ops_train_img = tf.reduce_mean(tf.boolean_mask(loss_ops_img, tf.logical_not(tf.is_inf(loss_ops_img))))  # just for summary, is already included in loss_op_train
@@ -78,10 +77,6 @@ class BaseTrain:
         self.model.loss_ops_train_velocity = tf.reduce_mean(tf.boolean_mask(loss_ops_velocity, tf.logical_not(tf.is_inf(loss_ops_velocity))))
         self.model.loss_ops_train_position = tf.reduce_mean(tf.boolean_mask(loss_ops_position, tf.logical_not(tf.is_inf(loss_ops_position))))
         self.model.loss_ops_train_distance = tf.reduce_mean(tf.boolean_mask(loss_ops_distance, tf.logical_not(tf.is_inf(loss_ops_distance))))
-        self.model.targ_train = targ
-
-        #self.model.labels_train = labels
-        #self.model.logits_train = logits
 
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train_total, global_step=self.model.global_step_tensor)
 
@@ -91,7 +86,6 @@ class BaseTrain:
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
         input_ph, target_ph, input_ctrl_ph = create_placeholders(self.config, features)
-        input_ph, target_ph = make_all_runnable_in_session(input_ph, target_ph)
 
         self.model.input_ph_test = input_ph
         self.model.target_ph_test = target_ph
@@ -102,7 +96,8 @@ class BaseTrain:
                                                 self.model.target_ph_test, self.config.n_rollouts,
                                                 self.model.is_training,
                                                 do_multi_step_prediction=self.config.do_multi_step_prediction)
-        total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance, targ = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
+
+        total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
 
         ''' remove all inf values --> correspond to padded entries '''
         self.model.loss_op_test_total = tf.reduce_mean(tf.boolean_mask(total_loss_ops_test, tf.logical_not(tf.is_inf(total_loss_ops_test)))) # just for summary, is already included in loss_op_train
@@ -111,5 +106,4 @@ class BaseTrain:
         self.model.loss_ops_test_velocity = tf.reduce_mean(tf.boolean_mask(loss_ops_test_velocity, tf.logical_not(tf.is_inf(loss_ops_test_velocity))))
         self.model.loss_ops_test_position = tf.reduce_mean(tf.boolean_mask(loss_ops_test_position, tf.logical_not(tf.is_inf(loss_ops_test_position))))
         self.model.loss_ops_test_distance = tf.reduce_mean(tf.boolean_mask(loss_ops_test_distance, tf.logical_not(tf.is_inf(loss_ops_test_distance))))
-        self.model.targ_test = targ
 
