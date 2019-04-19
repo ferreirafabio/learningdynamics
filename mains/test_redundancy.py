@@ -44,7 +44,7 @@ def main():
                     try:
                         features_train = sess.run(next_element_train)
                         print("comparing exp id " + str(features_test["experiment_id"]) + " vs " + str(features_train["experiment_id"]))
-                        if np.allclose(features_test['objpos'][0][0], features_train['objpos'][0][0]) and np.allclose(features_test['gripperpos'][0][0], features_train['gripperpos'][0][0]):
+                        if np.allclose(features_test['objpos'][0][0], features_train['objpos'][0][0]) and np.allclose(features_test['gripperpos'][0][2], features_train['gripperpos'][0][2]):
                             print("experiment ids " + str(features_train["experiment_id"]) +"(train) and " +
                                             str(features_test["experiment_id"]) + "(test) have identical objpos\n")
 
