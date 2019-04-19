@@ -40,6 +40,11 @@ def main():
         if not hasattr(config, 'do_multi_step_prediction'):
             config.do_multi_step_prediction = False
 
+        if not hasattr(config, 'remove_edges'):
+            config.remove_edges = False
+        else:
+            print("remove_edges is set to True, edges will be removed from graph")
+
         if config.normalize_data:
             print("-- using normalized data as input --")
         else:

@@ -36,8 +36,8 @@ class SingulationTrainer(BaseTrain):
     def do_step(self, input_graph, target_graphs, input_ctrl_graphs, feature, train=True, convert_seg_to_unit_step=True):
 
         if train:
-            feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, self.model.input_ctrl_ph,
-                                         input_graph, target_graphs, input_ctrl_graphs)
+            self.model.input_ph, self.model.target_ph, feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph, self.model.input_ctrl_ph,
+                                         input_graph, target_graphs, input_ctrl_graphs, self.config)
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
@@ -48,12 +48,11 @@ class SingulationTrainer(BaseTrain):
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
                                   "loss_distance": self.model.loss_ops_train_distance,
-                                  "targ_train": self.model.targ_train
                                   }, feed_dict=feed_dict)
 
         else:
-            feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, self.model.input_ctrl_ph_test,
-                                         input_graph, target_graphs, input_ctrl_graphs)
+            self.model.input_ph_test, self.model.target_ph_test, feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test, self.model.input_ctrl_ph_test,
+                                         input_graph, target_graphs, input_ctrl_graphs, self.config)
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
@@ -63,7 +62,6 @@ class SingulationTrainer(BaseTrain):
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
                                   "loss_distance": self.model.loss_ops_test_distance,
-                                  "targ_test": self.model.targ_test
                                   }, feed_dict=feed_dict)
 
             if convert_seg_to_unit_step:
@@ -160,53 +158,53 @@ class SingulationTrainer(BaseTrain):
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
-        # todo: remove
-        print("=== WARNING: shuffling within single trajectories is activated! (TRAIN) ===")
-        s = np.arange(self.config.n_rollouts)
-        np.random.shuffle(s)
-
-        # shift last rollout to last
-        idx_max = np.argmax(s)
-        tmp = s[idx_max]
-        s[idx_max] = s[-1]
-        s[-1] = tmp
-
-        for feature in features:
-            feature['img'] = feature['img'][s]
-            feature['seg'] = feature['seg'][s]
-            feature['depth'] = feature['depth'][s]
-            for s_i in s:
-                if s_i + 1 >= self.config.n_rollouts:
-                    continue
-                idx_of_next_of_s_i = np.where(s == (s_i + 1))[0][0]
-                feature['gripperpos'][s_i] = feature['gripperpos'][idx_of_next_of_s_i]
-                feature['grippervel'][s_i] = feature['grippervel'][idx_of_next_of_s_i]
-            feature['objpos'] = feature['objpos'][s]
-            feature['objvel'] = feature['objvel'][s]
-            feature['object_segments'] = feature['object_segments'][s]
+        # # todo: remove
+        # print("=== WARNING: shuffling within single trajectories is activated! (TRAIN) ===")
+        # s = np.arange(self.config.n_rollouts)
+        # np.random.shuffle(s)
+        #
+        # # shift last rollout to last
+        # idx_max = np.argmax(s)
+        # tmp = s[idx_max]
+        # s[idx_max] = s[-1]
+        # s[-1] = tmp
+        #
+        # for feature in features:
+        #     feature['img'] = feature['img'][s]
+        #     feature['seg'] = feature['seg'][s]
+        #     feature['depth'] = feature['depth'][s]
+        #     for s_i in s:
+        #         if s_i + 1 >= self.config.n_rollouts:
+        #             continue
+        #         idx_of_next_of_s_i = np.where(s == (s_i + 1))[0][0]
+        #         feature['gripperpos'][s_i] = feature['gripperpos'][idx_of_next_of_s_i]
+        #         feature['grippervel'][s_i] = feature['grippervel'][idx_of_next_of_s_i]
+        #     feature['objpos'] = feature['objpos'][s]
+        #     feature['objvel'] = feature['objvel'][s]
+        #     feature['object_segments'] = feature['object_segments'][s]
 
         input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
                                                                                     batch_data=features,
                                                                                     batch_size=self.config.train_batch_size,
                                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known
                                                                                     )
-        # todo: remove
-        # adjust target graphs so that the loss is computed correctly
-        for j, batch_target_graph in enumerate(target_graphs_all_exp):
-            idxs = []
-            for s_i in s:
-                if s_i + 1 >= self.config.n_rollouts:
-                    continue
-                idxs.append(np.where(s == (s_i + 1))[0][0])  # returns a tuple also zero-indexed, n_rollouts - 1 is the last element in target graphs list
-            batch = []
-            for i in idxs:
-                if i + 1 != self.config.n_rollouts:
-                    batch.append(batch_target_graph[i])
-                else:
-                    batch.append(batch_target_graph[-1])
-            target_graphs_all_exp[j] = batch
-            #for target_graph in batch_target_graph:
-            #    print('step: ', target_graph.graph['features'][1])
+        # # todo: remove
+        # # adjust target graphs so that the loss is computed correctly
+        # for j, batch_target_graph in enumerate(target_graphs_all_exp):
+        #     idxs = []
+        #     for s_i in s:
+        #         if s_i + 1 >= self.config.n_rollouts:
+        #             continue
+        #         idxs.append(np.where(s == (s_i + 1))[0][0])  # returns a tuple also zero-indexed, n_rollouts - 1 is the last element in target graphs list
+        #     batch = []
+        #     for i in idxs:
+        #         if i + 1 != self.config.n_rollouts:
+        #             batch.append(batch_target_graph[i])
+        #         else:
+        #             batch.append(batch_target_graph[-1])
+        #     target_graphs_all_exp[j] = batch
+        #     #for target_graph in batch_target_graph:
+        #     #    print('step: ', target_graph.graph['features'][1])
 
         start_time = time.time()
         last_log_time = start_time
