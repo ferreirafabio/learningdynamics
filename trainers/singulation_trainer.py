@@ -14,6 +14,8 @@ from eval.compute_test_run_statistics import compute_psnr
 class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger, only_test):
         super(SingulationTrainer, self).__init__(sess, model, train_data, valid_data, config, logger, only_test=only_test)
+        self.next_element_train = self.train_data.get_next_batch()
+        self.next_element_test = self.test_data.get_next_batch()
 
     def train_epoch(self):
         prefix = self.config.exp_name
@@ -153,8 +155,7 @@ class SingulationTrainer(BaseTrain):
         losses_position = []
         losses_distance = []
 
-        next_element = self.train_data.get_next_batch()
-        features = self.sess.run(next_element)
+        features = self.sess.run(self.next_element_train)
 
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
@@ -265,8 +266,7 @@ class SingulationTrainer(BaseTrain):
         summaries_dict = {}
         summaries_dict_images = {}
 
-        next_element = self.test_data.get_next_batch()
-        features = self.sess.run(next_element)
+        features = self.sess.run(self.next_element_test)
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
@@ -415,8 +415,7 @@ class SingulationTrainer(BaseTrain):
                 losses_distance = []
                 outputs_total = []
 
-                next_element = self.test_data.get_next_batch()
-                features = self.sess.run(next_element)
+                features = self.sess.run(self.next_element_test)
 
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
@@ -534,8 +533,7 @@ class SingulationTrainer(BaseTrain):
         while True:
             try:
                 outputs_total = []
-                next_element = self.test_data.get_next_batch()
-                features = self.sess.run(next_element)
+                features = self.sess.run(self.next_element_test)
 
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
