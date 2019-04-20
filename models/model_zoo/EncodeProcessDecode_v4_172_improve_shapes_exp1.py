@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_172_improve_shapes_exp1(snt.AbstractModule, BaseModel):
     """

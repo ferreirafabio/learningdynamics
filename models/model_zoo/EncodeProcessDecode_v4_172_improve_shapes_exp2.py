@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_172_improve_shapes_exp2(snt.AbstractModule, BaseModel):
     """
@@ -416,7 +416,9 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         l2_shape = outputs.get_shape()
 
         # --------------- SKIP CONNECTION ADD --------------- #
-        outputs = outputs + self.skip3
+        outputs_skip3 = tf.layers.conv2d(self.skip3, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        outputs = outputs + outputs_skip3
         after_skip3 = outputs.get_shape()
         print("-----------", after_skip3)
 
@@ -513,7 +515,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         # --------------- SKIP CONNECTION --------------- #
-        outputs = outputs + self.skip1
+        outputs_skip1 = tf.layers.conv2d(self.skip1, filters=64, kernel_size=3, strides=1, padding='same',
+                                         activation=activation, use_bias=False,
+                                         kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+        outputs = tf.contrib.layers.layer_norm(outputs)
+        outputs = outputs + outputs_skip1
         after_skip1 = outputs.get_shape()
 
         ''' layer 13 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
