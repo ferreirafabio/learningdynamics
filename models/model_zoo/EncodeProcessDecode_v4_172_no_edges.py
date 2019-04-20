@@ -27,10 +27,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from graph_nets import modules
+from utils.utils import make_all_runnable_in_session
 from base.base_model import BaseModel
 from utils.utils import get_correct_image_shape
 from graph_nets import utils_tf
+
+
+from graph_nets import blocks, modules
 
 import sonnet as snt
 import tensorflow as tf
@@ -38,7 +41,7 @@ import tensorflow as tf
 
 VERBOSITY = False
 
-class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
+class EncodeProcessDecode_v4_172_no_edges(snt.AbstractModule, BaseModel):
     """
     Full encode-process-decode model.
 
@@ -63,27 +66,28 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
     """
     def __init__(self, config, name="EncodeProcessDecode"):
 
-        super(EncodeProcessDecode_v4_172, self).__init__(name=name)
+        super(EncodeProcessDecode_v4_172_no_edges, self).__init__(name=name)
 
-        EncodeProcessDecode_v4_172.convnet_pooling = config.convnet_pooling
-        EncodeProcessDecode_v4_172.convnet_tanh = config.convnet_tanh
-        EncodeProcessDecode_v4_172.depth_data_provided = config.depth_data_provided
-        EncodeProcessDecode_v4_172.n_conv_filters = config.n_conv_filters
-        EncodeProcessDecode_v4_172.model_id = config.model_type
-        EncodeProcessDecode_v4_172.latent_state_noise = config.latent_state_noise
+        EncodeProcessDecode_v4_172_no_edges.convnet_pooling = config.convnet_pooling
+        EncodeProcessDecode_v4_172_no_edges.convnet_tanh = config.convnet_tanh
+        EncodeProcessDecode_v4_172_no_edges.depth_data_provided = config.depth_data_provided
+        EncodeProcessDecode_v4_172_no_edges.n_conv_filters = config.n_conv_filters
+        EncodeProcessDecode_v4_172_no_edges.model_id = config.model_type
+        EncodeProcessDecode_v4_172_no_edges.latent_state_noise = config.latent_state_noise
 
-        EncodeProcessDecode_v4_172.edge_output_size = config.edge_output_size
-        EncodeProcessDecode_v4_172.node_output_size = config.node_output_size
-        EncodeProcessDecode_v4_172.global_output_size = config.global_output_size
+        EncodeProcessDecode_v4_172_no_edges.edge_output_size = config.edge_output_size
+        EncodeProcessDecode_v4_172_no_edges.node_output_size = config.node_output_size
+        EncodeProcessDecode_v4_172_no_edges.global_output_size = config.global_output_size
 
-        EncodeProcessDecode_v4_172.n_layers_globals = config.n_layers_globals
-        EncodeProcessDecode_v4_172.n_layers_nodes = config.n_layers_nodes
-        EncodeProcessDecode_v4_172.n_layers_edges = config.n_layers_edges
-        EncodeProcessDecode_v4_172.n_neurons_edges = config.n_neurons_edges
-        EncodeProcessDecode_v4_172.n_neurons_nodes = config.n_neurons_nodes
-        EncodeProcessDecode_v4_172.n_neurons_globals = config.n_neurons_globals
-        EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
-        EncodeProcessDecode_v4_172.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
+        EncodeProcessDecode_v4_172_no_edges.n_layers_globals = config.n_layers_globals
+        EncodeProcessDecode_v4_172_no_edges.n_layers_nodes = config.n_layers_nodes
+        EncodeProcessDecode_v4_172_no_edges.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode_v4_172_no_edges.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes = config.n_neurons_nodes
+        EncodeProcessDecode_v4_172_no_edges.n_neurons_globals = config.n_neurons_globals
+        EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
+        EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_total_dim = config.n_neurons_nodes_total_dim
+        EncodeProcessDecode_v4_172_no_edges.remove_edges = config.remove_edges
 
         self.config = config
         # init the global step
@@ -115,7 +119,9 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
     def _build(self, input_op, input_ctrl_op, target_op, num_processing_steps, is_training, do_multi_step_prediction=False):
         print("----- Data used as global attribute: (t, gravity, grippervel, gripperpos) only -----")
         print("----- Visual prediction: segmentation -----")
-        print("----- Model uses skip connection: True -----")
+        #print("----- Model uses skip connection: True -----")
+        print("----- Model does not use edges -----")
+
         latent = self._encoder(input_op, is_training)
         skip1 = self._encoder.visual_encoder.skip1
         skip2 = self._encoder.visual_encoder.skip2
@@ -133,17 +139,17 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
         while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry 
         the unknown dimension """
         ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
-        ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
+        #ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
 
         # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
         n_nodes = [target_op.n_node[0]]  #manually: [3] or [5]
-        n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
+        #n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
 
         """ we generated "n_rollouts-1" target graphs """
         mult = tf.constant([num_processing_steps-1])
 
         ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-        ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
+        #ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
         if do_multi_step_prediction:
             print("--- multi-step prediction mode ---")
@@ -157,14 +163,17 @@ class EncodeProcessDecode_v4_172(snt.AbstractModule, BaseModel):
 
             if step > 0 and not do_multi_step_prediction:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
                 ground_truth_nodes_t = ground_truth_nodes_split[step]
-                ground_truth_edges_t = ground_truth_edges_split[step]
+                #ground_truth_edges_t = ground_truth_edges_split[step]
                 latent = latent.replace(nodes=ground_truth_nodes_t)
-                latent = latent.replace(edges=ground_truth_edges_t)
+                #latent = latent.replace(edges=ground_truth_edges_t)
 
             latent = utils_tf.concat([latent0, latent], axis=1)
 
             latent = self._core(latent)
             decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
+
+            decoded_op = make_all_runnable_in_session(decoded_op)[0]
+
             output_ops.append(decoded_op)
 
         return output_ops
@@ -247,8 +256,8 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
                 edge_model_fn=None,
                 node_model_fn=None,
                 global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                        n_neurons=EncodeProcessDecode_v4_172.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v4_172.n_layers_globals,
+                                                                                        n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v4_172_no_edges.n_layers_globals,
                                                                                         output_size=None,
                                                                                         activation_final=False,
                                                                                         typ="mlp_layer_norm",
@@ -273,13 +282,7 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
 
         """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
         self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                n_neurons=EncodeProcessDecode_v4_172.n_neurons_edges,
-                                                                n_layers=EncodeProcessDecode_v4_172.n_layers_edges,
-                                                                output_size=None,
-                                                                typ="mlp_layer_norm",
-                                                                activation_final=False,
-                                                                name="mlp_encoder_edge"),
+            edge_model_fn=None,
 
             node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
                                                                 self.visual_encoder,
@@ -310,13 +313,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
         self.visual_decoder.skip3 = skip3
 
         self._network = modules.GraphIndependent(
-            edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                        n_neurons=EncodeProcessDecode_v4_172.n_neurons_edges,
-                                                        n_layers=EncodeProcessDecode_v4_172.n_layers_edges,
-                                                        output_size=EncodeProcessDecode_v4_172.edge_output_size,
-                                                        typ="mlp_transform",
-                                                        activation_final=False,
-                                                        name="mlp_decoder_edge"),
+            edge_model_fn=None,
 
             node_model_fn=lambda: get_model_from_config(model_id=self.model_id,
                                                         model_type="visual_and_latent_decoder")(
@@ -324,9 +321,9 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                         name="visual_and_latent_node_decoder"),
 
             global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                        n_neurons=EncodeProcessDecode_v4_172.n_neurons_globals,
-                                                        n_layers=EncodeProcessDecode_v4_172.n_layers_globals,
-                                                        output_size=EncodeProcessDecode_v4_172.global_output_size,
+                                                        n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_globals,
+                                                        n_layers=EncodeProcessDecode_v4_172_no_edges.n_layers_globals,
+                                                        output_size=EncodeProcessDecode_v4_172_no_edges.global_output_size,
                                                         typ="mlp_transform",
                                                         activation_final=False,
                                                         name="mlp_decoder_global")
@@ -340,29 +337,48 @@ class MLPGraphNetwork(snt.AbstractModule):
 
     def __init__(self, model_id, name="MLPGraphNetwork"):
         super(MLPGraphNetwork, self).__init__(name=name)
-        with self._enter_variable_scope():
-          self._network = modules.GraphNetwork(
-              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_172.n_neurons_edges,
-                                                                                      n_layers=EncodeProcessDecode_v4_172.n_layers_edges,
-                                                                                      output_size=None,
-                                                                                      typ="mlp_layer_norm",
-                                                                                      name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_172.n_neurons_nodes,
-                                                                                      n_layers=EncodeProcessDecode_v4_172.n_layers_nodes,
-                                                                                      output_size=EncodeProcessDecode_v4_172.n_neurons_nodes_total_dim,
-                                                                                      typ="mlp_transform",  # todo: was earlier "mlp_layer_norm"
-                                                                                      activation_final=False,
-                                                                                      name="mlp_core_node"),
 
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v4_172.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v4_172.n_layers_globals,
-                                                                                        output_size=None,
-                                                                                        typ="mlp_layer_norm",
-                                                                                        name="mlp_core_global")
-          )
+        node_block_options = {
+            "use_received_edges": False,
+            "use_sent_edges": False,
+            "use_nodes": True,
+            "use_globals": True,
+        }
+
+        global_block_options = {
+            "use_edges": False,
+            "use_nodes": True,
+            "use_globals": True,
+        }
+
+        node_block_opt = modules._make_default_node_block_opt(node_block_options, tf.unsorted_segment_sum)
+        global_block_opt = modules._make_default_global_block_opt(global_block_options, tf.unsorted_segment_sum)
+
+        with self._enter_variable_scope():
+            node_model_fn = lambda: get_model_from_config(model_id, model_type="mlp")(
+                n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes,
+                n_layers=EncodeProcessDecode_v4_172_no_edges.n_layers_nodes,
+                output_size=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_total_dim,
+                typ="mlp_transform",
+                activation_final=False,
+                name="mlp_core_node")
+
+            global_model_fn = lambda: get_model_from_config(model_id, model_type="mlp")(
+                n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_globals,
+                n_layers=EncodeProcessDecode_v4_172_no_edges.n_layers_globals,
+                output_size=None,
+                typ="mlp_layer_norm",
+                name="mlp_core_global")
+
+
+            self._node_block = blocks.NodeBlock(
+                node_model_fn=node_model_fn, **node_block_opt)
+            self._global_block = blocks.GlobalBlock(
+                global_model_fn=global_model_fn, **global_block_opt)
+
 
     def _build(self, inputs):
-        return self._network(inputs)
+        return self._global_block(self._node_block(inputs))
 
 
 class Decoder5LayerConvNet2D(snt.AbstractModule):
@@ -371,15 +387,15 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         self.is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
-        filter_sizes = [EncodeProcessDecode_v4_172.n_conv_filters, EncodeProcessDecode_v4_172.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v4_172_no_edges.n_conv_filters, EncodeProcessDecode_v4_172_no_edges.n_conv_filters * 2]
 
-        if EncodeProcessDecode_v4_172.convnet_tanh:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
         """ get image data, get everything >except< last n elements which are non-visual (position and velocity) """
-        image_data = inputs[:, :-EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual]
+        image_data = inputs[:, :-EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual]
 
         """ in order to apply 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
         image_data = tf.expand_dims(image_data, axis=1)
@@ -584,7 +600,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.7):
 
-        if EncodeProcessDecode_v4_172.convnet_tanh:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -592,11 +608,11 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         """ velocity (x,y,z) and position (x,y,z) """
         n_non_visual_elements = 6
 
-        filter_sizes = [EncodeProcessDecode_v4_172.n_conv_filters, EncodeProcessDecode_v4_172.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v4_172_no_edges.n_conv_filters, EncodeProcessDecode_v4_172_no_edges.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
         img_data = inputs[:, :-n_non_visual_elements]
-        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode_v4_172.depth_data_provided)
+        img_shape = get_correct_image_shape(config=None, get_type="all", depth_data_provided=EncodeProcessDecode_v4_172_no_edges.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
@@ -610,7 +626,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l2_shape = outputs.get_shape()
 
         ''' Layer3 encoder output shape (?, 60, 80, filter_sizes[0]) '''
-        if EncodeProcessDecode_v4_172.convnet_pooling:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -634,7 +650,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l5_shape = outputs.get_shape()
 
         ''' Layer6 encoder output shape (?, 30, 40, filter_sizes[0]) '''
-        if EncodeProcessDecode_v4_172.convnet_pooling:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
@@ -654,7 +670,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l8_shape = outputs.get_shape()
 
         ''' Layer9 encoder output shape (?, 15, 20, filter_sizes[1]) '''
-        if EncodeProcessDecode_v4_172.convnet_pooling:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
@@ -676,7 +692,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         l11_shape = outputs.get_shape()
 
         ''' Layer12 encoder output shape (?, 7, 10, filter_sizes[1]) '''
-        if EncodeProcessDecode_v4_172.convnet_pooling:
+        if EncodeProcessDecode_v4_172_no_edges.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l12_shape = outputs.get_shape()
 
@@ -696,7 +712,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         ' shape (?, 7, 10, filter_sizes[1]) -> (?, n_neurons_nodes_total_dim-n_neurons_nodes_non_visual) '
         visual_latent_output = tf.layers.flatten(outputs)
-        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_172.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual)
+        visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual)
 
         # --------------- SKIP CONNECTION --------------- #
         self.skip1 = outputs1
@@ -718,11 +734,11 @@ class VisualAndLatentDecoder(snt.AbstractModule):
 
         n_non_visual_elements = 6
         """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
-        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual:]
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual:]
 
         """ map latent position/velocity (nodes) from 32d to original 6d space """
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
-            n_neurons=EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual,
+            n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual,
             n_layers=2,
             output_size=n_non_visual_elements,
             typ="mlp_transform",
@@ -732,7 +748,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         non_visual_decoded_output = non_visual_mlp(non_visual_latent_output)
 
         """ concatenate 6d space latent data with visual data 
-        (dimensions if segmentation image only: (?, 19200)) """
+        (dimensions if segmentation image only: (?, 19206)) """
         outputs = tf.concat([visual_decoded_output, non_visual_decoded_output], axis=1)
 
         if verbose:
@@ -757,9 +773,9 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         non_visual_elements = inputs[:, -n_non_visual_elements:]  # get x,y,z-position and x,y,z-velocity
 
         non_visual_mlp = get_model_from_config(model_id='cnn2d', model_type="mlp")(
-            n_neurons=EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual,
+            n_neurons=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual,
             n_layers=2,
-            output_size=EncodeProcessDecode_v4_172.n_neurons_nodes_non_visual,
+            output_size=EncodeProcessDecode_v4_172_no_edges.n_neurons_nodes_non_visual,
             typ="mlp_transform",
             activation_final=False,
             name="mlp_nonvisual_latent_output")
