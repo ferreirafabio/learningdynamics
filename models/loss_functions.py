@@ -93,7 +93,7 @@ def create_loss_ops(config, target_op, output_ops):
 
             ones = tf.ones_like(labels)
             comparison = tf.equal(labels, tf.constant(1.0))
-            pos_weight = tf.where(comparison, ones, ones)  # decrease false negative count
+            pos_weight = tf.where(comparison, ones*1.8, ones)  # decrease false negative count
 
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
                                                 lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
@@ -135,9 +135,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            #print("---- image loss only ----")
-            #total_loss_ops.append(loss_visual_mse_nodes)
-            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            print("---- image loss only ----")
+            total_loss_ops.append(loss_visual_mse_nodes)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
 
     elif config.loss_type == 'mse_seg_only':
         for i, output_op in enumerate(output_ops):

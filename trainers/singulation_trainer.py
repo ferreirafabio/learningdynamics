@@ -71,8 +71,8 @@ class SingulationTrainer(BaseTrain):
                 for output in data['outputs']:
                     seg_data = output.nodes[:, :-6]
                     seg_data = sigmoid(seg_data)
-                    seg_data[seg_data >= 0.5] = 1.0
-                    seg_data[seg_data < 0.5] = 0.0
+                    seg_data[seg_data >= 0.4] = 1.0
+                    seg_data[seg_data < 0.4] = 0.0
                     output.nodes[:, :-6] = seg_data
 
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
@@ -403,7 +403,7 @@ class SingulationTrainer(BaseTrain):
         initial_pos_vel_known = self.config.initial_pos_vel_known
         export_latent_data = True
         process_all_nn_outputs = True
-        sub_dir_name = "test_specific_exp_ids_{}_iterations_trained_no_perturbations".format(cur_batch_it)
+        sub_dir_name = "test_specific_exp_ids_{}_iterations_trained_no_gripper_perturbations_multistep".format(cur_batch_it)
 
         while True:
             try:
