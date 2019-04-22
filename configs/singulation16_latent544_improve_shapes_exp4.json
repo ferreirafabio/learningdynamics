@@ -40,6 +40,6 @@
   "mode": "train_test",
   "initial_pos_vel_known": true,
   "loss_type": "cross_entropy_seg_only",
-  "model_zoo_file": "EncodeProcessDecode_v4_172_improve_shapes_exp4",
+  "model_zoo_file": "EncodeProcessDecode_v4_512_improve_shapes_exp4",
   "do_multi_step_prediction": false
 }
