@@ -93,7 +93,7 @@ def create_loss_ops(config, target_op, output_ops):
 
             ones = tf.ones_like(labels)
             comparison = tf.equal(labels, tf.constant(1.0))
-            pos_weight = tf.where(comparison, ones*1.8, ones)  # decrease false negative count
+            pos_weight = tf.where(comparison, ones, ones)  # decrease false negative count
 
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
                                                 lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
