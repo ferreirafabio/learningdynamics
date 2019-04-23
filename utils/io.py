@@ -50,7 +50,7 @@ def get_all_experiment_file_paths_from_dir(source_path, file_type=".npz", order=
     return [list(file_paths[i].values()) for i in file_paths.keys()]
 
 
-def load_all_experiments_from_dir(data_list):
+def load_all_experiments_from_dir(data_list, use_with=True):
     """
     Returns a dict of dicts containing the available attribute information about an experiment, e.g.
     all_experiments
@@ -71,12 +71,12 @@ def load_all_experiments_from_dir(data_list):
      """
     all_experiments = {}
     for i, batch_element in enumerate(data_list):
-        experiment = load_data_from_list_of_paths(batch_element)
+        experiment = load_data_from_list_of_paths(batch_element, use_with=use_with)
         all_experiments[i] = experiment
     return all_experiments
 
 
-def load_data_from_list_of_paths(batch_element):
+def load_data_from_list_of_paths(batch_element, use_with=True):
     """
     loads all the data from a single experiment which is represented by a list of paths
     Args:
@@ -89,15 +89,26 @@ def load_data_from_list_of_paths(batch_element):
     for j, trajectory in enumerate(batch_element):
         trajectory_step_data = {}
         for traj in trajectory:
-            with np.load(traj) as fhandle:
-                key = list(fhandle.keys())[0]
-                data = fhandle[key]
-                # save some space:
-                if key in ['img', 'seg']:
-                    data = data.astype(np.uint8)
+            if use_with:
+                with np.load(traj) as fhandle:
+                    key = list(fhandle.keys())[0]
+                    data = fhandle[key]
+                    # save some space:
+                    if key in ['img', 'seg']:
+                        data = data.astype(np.uint8)
+                    trajectory_step_data[key] = data
+                    trajectory_step_data['experiment_id'] = get_dir_name(traj)
+                experiment[j] = trajectory_step_data
+            else:
+                data = np.load(traj)
+                # only for segmentation implemented
+                if data.dtype == np.bool:
+                    key = 'seg_target'
+                else:
+                    key = 'seg'
                 trajectory_step_data[key] = data
                 trajectory_step_data['experiment_id'] = get_dir_name(traj)
-        experiment[j] = trajectory_step_data
+            experiment[j] = trajectory_step_data
     return experiment
 
 
