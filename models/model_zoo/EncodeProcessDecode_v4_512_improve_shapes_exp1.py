@@ -124,8 +124,6 @@ class EncodeProcessDecode_v4_512_improve_shapes_exp1(snt.AbstractModule, BaseMod
         latent_global = self._encoder_globals(input_op, is_training)
         latent = latent.replace(globals=latent_global.globals)
 
-        latent0 = latent
-
         global_T = self._encoder_globals(input_ctrl_op, is_training).globals
         output_ops = []
 
@@ -142,6 +140,7 @@ class EncodeProcessDecode_v4_512_improve_shapes_exp1(snt.AbstractModule, BaseMod
         """ we generated "n_rollouts-1" target graphs """
         mult = tf.constant([num_processing_steps-1])
 
+        """ each split call returns a list of shape (n_rollouts-1, n_nodes/n_edges, latent_dim) """
         ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
         ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
 
@@ -155,7 +154,9 @@ class EncodeProcessDecode_v4_512_improve_shapes_exp1(snt.AbstractModule, BaseMod
             global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
             latent = latent.replace(globals=global_t)
 
-            if step > 0 and not do_multi_step_prediction:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
+            """ the input_graph is already target_graphs[0] --> reset input to gt after first step """
+            if step > 0 and not do_multi_step_prediction:
+                """ also the gt graphs start already with a shift (input_graph = target_graphs[0], target_graphs = target_graphs[1:] """
                 ground_truth_nodes_t = ground_truth_nodes_split[step-1]
                 ground_truth_edges_t = ground_truth_edges_split[step-1]
                 latent = latent.replace(nodes=ground_truth_nodes_t)
