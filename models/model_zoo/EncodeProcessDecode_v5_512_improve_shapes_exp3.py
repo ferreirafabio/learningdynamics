@@ -132,48 +132,6 @@ class EncodeProcessDecode_v5_512_improve_shapes_exp3(snt.AbstractModule, BaseMod
             output_ops.append(decoded_op)
         return output_ops
 
-
-        # """ It is necessary to tile the node data since at construction time, the node shape is (?, latent_dim)
-        # while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry
-        # the unknown dimension """
-        # ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
-        # ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
-        #
-        # # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
-        # n_nodes = [target_op.n_node[0]]  #manually: [3] or [5]
-        # n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
-        #
-        # """ we generated "n_rollouts-1" target graphs """
-        # mult = tf.constant([num_processing_steps-1])
-        #
-        # """ each split call returns a list of shape (n_rollouts-1, n_nodes/n_edges, latent_dim) """
-        # ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-        # ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
-        #
-        # if do_multi_step_prediction:
-        #     print("--- multi-step prediction mode ---")
-        # else:
-        #     print("--- single-step prediction mode ---")
-        #
-        # for step in range(num_processing_steps-1):
-        #     """ get target values for one-step (reset node input state to gt after every rollout step) """
-        #     global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
-        #     latent = latent.replace(globals=global_t)
-        #
-        #     """ the input_graph is already target_graphs[0] --> reset input to gt after first step """
-        #     if step > 0 and not do_multi_step_prediction:
-        #         """ also the gt graphs start already with a shift (input_graph = target_graphs[0], target_graphs = target_graphs[1:] """
-        #         ground_truth_nodes_t = ground_truth_nodes_split[step-1]
-        #         ground_truth_edges_t = ground_truth_edges_split[step-1]
-        #         latent = latent.replace(nodes=ground_truth_nodes_t)
-        #         latent = latent.replace(edges=ground_truth_edges_t)
-        #
-        #     latent = self._core(latent)
-        #     decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
-        #     output_ops.append(decoded_op)
-        #
-        # return output_ops
-
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
         print("Saving model...")
