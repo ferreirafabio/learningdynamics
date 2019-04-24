@@ -7,7 +7,7 @@ matplotlib.use('Agg')
 
 from utils.utils import get_images_from_gn_output, get_latent_from_gn_output, check_exp_folder_exists_and_create
 from utils.io import export_summary_images, export_latent_df, create_latent_images
-from utils.math_ops import normalize_df_column, normalize_df
+from utils.math_ops import normalize_df
 
 
 

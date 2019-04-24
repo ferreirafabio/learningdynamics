@@ -36,26 +36,28 @@ def main():
     test_data = DataGenerator(config, sess, train=False)
     next_element_test = test_data.get_next_batch()
     next_element_train = train_data.get_next_batch()
-    with open('test_ids.txt', "a+") as text_file:
+    with open('test_ids_5_object_dataset.txt', "a+") as text_file:
         while True:
             try:
                 features_test = sess.run(next_element_test)
-                while True:
-                    try:
-                        features_train = sess.run(next_element_train)
-                        print("test id:", features_test["experiment_id"])
-                        text_file.write(features_test["experiment_id"] + "\n")
-
-                        print("comparing exp id " + str(features_test["experiment_id"]) + " vs " + str(features_train["experiment_id"]))
-                        if np.allclose(features_test['objpos'][0][0], features_train['objpos'][0][0]) and np.allclose(features_test['gripperpos'][0][2], features_train['gripperpos'][0][2]):
-                            print("experiment ids " + str(features_train["experiment_id"]) +"(train) and " +
-                                            str(features_test["experiment_id"]) + "(test) have identical objpos\n")
-
-                            text_file.write("experiment ids " + str(features_train["experiment_id"]) +"(train) and " +
-                                            str(features_test["experiment_id"]) + "(test) have identical objpos\n")
-                    except tf.errors.OutOfRangeError:
-                        sess.run(train_data.iterator.initializer)
-                        break
+                print("test id:", features_test["experiment_id"])
+                text_file.write(str(features_test["experiment_id"]) + "\n")
+                # while True:
+                #     try:
+                #         #features_train = sess.run(next_element_train)
+                #         #print("test id:", features_test["experiment_id"])
+                #         text_file.write(features_test["experiment_id"] + "\n")
+                #
+                #         # print("comparing exp id " + str(features_test["experiment_id"]) + " vs " + str(features_train["experiment_id"]))
+                #         # if np.allclose(features_test['objpos'][0][0], features_train['objpos'][0][0]) and np.allclose(features_test['gripperpos'][0][2], features_train['gripperpos'][0][2]):
+                #         #     print("experiment ids " + str(features_train["experiment_id"]) +"(train) and " +
+                #         #                     str(features_test["experiment_id"]) + "(test) have identical objpos\n")
+                #         #
+                #         #     text_file.write("experiment ids " + str(features_train["experiment_id"]) +"(train) and " +
+                #         #                     str(features_test["experiment_id"]) + "(test) have identical objpos\n")
+                #     except tf.errors.OutOfRangeError:
+                #         sess.run(train_data.iterator.initializer)
+                #         break
 
             except tf.errors.OutOfRangeError:
                 break

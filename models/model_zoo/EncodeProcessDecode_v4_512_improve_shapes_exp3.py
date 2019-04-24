@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = True
+VERBOSITY = False
 
 class EncodeProcessDecode_v4_512_improve_shapes_exp3(snt.AbstractModule, BaseModel):
     """
@@ -124,48 +124,61 @@ class EncodeProcessDecode_v4_512_improve_shapes_exp3(snt.AbstractModule, BaseMod
         latent_global = self._encoder_globals(input_op, is_training)
         latent = latent.replace(globals=latent_global.globals)
 
-        latent0 = latent
-
         global_T = self._encoder_globals(input_ctrl_op, is_training).globals
         output_ops = []
 
-        """ It is necessary to tile the node data since at construction time, the node shape is (?, latent_dim)
-        while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry 
-        the unknown dimension """
-        ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
-        ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
-
-        # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
-        n_nodes = [target_op.n_node[0]]  #manually: [3] or [5]
-        n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
-
-        """ we generated "n_rollouts-1" target graphs """
-        mult = tf.constant([num_processing_steps-1])
-
-        ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
-        ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
-
-        if do_multi_step_prediction:
-            print("--- multi-step prediction mode ---")
-        else:
-            print("--- single-step prediction mode ---")
-
-        for step in range(num_processing_steps-1):
-            """ get target values for one-step (reset node input state to gt after every rollout step) """
-            global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
-            latent = latent.replace(globals=global_t)
-
-            if step > 0 and not do_multi_step_prediction:  # the input_graph is already target_graphs[0] --> reset input to gt after first step
-                ground_truth_nodes_t = ground_truth_nodes_split[step-1]
-                ground_truth_edges_t = ground_truth_edges_split[step-1]
-                latent = latent.replace(nodes=ground_truth_nodes_t)
-                latent = latent.replace(edges=ground_truth_edges_t)
-
+        for step in range(num_processing_steps - 1):
+            if step > 0:
+                global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
+                latent = latent.replace(globals=global_t)
+            print(step)
             latent = self._core(latent)
             decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
             output_ops.append(decoded_op)
 
         return output_ops
+
+
+        # """ It is necessary to tile the node data since at construction time, the node shape is (?, latent_dim)
+        # while ? is n_nodes*num_processing_steps and subsequent loss operations require the node feature to carry
+        # the unknown dimension """
+        # ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
+        # ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
+        #
+        # # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
+        # n_nodes = [target_op.n_node[0]]  #manually: [3] or [5]
+        # n_edges = [target_op.n_edge[0]]  #manually: [6] or [20]
+        #
+        # """ we generated "n_rollouts-1" target graphs """
+        # mult = tf.constant([num_processing_steps-1])
+        #
+        # """ each split call returns a list of shape (n_rollouts-1, n_nodes/n_edges, latent_dim) """
+        # ground_truth_nodes_split = tf.split(ground_truth_nodes_T, num_or_size_splits=tf.tile(n_nodes, mult), axis=0)
+        # ground_truth_edges_split = tf.split(ground_truth_edges_T, num_or_size_splits=tf.tile(n_edges, mult), axis=0)
+        #
+        # if do_multi_step_prediction:
+        #     print("--- multi-step prediction mode ---")
+        # else:
+        #     print("--- single-step prediction mode ---")
+        #
+        # for step in range(num_processing_steps-1):
+        #     """ get target values for one-step (reset node input state to gt after every rollout step) """
+        #     global_t = tf.expand_dims(global_T[step, :], axis=0)  # since input_ctrl_graph starts at t+1, 'step' resembles the gripper pos at t+1
+        #     latent = latent.replace(globals=global_t)
+        #
+        #     """ the input_graph is already target_graphs[0] --> reset input to gt after first step """
+        #     if step > 0 and not do_multi_step_prediction:
+        #         """ also the gt graphs start already with a shift (input_graph = target_graphs[0], target_graphs = target_graphs[1:] """
+        #         ground_truth_nodes_t = ground_truth_nodes_split[step-1]
+        #         ground_truth_edges_t = ground_truth_edges_split[step-1]
+        #         latent = latent.replace(nodes=ground_truth_nodes_t)
+        #         latent = latent.replace(edges=ground_truth_edges_t)
+        #
+        #     latent = self._core(latent)
+        #     decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
+        #     output_ops.append(decoded_op)
+        #
+        # return output_ops
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
@@ -415,10 +428,18 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l2_shape = outputs.get_shape()
 
-        # --------------- SKIP CONNECTION ADD --------------- #
+        #outputsl2 = outputs
+        #''' layer 2_2 (15,20,filter_sizes[1] -> (15,20,filter_sizes[1]) '''
+        # --------------- SKIP CONNECTION CONCAT --------------- #
+        # outputs = tf.concat([outputs, self.skip3], axis=3)
         #outputs = outputs + self.skip3
         #after_skip3 = outputs.get_shape()
-        #print("-----------", after_skip3)
+        # --------------- SKIP CONNECTION ADD --------------- #
+        #outputs = tf.layers.conv2d(self.skip3, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
+        #l1_2_shape = outputs.get_shape()
+        #outputs = outputsl2 + outputs
+        #after_skip3 = outputs.get_shape()
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
@@ -490,11 +511,18 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         l11_shape = outputs.get_shape()
 
-
-        #print("-----------", outputs.get_shape())
-        #print("-----------", self.skip2.get_shape())
-        # --------------- SKIP CONNECTION ADD --------------- #
+        #outputsl13 = outputs
+        # --------------- SKIP CONNECTION CONCAT --------------- #
+        #outputs = tf.concat([outputs, self.skip2], axis=3)
         #outputs = outputs + self.skip2
+        #after_skip2 = outputs.get_shape()
+
+        # --------------- SKIP CONNECTION ADD --------------- #
+        #''' layer 14 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
+        #outputs = tf.layers.conv2d(self.skip2, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation)
+        #outputs = tf.contrib.layers.layer_norm(outputs)
+        #l14_shape = outputs.get_shape()
+        #outputs = outputsl13 + outputs
         #after_skip2 = outputs.get_shape()
 
         if self.is_training:
@@ -514,12 +542,16 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         # --------------- SKIP CONNECTION --------------- #
         #outputs = outputs + self.skip1
+        #outputs = tf.concat([outputs, self.skip1], axis=3)
         #after_skip1 = outputs.get_shape()
+        #outputs1 = outputs
 
         ''' layer 13 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
         outputs = tf.contrib.layers.layer_norm(outputs)
         l13_shape = outputs.get_shape()
+
+        #outputs = outputs1 + outputs
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
@@ -562,6 +594,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
             #print("shape after skip2 {}".format(after_skip2))
             #print("shape before skip1 {}".format(l17_shape))
             #print("shape after skip1 {}".format(after_skip1))
+
 
         """ returns raw values """
         return visual_latent_output
@@ -703,25 +736,22 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             print("Layer15 encoder output shape", l15_shape)
 
         #' shape (?, 7, 10, filter_sizes[1]) -> (?, n_neurons_nodes_total_dim-n_neurons_nodes_non_visual) '
+        #visual_latent_output = tf.layers.flatten(outputs)
+        #visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_non_visual)
+
         visual_latent_output_dense = tf.layers.flatten(outputs)
+        print("after flattening:", visual_latent_output_dense.get_shape())
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output_dense, units=64)
         print(visual_latent_output.get_shape())
 
-        visual_latent_output = tf.expand_dims(visual_latent_output, axis=0)  # 1d pooling layer expects 3 dim
+        visual_latent_output = tf.reduce_mean(visual_latent_output, axis=0, keepdims=True)
 
-        dim = 3 * 14  # 3 nodes, 14 rollouts
-
-        # will yield (1, ?, 64)
-        visual_latent_output = tf.layers.average_pooling1d(visual_latent_output, 42, 42, data_format='channels_last')
-        print("-------", visual_latent_output.get_shape())
-
-        # will transform (1, ?, 64) into (?, 64)
-        visual_latent_output = tf.squeeze(visual_latent_output, axis=0)
-        print("-------", visual_latent_output.get_shape())
+        visual_latent_output = tf.tile(visual_latent_output, [3, 1])
 
         # concatenate (?, 64) with (?, 512) for message passing
         visual_latent_output = tf.concat([visual_latent_output_dense, visual_latent_output], axis=1)
         print("-------", visual_latent_output.get_shape())
+
 
         # --------------- SKIP CONNECTION --------------- #
         self.skip1 = outputs1

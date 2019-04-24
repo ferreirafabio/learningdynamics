@@ -133,7 +133,7 @@ class EncodeProcessDecode_v4_172_improve_shapes_exp2(snt.AbstractModule, BaseMod
         ground_truth_nodes_T = self._encoder._network._node_model(target_op.nodes)
         ground_truth_edges_T = self._encoder._network._edge_model(target_op.edges)
 
-        # input_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
+        # target_op.nodes is a product of n_nodes*num_processing_steps --> divide to get number of nodes in a single graph
         n_nodes = [target_op.n_node[0]]
         n_edges = [target_op.n_edge[0]]
 
@@ -148,6 +148,8 @@ class EncodeProcessDecode_v4_172_improve_shapes_exp2(snt.AbstractModule, BaseMod
             print("--- multi-step prediction mode ---")
         else:
             print("--- single-step prediction mode ---")
+
+        dbg = []
 
         for step in range(num_processing_steps-1):
             """ get target values for one-step (reset node input state to gt after every rollout step) """
@@ -164,9 +166,10 @@ class EncodeProcessDecode_v4_172_improve_shapes_exp2(snt.AbstractModule, BaseMod
 
             latent = self._core(latent)
             decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
+            #dbg.append(latent)
             output_ops.append(decoded_op)
 
-        return output_ops
+        return output_ops, dbg
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
@@ -421,7 +424,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.contrib.layers.layer_norm(outputs)
         outputs = outputs + outputs_skip3
         after_skip3 = outputs.get_shape()
-        print("-----------", after_skip3)
+        #print("-----------", after_skip3)
 
         if self.is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)

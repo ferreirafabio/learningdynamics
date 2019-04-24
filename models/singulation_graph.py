@@ -204,29 +204,35 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         print("=== WARNING: graph has no edges! ===")
         #target_graphs[step][sender][receiver]['features'] = None
 
-    input_graph = target_graphs[0].copy()
-    target_graphs = target_graphs[1:]  # first state is used for init
-    if gripper_as_global:
-        """ gripperpos and grippervel always reflect the current step. However, we are interested in predicting 
-        the effects of a new/next control command --> shift by one """
-        input_control_graphs = input_control_graphs[1:]
+    input_graphs = []
+    for i in range(experiment_length-1):
+        inp = target_graphs[i].copy()
+        inp.graph["features"] = input_control_graphs[i+1].graph["features"]
+        input_graphs.append(inp)
 
+    #input_graph = target_graphs[0].copy()
+    target_graphs = target_graphs[1:]  # first state is used for init
+    #if gripper_as_global:
+    #    """ gripperpos and grippervel always reflect the current step. However, we are interested in predicting
+    #    the effects of a new/next control command --> shift by one """
+    #    input_control_graphs = input_control_graphs[1:]
 
     # todo: following code assumes all nodes are of type 'manipulable'
     """ set velocity and position info to zero """
     if not initial_pos_vel_known:
         """ for all nodes """
-        for idx, node_feature in input_graph.nodes(data=True):
-            feat = node_feature['features']
-            feat[-6:] = 0
-            input_graph.add_node(idx, features=feat)
-        """ for all edges """
-        for receiver, sender, edge_feature in input_graph.edges(data=True):
-            feat = edge_feature['features']
-            feat[:] = 0
-            input_graph.add_edge(sender, receiver, features=feat)
+        for graph in input_graphs:
+            for idx, node_feature in graph.nodes(data=True):
+                feat = node_feature['features']
+                feat[-6:] = 0
+                graph.add_node(idx, features=feat)
+                """ for all edges """
+            for receiver, sender, edge_feature in graph.edges(data=True):
+                feat = edge_feature['features']
+                feat[:] = 0
+                graph.add_edge(sender, receiver, features=feat)
 
-    return input_graph, target_graphs, input_control_graphs
+    return input_graphs, target_graphs
 
 
 def get_graph_tuple(graph_nx):
@@ -256,35 +262,39 @@ def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_
     target_graphs_all_experiments = []
     graphs = []
 
-    for i in range(train_batch_size):
-        n_manipulable_objects = batch_data[i]['n_manipulable_objects']
+    #for i in range(train_batch_size):
+    #   n_manipulable_objects = batch_data[i]['n_manipulable_objects']
 
-        graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
-        input_graphs, target_graphs, input_control_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i],
-                                                                                                         initial_pos_vel_known)
-        input_graphs_all_experiments.append(input_graphs)
-        target_graphs_all_experiments.append(target_graphs)
-        input_control_graphs_all_experiments.append(input_control_graphs)
-        graphs.append(graph)
+        #graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
+        #input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data[i],
+        #                                                                                                 initial_pos_vel_known)
+        #input_graphs_all_experiments.append(input_graphs)
+        #target_graphs_all_experiments.append(target_graphs)
+        #graphs.append(graph)
 
-    return input_graphs_all_experiments, target_graphs_all_experiments, input_control_graphs_all_experiments, graphs
+    #return input_graphs_all_experiments, target_graphs_all_experiments, graphs
+
+    # todo: implement batch processing (concat along feature dimension)
+    n_manipulable_objects = batch_data['n_manipulable_objects']
+
+    graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
+    input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known)
+    return input_graphs, target_graphs
 
 
 def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
-    input_graphs, target_graphs, input_control_graphs, _ = create_singulation_graphs(config, batch_data, batch_size,
-                                                                                     initial_pos_vel_known=initial_pos_vel_known)
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, batch_size, initial_pos_vel_known=initial_pos_vel_known)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
 
-    return input_graphs, target_graphs, input_control_graphs
+    return input_graphs, target_graphs
 
 
 def create_placeholders(config, batch_data):
     """ if gripper_as_global = False, this function will still return 3 values (input_ph, target_ph, input_ctrl_ph) but the last will
     (input_ctrl_ph) will be None, caller needs to check this """
-    input_graphs, target_graphs, input_control_graphs, _ = create_singulation_graphs(config, batch_data, train_batch_size=1,
-                                                                                     initial_pos_vel_known=config.initial_pos_vel_known)
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=config.initial_pos_vel_known)
 
     if config.remove_edges:
         edge_shape_hint = [0]
@@ -292,32 +302,26 @@ def create_placeholders(config, batch_data):
         edge_shape_hint = None
 
     input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
-    target_ph = utils_tf.placeholders_from_networkxs(target_graphs[0], force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
-    input_ctrl_ph = utils_tf.placeholders_from_networkxs(input_control_graphs[0], force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
+    target_ph = utils_tf.placeholders_from_networkxs(target_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
 
     if config.remove_edges:
         print("=== WARNING: graph has no edges! ===")
         input_ph = input_ph.replace(edges=None, senders=None, receivers=None, n_edge=input_ph.n_edge * 0)
         target_ph = target_ph.replace(edges=None, senders=None, receivers=None, n_edge=target_ph.n_edge * 0)
-        input_ctrl_ph = input_ctrl_ph.replace(edges=None, senders=None, receivers=None, n_edge=input_ctrl_ph.n_edge * 0)
-        #input_ph, target_ph, input_ctrl_ph = make_all_runnable_in_session(input_ph, target_ph, input_ctrl_ph)
 
-    return input_ph, target_ph, input_ctrl_ph
+    return input_ph, target_ph
 
 
-def create_feed_dict(input_ph, target_ph, input_ctrl_ph, input_graphs, target_graphs, input_ctrl_graphs, config):
+def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs, config):
     if config.remove_edges:
-        edge_shape_hint_inp = [0 for _ in range(len([input_graphs]))]
+        edge_shape_hint_inp = [0 for _ in range(len(input_graphs))]
         edge_shape_hint_targ = [0 for _ in range(len(target_graphs))]
-        edge_shape_hint_inp_ctrl = [0 for _ in range(len(input_ctrl_graphs))]
     else:
         edge_shape_hint_inp = None
         edge_shape_hint_targ = None
-        edge_shape_hint_inp_ctrl = None
 
     input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs], edge_shape_hint=edge_shape_hint_inp)
-    target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs, edge_shape_hint=edge_shape_hint_targ)
-    input_ctrl_tuple = utils_np.networkxs_to_graphs_tuple(input_ctrl_graphs, edge_shape_hint=edge_shape_hint_inp_ctrl)
+    target_tuple = utils_np.networkxs_to_graphs_tuple([target_graphs], edge_shape_hint=edge_shape_hint_targ)
 
     if config.remove_edges:
         print("=== WARNING: graph has no edges! ===")
@@ -327,16 +331,12 @@ def create_feed_dict(input_ph, target_ph, input_ctrl_ph, input_graphs, target_gr
         target_ph = target_ph.replace(edges=None, senders=None, receivers=None, n_edge=target_ph.n_edge * 0)
         target_tuple = target_tuple.replace(edges=None, senders=None, receivers=None, n_edge=target_tuple.n_edge * 0)
 
-        input_ctrl_ph = input_ctrl_ph.replace(edges=None, senders=None, receivers=None, n_edge=input_ctrl_ph.n_edge * 0)
-        input_ctrl_tuple = input_ctrl_tuple.replace(edges=None, senders=None, receivers=None, n_edge=input_ctrl_tuple.n_edge * 0)
-
     input_dct = utils_tf.get_feed_dict(input_ph, input_tuple)
     target_dct = utils_tf.get_feed_dict(target_ph, target_tuple)
-    input_ctrl_dct = utils_tf.get_feed_dict(input_ctrl_ph, input_ctrl_tuple)
 
     input_ph_runnable, target_ph_runnable = make_all_runnable_in_session(input_ph, target_ph)
 
-    return input_ph_runnable, target_ph_runnable, {**input_dct, **target_dct, **input_ctrl_dct}
+    return input_ph_runnable, target_ph_runnable, {**input_dct, **target_dct}
 
 
 def _sanity_check_pos_vel(input_graphs):

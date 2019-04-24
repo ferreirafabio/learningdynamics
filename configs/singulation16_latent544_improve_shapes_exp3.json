@@ -8,7 +8,7 @@
   "depth_data_provided": true,
   "n_neurons_nodes_total_dim": 576,
   "edge_output_size": 3,
-  "exp_name": "singulation16_latent544_binary_CE_improve_shapes_exp1_deconv_instead_reshape_message_passing_latent_dim",
+  "exp_name": "singulation16_latent544_binary_CE_improve_shapes_exp3_deconv_instead_reshape_message_passing_latent_dim",
   "export_test_images": true,
   "global_output_size": 9,
   "gripper_as_global": true,
