@@ -10,8 +10,8 @@ from graph_nets import utils_tf, utils_np
 def generate_singulation_graph(config, n_manipulable_objects, omit_edges=True):
     gripper_as_global = config.gripper_as_global
 
-    #graph_nx = nx.DiGraph()
-    graph_nx = nx.MultiDiGraph()
+    graph_nx = nx.DiGraph()
+    #graph_nx = nx.OrderedMultiDiGraph()
 
     if not gripper_as_global:
         offset = 1
@@ -177,7 +177,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             for i in range(input_control_graph.number_of_nodes()):
                 input_control_graph.nodes(data=True)[i]["features"] = None
             for receiver, sender, edge_feature in input_control_graph.edges(data=True):
-                input_control_graph[sender][receiver][0]['features'] = None
+                input_control_graph[sender][receiver]['features'] = None
 
             input_control_graph.graph["features"] = global_features
 

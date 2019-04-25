@@ -253,4 +253,4 @@ def create_tfrecords_from_dir(config, source_path, dest_path, discard_varying_nu
 if __name__ == '__main__':
     args = get_args()
     config = process_config(args.config)
-    create_tfrecords_from_dir(config, "/scr2/fabiof/downloads/seg_dir", "/scr2/fabiof/data/tfrecords_5_objects_15_rollouts_padded_completely_new_shapes", test_size=0.9, n_sequences_per_batch=100, pad_to=15, use_fixed_rollout=None)
+    create_tfrecords_from_dir(config, "/scr2/fabiof/data/segdir_1_sample", "/scr2/fabiof/data/tfrecords_overfit_dataset_1_sample_3_objects_1_rollout", test_size=0.0, n_sequences_per_batch=1, pad_to=15, use_fixed_rollout=None)
