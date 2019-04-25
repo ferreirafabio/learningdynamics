@@ -45,6 +45,11 @@ def main():
         else:
             print("remove_edges is set to True, edges will be removed from graph")
 
+        if not hasattr(config, 'batch_processing'):
+            config.batch_processing = False
+        else:
+            print("batch_processing activated")
+
         if config.normalize_data:
             print("-- using normalized data as input --")
         else:

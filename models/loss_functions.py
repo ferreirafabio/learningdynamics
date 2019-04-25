@@ -66,7 +66,7 @@ def create_loss_ops(config, target_op, output_ops):
                                                    weights=0.1)
                                                )
 
-            loss_nonvisual_mse_edges = 0.0
+            #loss_nonvisual_mse_edges = 0.0
 
             loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
                                                    lambda: non_visual_scale * tf.losses.mean_squared_error(
@@ -89,7 +89,7 @@ def create_loss_ops(config, target_op, output_ops):
 
             print("---- image loss only ----")
             total_loss_ops.append(loss_visual_mse_nodes)
-            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos + loss_ops_distance)
 
 
     else:

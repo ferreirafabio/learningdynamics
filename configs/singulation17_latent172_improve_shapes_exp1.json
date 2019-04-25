@@ -6,9 +6,9 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "n_neurons_nodes_total_dim": 544,
+  "n_neurons_nodes_total_dim": 160,
   "edge_output_size": 3,
-  "exp_name": "singulation17_latent544_binary_CE_improve_shapes_exp3_deconv_instead_reshape_message_passing_latent_dim",
+  "exp_name": "singulation17_latent172_binary_CE_improve_shapes_exp1",
   "export_test_images": true,
   "global_output_size": 9,
   "gripper_as_global": true,
@@ -20,9 +20,9 @@
   "n_epochs": 50000,
   "n_images_shown_in_tensorboard": 10,
   "n_layers_globals": 3,
-  "n_layers_nodes": 4,
+  "n_layers_nodes": 3,
   "n_layers_edges": 3,
-  "n_neurons_nodes": 544,
+  "n_neurons_nodes": 128,
   "n_neurons_edges": 32,
   "n_neurons_globals": 32,
   "n_neurons_nodes_non_visual": 32,
@@ -41,5 +41,6 @@
   "initial_pos_vel_known": true,
   "loss_type": "cross_entropy_seg_only",
   "model_zoo_file": "EncodeProcessDecode_v5_512_improve_shapes_exp1",
-  "do_multi_step_prediction": false
+  "do_multi_step_prediction": false,
+  "batch_processing": false
 }
