@@ -337,7 +337,7 @@ class SingulationTrainer(BaseTrain):
                               prefix + '_iou_loss': iou_batch_loss,
                               prefix + '_velocity_loss': vel_batch_loss,
                               prefix + '_position_loss': pos_batch_loss,
-                              prefix + '_distance_loss': dis_batch_loss
+                              prefix + '_edge_loss': dis_batch_loss
                               }
 
         else:
