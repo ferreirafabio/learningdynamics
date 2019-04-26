@@ -250,7 +250,7 @@ class SingulationTrainer(BaseTrain):
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
-            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | distance loss: {:<8.6f} time(s): {:<10.2f} '
+            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | edge loss: {:<8.6f} time(s): {:<10.2f} '
                 .format(cur_batch_it, batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log)
             )
             summaries_dict = {prefix + '_total_loss': batch_loss,
@@ -329,7 +329,7 @@ class SingulationTrainer(BaseTrain):
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
-            print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
+            print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | edge loss {:<8.6f} time(s): {:<10.2f}'.format(
                 batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log))
 
             summaries_dict = {prefix + '_total_loss': batch_loss,
