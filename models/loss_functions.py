@@ -49,7 +49,7 @@ def create_loss_ops(config, target_op, output_ops):
 
 
             loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-                                                lambda: img_scale * 1.0 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                                                lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
                                                         labels=labels,
                                                         logits=logits))
                                             )
@@ -63,7 +63,7 @@ def create_loss_ops(config, target_op, output_ops):
                                                lambda: non_visual_scale * tf.losses.mean_squared_error(
                                                    labels=target_op.edges,
                                                    predictions=output_op.edges,
-                                                   weights=0.1)
+                                                   weights=0.3)
                                                )
 
             #loss_nonvisual_mse_edges = 0.0
@@ -72,7 +72,7 @@ def create_loss_ops(config, target_op, output_ops):
                                                    lambda: non_visual_scale * tf.losses.mean_squared_error(
                                                        labels=target_op.nodes[:, -3:],
                                                        predictions=output_op.nodes[:, -3:],
-                                                       weights=0.3)
+                                                       weights=0.1)
                                                    )
             loss_nonvisual_mse_nodes_vel = tf.cond(condition, lambda: float("inf"),
                                                    lambda: tf.losses.mean_squared_error(
@@ -87,9 +87,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            print("---- image loss only ----")
-            total_loss_ops.append(loss_visual_mse_nodes)
-            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos + loss_ops_distance)
+            #print("---- image loss only ----")
+            #total_loss_ops.append(loss_visual_mse_nodes)
+            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos + loss_ops_distance)
 
 
     else:
