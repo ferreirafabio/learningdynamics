@@ -10,8 +10,8 @@ from graph_nets import utils_tf, utils_np
 def generate_singulation_graph(config, n_manipulable_objects, omit_edges=True):
     gripper_as_global = config.gripper_as_global
 
-    graph_nx = nx.DiGraph()
-    #graph_nx = nx.OrderedMultiDiGraph()
+    #graph_nx = nx.DiGraph()
+    graph_nx = nx.OrderedMultiDiGraph()
 
     if not gripper_as_global:
         offset = 1
@@ -41,7 +41,7 @@ def generate_singulation_graph(config, n_manipulable_objects, omit_edges=True):
         edge_tuples = [(a,b) for a, b in product(range(0, graph_nx.number_of_nodes()), range(0, graph_nx.number_of_nodes())) if a != b]
 
         for edge in edge_tuples:
-            graph_nx.add_edge(*edge, features=np.zeros(shape=(config.edge_output_size,), dtype=np.float32))
+            graph_nx.add_edge(*edge, key=0, features=np.zeros(shape=(config.edge_output_size,), dtype=np.float32))
     else:
         print("=== WARNING: graph has no edges! ===")
 
@@ -102,17 +102,21 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             obj_id = int(attr['type_name'].split("_")[2])
             obj_id_segs = obj_id + data_offset_manipulable_objects
 
-            if len(np.unique(features['object_segments'][step][obj_id_segs][:, :, 3])) > 2:
-                thresh = features['object_segments'][step][obj_id_segs][:, :, 3] > 0.0
-                features['object_segments'][step][obj_id_segs][:, :, 3][thresh] = 1.0
-
             # obj_seg will have data as following: (rgb, seg, optionally: depth)
             if config.use_object_seg_data_only_for_init:
                 """ in this case, the nodes will have static visual information over time """
                 obj_seg = features['object_segments'][obj_id].flatten()
             else:
                 """ in this case, the nodes will have dynamic visual information over time """
-                obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32).flatten()
+                obj_seg = features['object_segments'][step][obj_id_segs].astype(np.float32)
+                """ nodes have full access to scene observation (i.e. rgb and depth) """
+                if config.nodes_get_full_rgb_depth:
+                    rgb = features["img"][step].astype(np.float32)
+                    depth = features["depth"][step].astype(np.float32)
+                    obj_seg[:,:,:3] = rgb
+                    obj_seg[:,:,-3:] = depth
+
+                obj_seg = obj_seg.flatten()
             pos = features['objpos'][step][obj_id].flatten().astype(np.float32)
 
             # normalize velocity
@@ -128,13 +132,23 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
-    def create_edge_feature(receiver, sender, target_graph_i):
+    def create_edge_feature_distance(receiver, sender, target_graph_i):
         node_feature_rcv = target_graph_i.nodes(data=True)[receiver]
         node_feature_snd = target_graph_i.nodes(data=True)[sender]
-        """ the position is always located as the last three elements of the flattened feature vector """
+        """ the position is always the last three elements of the flattened feature vector """
         pos1 = node_feature_rcv['features'][-3:]
         pos2 = node_feature_snd['features'][-3:]
         return (pos1-pos2).astype(np.float32)
+
+    def create_edge_feature_vel_pos(sender, target_graph, target_graph_previous):
+        node_feature_snd_prev = target_graph_previous.nodes(data=True)[sender]
+        node_feature_snd = target_graph.nodes(data=True)[sender]
+        """ the position is always the last three elements of the flattened feature vector """
+        pos_prev = node_feature_snd_prev["features"][-3:]
+        vel_pos = node_feature_snd['features'][-6:]
+        vel_pos = np.insert(vel_pos, 3, pos_prev)
+        """ will yield (vel_t, pos_{t-1}, pos_t)"""
+        return vel_pos.astype(np.float32)
 
     input_control_graphs = []
 
@@ -177,7 +191,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             for i in range(input_control_graph.number_of_nodes()):
                 input_control_graph.nodes(data=True)[i]["features"] = None
             for receiver, sender, edge_feature in input_control_graph.edges(data=True):
-                input_control_graph[sender][receiver]['features'] = None
+                input_control_graph[sender][receiver][0]['features'] = None
 
             input_control_graph.graph["features"] = global_features
 
@@ -197,9 +211,13 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     """ compute distances between every manipulable object (and gripper if not gripper_as_global) """
     if not config.remove_edges:
         for step in range(experiment_length):
-            for receiver, sender, edge_feature in target_graphs[step].edges(data=True):
-                edge_feature = create_edge_feature(receiver, sender, target_graphs[step])
-                target_graphs[step].add_edge(sender, receiver, features=edge_feature)
+            for sender, receiver, edge_feature in target_graphs[step].edges(data="features"):
+                if step == 0:
+                    target_graphs_previous = target_graphs[step]
+                else:
+                    target_graphs_previous = target_graphs[step-1]
+                edge_feature = create_edge_feature_vel_pos(sender=sender, target_graph=target_graphs[step], target_graph_previous=target_graphs_previous)
+                target_graphs[step].add_edge(sender, receiver, key=0, features=edge_feature)
 
     else:
         print("=== WARNING: graph has no edges! ===")
@@ -254,6 +272,20 @@ def print_graph_with_node_labels(graph_nx, label_keyword='features'):
     labels = nx.get_node_attributes(graph_nx, label_keyword)
     plt.figure(figsize=(11, 11))
     nx.draw(graph_nx, labels=labels, node_size=1000, font_size=15)
+    plt.show()
+
+def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
+    labels1 = nx.get_node_attributes(graph_nx, "features")
+    labels2 = nx.get_node_attributes(graph_nx, "type_name")
+    edge_labels = nx.get_edge_attributes(graph_nx,'features')
+    edge_labels = {k[:2]:v for k,v in edge_labels.items()}
+
+    plt.figure(figsize=(11, 11))
+    pos = nx.spring_layout(graph_nx)
+    nx.draw_networkx_labels(graph_nx, pos, labels=labels1)
+    nx.draw(graph_nx, labels=labels2, node_size=1000, font_size=10, label_position=0.3)
+    nx.draw_networkx_edge_labels(graph_nx, pos, edge_labels=edge_labels)
+
     plt.show()
 
 

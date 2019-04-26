@@ -50,6 +50,17 @@ def main():
         else:
             print("batch_processing activated")
 
+        if not hasattr(config, 'conv_layer_instance_norm'):
+            config.conv_layer_instance_norm = True
+            print("convolution layers are normalized with instance norm")
+        else:
+            print("convolution layers are not normalized")
+
+        if not hasattr(config, 'nodes_get_full_rgb_depth'):
+            config.nodes_get_full_rgb_depth = False
+        else:
+            print("Each node in the graph receives full RGB and depth data")
+
         if config.normalize_data:
             print("-- using normalized data as input --")
         else:
