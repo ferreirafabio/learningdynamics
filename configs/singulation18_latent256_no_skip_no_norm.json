@@ -3,7 +3,7 @@
   "convnet_pooling": true,
   "convnet1D_stride": 2,
   "convnet_tanh": false,
-  "conv_layer_instance_norm": true,
+  "conv_layer_instance_norm": false,
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
