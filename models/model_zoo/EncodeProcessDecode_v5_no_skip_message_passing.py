@@ -760,7 +760,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         #visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_non_visual)
 
         visual_latent_output_dense = tf.layers.flatten(outputs)
-        print("after flattening:", visual_latent_output_dense.get_shape())
+        #print("after flattening:", visual_latent_output_dense.get_shape())
         visual_latent_output = tf.layers.dense(inputs=visual_latent_output_dense, units=64)
         print(visual_latent_output.get_shape())
 
@@ -770,7 +770,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
         # concatenate (?, 64) with (?, 512) for message passing
         visual_latent_output = tf.concat([visual_latent_output_dense, visual_latent_output], axis=1)
-        print("-------", visual_latent_output.get_shape())
+        #print("-------", visual_latent_output.get_shape())
 
 
         # --------------- SKIP CONNECTION --------------- #
