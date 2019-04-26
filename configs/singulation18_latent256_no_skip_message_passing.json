@@ -8,7 +8,7 @@
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
   "edge_output_size": 9,
-  "exp_name": "singulation18_latent256_3_objects_no_skip_message_passing_with_norm_with_dropout",
+  "exp_name": "singulation18_latent256_3_objects_no_skip_message_passing_with_norm_with_dropout_nodes_full_rgb_depth",
   "export_test_images": true,
   "global_output_size": 9,
   "gripper_as_global": true,
