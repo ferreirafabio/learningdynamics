@@ -69,12 +69,13 @@ class BaseTrain:
 
         total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         ''' remove all inf values --> correspond to padded entries '''
-        self.model.loss_op_train_total = tf.reduce_mean(tf.boolean_mask(total_loss_ops, tf.logical_not(tf.is_inf(total_loss_ops))))
-        self.model.loss_ops_train_img = tf.reduce_mean(tf.boolean_mask(loss_ops_img, tf.logical_not(tf.is_inf(loss_ops_img))))  # just for summary, is already included in loss_op_train
-        self.model.loss_ops_train_iou = tf.reduce_mean(tf.boolean_mask(loss_ops_iou, tf.logical_not(tf.is_inf(loss_ops_iou))))
-        self.model.loss_ops_train_velocity = tf.reduce_mean(tf.boolean_mask(loss_ops_velocity, tf.logical_not(tf.is_inf(loss_ops_velocity))))
-        self.model.loss_ops_train_position = tf.reduce_mean(tf.boolean_mask(loss_ops_position, tf.logical_not(tf.is_inf(loss_ops_position))))
-        self.model.loss_ops_train_distance = tf.reduce_mean(tf.boolean_mask(loss_ops_distance, tf.logical_not(tf.is_inf(loss_ops_distance))))
+        self.model.loss_op_train_total = total_loss_ops
+        self.model.loss_ops_train_img = loss_ops_img  # just for summary, is already included in loss_op_train
+        self.model.loss_ops_train_iou = loss_ops_iou
+        self.model.loss_ops_train_velocity = loss_ops_velocity
+        self.model.loss_ops_train_position = loss_ops_position
+        self.model.loss_ops_train_distance = loss_ops_distance
+        #self.model.train_logits = logits
 
         self.model.step_op = self.model.optimizer.minimize(self.model.loss_op_train_total, global_step=self.model.global_step_tensor)
 
@@ -96,10 +97,11 @@ class BaseTrain:
         total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
 
         ''' remove all inf values --> correspond to padded entries '''
-        self.model.loss_op_test_total = tf.reduce_mean(tf.boolean_mask(total_loss_ops_test, tf.logical_not(tf.is_inf(total_loss_ops_test)))) # just for summary, is already included in loss_op_train
-        self.model.loss_ops_test_img = tf.reduce_mean(tf.boolean_mask(loss_ops_test_img, tf.logical_not(tf.is_inf(loss_ops_test_img))))
-        self.model.loss_ops_test_iou = tf.reduce_mean(tf.boolean_mask(loss_ops_test_iou, tf.logical_not(tf.is_inf(loss_ops_test_iou))))
-        self.model.loss_ops_test_velocity = tf.reduce_mean(tf.boolean_mask(loss_ops_test_velocity, tf.logical_not(tf.is_inf(loss_ops_test_velocity))))
-        self.model.loss_ops_test_position = tf.reduce_mean(tf.boolean_mask(loss_ops_test_position, tf.logical_not(tf.is_inf(loss_ops_test_position))))
-        self.model.loss_ops_test_distance = tf.reduce_mean(tf.boolean_mask(loss_ops_test_distance, tf.logical_not(tf.is_inf(loss_ops_test_distance))))
+        self.model.loss_op_test_total = total_loss_ops_test
+        self.model.loss_ops_test_img = loss_ops_test_img
+        self.model.loss_ops_test_iou = loss_ops_test_iou
+        self.model.loss_ops_test_velocity = loss_ops_test_velocity
+        self.model.loss_ops_test_position = loss_ops_test_position
+        self.model.loss_ops_test_distance = loss_ops_test_distance
+        #self.model.test_logits = logits
 

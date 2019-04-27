@@ -43,6 +43,7 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
+                                  #"logits": self.model.train_logits,
                                   "loss_total": self.model.loss_op_train_total,
                                   "outputs": self.model.output_ops_train,
                                   "loss_img": self.model.loss_ops_train_img,
@@ -58,6 +59,7 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
+                                  #"logits": self.model.test_logits,
                                   "outputs": self.model.output_ops_test,
                                   "loss_img": self.model.loss_ops_test_img,
                                   "loss_iou": self.model.loss_ops_test_iou,
@@ -72,11 +74,14 @@ class SingulationTrainer(BaseTrain):
                 need to run a sigmoid(). """
                 for output in data['outputs']:
                     seg_data = output.nodes[:, :-6]
+                    seg_data = np.reshape(seg_data, [-1, 120, 160, 2])
                     seg_data = sigmoid(seg_data)
-                    seg_data[seg_data >= 0.4] = 1.0
-                    seg_data[seg_data < 0.4] = 0.0
-                    output.nodes[:, :-6] = seg_data
-
+                    seg_data = seg_data[:, :, :, 1]  # always select the 2nd feature map containing the 1's
+                    seg_data = np.reshape(seg_data, [-1, 19200])
+                    seg_data[seg_data >= 0.5] = 1.0
+                    seg_data[seg_data < 0.5] = 0.0
+                    output.nodes[:, :-6-19200] = seg_data
+                    #output.nodes = output.nodes[:, :19206]
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
 
 

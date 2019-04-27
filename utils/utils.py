@@ -78,7 +78,7 @@ def get_images_from_gn_output(outputs, depth=True, segmentation_only=False):
         seg = []
         depth_lst = []
         for data_t in outputs:
-            image = data_t.nodes[n][:-6].reshape(img_shape)  # always get the n node features without vel+pos
+            image = data_t.nodes[n][:-6-19200].reshape(img_shape)  # always get the n node features without vel+pos
             if segmentation_only:
                 seg.append(np.expand_dims(image[:, :, 0], axis=2))
             else:
