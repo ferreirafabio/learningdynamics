@@ -415,7 +415,8 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 
         ''' layer 5 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
-        outputs = tf.contrib.layers.instance_norm(outputs)
+        if EncodeProcessDecode_v5_with_skip.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
         l5_shape = outputs.get_shape()
 
         if self.is_training:
