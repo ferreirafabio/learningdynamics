@@ -32,54 +32,54 @@ def create_loss_ops(config, target_op, output_ops):
     if config.loss_type == 'cross_entropy_seg_only':
         for i, output_op in enumerate(output_ops):
             ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
-            condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
+            #condition = tf.equal(target_op.globals[i, 0], tf.constant(1.0))
 
             """ VISUAL LOSS """
-            predicted_node_reshaped = _transform_into_images(config, output_op.nodes, img_type="seg")  # returns shape (?, 120,160,1)
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes, img_type="seg", output_cnn_2_filter_maps=True)  # returns shape (?, 120,160,2)
             target_node_reshaped = _transform_into_images(config, target_op.nodes, img_type="all")  # returns shape (?, 120,160,7)
-            segmentation_data_predicted = predicted_node_reshaped[:, :, :, 0]  # --> transform into (?,120,160)
+
+            #segmentation_data_predicted = predicted_node_reshaped[:, :, :, 0]  # --> transform into (?,120,160)
+            segmentation_data_predicted = predicted_node_reshaped  # --> transform into (?,120,160,2)
             segmentation_data_gt = target_node_reshaped[:, :, :, 3]  # --> transform into (?,120,160)
 
-            logits = tf.reshape(segmentation_data_predicted, [-1,
-                                                              segmentation_data_predicted.get_shape()[1] *
-                                                              segmentation_data_predicted.get_shape()[2]])
-            labels = tf.reshape(segmentation_data_gt, [-1,
-                                                       segmentation_data_gt.get_shape()[1] *
-                                                       segmentation_data_gt.get_shape()[2]])
+            #logits = tf.reshape(segmentation_data_predicted, [-1,
+            #                                                  segmentation_data_predicted.get_shape()[1],
+            #                                                  segmentation_data_predicted.get_shape()[2],
+            #                                                  2])
 
+            logits = segmentation_data_predicted
 
-            loss_visual_mse_nodes = tf.cond(condition, lambda: float("inf"),
-                                                lambda: img_scale * 0.5 * tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            #labels = tf.reshape(segmentation_data_gt, [-1,
+            #                                           segmentation_data_gt.get_shape()[1],
+            #                                           segmentation_data_gt.get_shape()[2]])
+            labels = segmentation_data_gt
+            labels = tf.cast(labels, tf.int32)
+
+            loss_visual_mse_nodes = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                         labels=labels,
                                                         logits=logits))
-                                            )
 
             tf.losses.add_loss(loss_visual_mse_nodes)
 
             loss_visual_iou_seg = 0.0  # no iou loss computed
 
             """ NONVISUAL LOSS (50% weight) """
-            loss_nonvisual_mse_edges = tf.cond(condition, lambda: float("inf"),
-                                               lambda: non_visual_scale * tf.losses.mean_squared_error(
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(
                                                    labels=target_op.edges,
                                                    predictions=output_op.edges,
                                                    weights=0.3)
-                                               )
 
             #loss_nonvisual_mse_edges = 0.0
 
-            loss_nonvisual_mse_nodes_pos = tf.cond(condition, lambda: float("inf"),
-                                                   lambda: non_visual_scale * tf.losses.mean_squared_error(
+            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(
                                                        labels=target_op.nodes[:, -3:],
                                                        predictions=output_op.nodes[:, -3:],
                                                        weights=0.1)
-                                                   )
-            loss_nonvisual_mse_nodes_vel = tf.cond(condition, lambda: float("inf"),
-                                                   lambda: tf.losses.mean_squared_error(
+
+            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(
                                                        labels=target_op.nodes[:, -6:-3:],
                                                        predictions=output_op.nodes[:, -6:-3:],
                                                        weights=0.1)
-                                                   )
 
             loss_ops_img.append(loss_visual_mse_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
@@ -87,9 +87,9 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_distance.append(loss_nonvisual_mse_edges)
 
-            #print("---- image loss only ----")
-            #total_loss_ops.append(loss_visual_mse_nodes)
-            total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos + loss_ops_distance)
+            print("---- image loss only ----")
+            total_loss_ops.append(loss_visual_mse_nodes)
+            #total_loss_ops.append(loss_visual_mse_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos + loss_ops_distance)
 
 
     else:
@@ -98,12 +98,14 @@ def create_loss_ops(config, target_op, output_ops):
     l2_loss = tf.losses.get_regularization_loss()
     total_loss_ops += l2_loss
 
-    return total_loss_ops, loss_ops_img, loss_ops_img_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance
+    return tf.reduce_mean(total_loss_ops), tf.reduce_mean(loss_ops_img), tf.reduce_mean(loss_ops_img_iou), tf.reduce_mean(loss_ops_velocity), tf.reduce_mean(loss_ops_position), tf.reduce_mean(loss_ops_distance)
 
-def _transform_into_images(config, data, img_type="all"):
+def _transform_into_images(config, data, img_type="all", output_cnn_2_filter_maps=False):
     """ reshapes data (shape: (batch_size, feature_length)) into the required image shape with an
     additional batch_dimension, e.g. (1,120,160,7) """
     data_shape = get_correct_image_shape(config, get_type=img_type)
     data = data[:, :-6]
+    if output_cnn_2_filter_maps:
+        data_shape = (120,160,2)
     data = tf.reshape(data, [-1, *data_shape])
     return data
