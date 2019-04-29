@@ -78,8 +78,8 @@ class SingulationTrainer(BaseTrain):
                     seg_data = sigmoid(seg_data)
                     seg_data = seg_data[:, :, :, 1]  # always select the 2nd feature map containing the 1's
                     seg_data = np.reshape(seg_data, [-1, 19200])
-                    seg_data[seg_data >= 0.5] = 1.0
-                    seg_data[seg_data < 0.5] = 0.0
+                    seg_data[seg_data >= 0.4] = 1.0
+                    seg_data[seg_data < 0.4] = 0.0
                     output.nodes[:, :-6-19200] = seg_data
                     #output.nodes = output.nodes[:, :19206]
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
@@ -401,14 +401,14 @@ class SingulationTrainer(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        #exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
-        exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+        exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
+        #exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
 
         export_images = self.config.export_test_images
         initial_pos_vel_known = self.config.initial_pos_vel_known
         export_latent_data = True
         process_all_nn_outputs = True
-        sub_dir_name = "test_5_objects_specific_exp_ids_against_lins_baseline_{}_iterations_trained".format(cur_batch_it)
+        sub_dir_name = "test_3_objects_specific_exp_ids_against_lins_baseline_{}_iterations_trained".format(cur_batch_it)
 
         while True:
             try:
@@ -436,30 +436,36 @@ class SingulationTrainer(BaseTrain):
                 if exp_ids_to_export and not features_to_export:
                     continue
 
-                input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
-                                                                                                       batch_data=features,
-                                                                                                       batch_size=len(features),
-                                                                                                       initial_pos_vel_known=initial_pos_vel_known)
 
                 start_time = time.time()
                 last_log_time = start_time
 
                 for i in range(len(features)):
-                    total_loss, outputs, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[i],
-                                                                                                              target_graphs_all_exp[i],
-                                                                                                              input_ctrl_graphs_all_exp[
-                                                                                                                  i], features[i],
-                                                                                                              train=False)
-                    if total_loss is not None:
-                        losses_total.append(total_loss)
-                        losses_img.append(loss_img)
-                        losses_iou.append(loss_iou)
-                        losses_velocity.append(loss_velocity)
-                        losses_position.append(loss_position)
-                        losses_distance.append(loss_distance)
+                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                        batch_data=features[i],
+                                                                        batch_size=1,
+                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                        )
+                    output_i = []
 
-                    if outputs:
-                        outputs_total.append((outputs, i))
+                    for j in range(features[i]["unpadded_experiment_length"] - 1):
+                        total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
+                                                                                                       target_graphs_all_exp[j],
+                                                                                                       features[i],
+                                                                                                       train=False
+                                                                                                       )
+                        output = output[0]
+                        if total_loss is not None:
+                            losses_total.append(total_loss)
+                            losses_img.append(loss_img)
+                            losses_iou.append(loss_iou)
+                            losses_velocity.append(loss_velocity)
+                            losses_position.append(loss_position)
+                            losses_distance.append(loss_distance)
+
+                        output_i.append(output)
+
+                    outputs_total.append((output_i, i))
 
                 the_time = time.time()
                 elapsed_since_last_log = the_time - last_log_time

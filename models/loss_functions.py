@@ -55,6 +55,8 @@ def create_loss_ops(config, target_op, output_ops):
             labels = segmentation_data_gt
             labels = tf.cast(labels, tf.int32)
 
+
+            print("----- WARNING: TF REDUCE SUM INSTEAD OF TF REDUCE MEAN USED -----")
             loss_visual_mse_nodes = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                         labels=labels,
                                                         logits=logits))
