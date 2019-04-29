@@ -35,7 +35,7 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
-    def do_step(self, input_graph, target_graphs, feature, train=True, convert_seg_to_unit_step=True):
+    def do_step(self, input_graph, target_graphs, feature, train=True, sigmoid_threshold=0.4):
 
         if train:
             self.model.input_ph, self.model.target_ph, feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph,
@@ -68,20 +68,20 @@ class SingulationTrainer(BaseTrain):
                                   "loss_distance": self.model.loss_ops_test_distance,
                                   }, feed_dict=feed_dict)
 
-            if convert_seg_to_unit_step:
-                """ currently we are interested in values in {0,1} since we train binary cross entropy (segmentation images). 
-                tf.nn.sigmoid_cross_entropy_with_logits runs the logits through sigmoid() which is why for outputs we also 
-                need to run a sigmoid(). """
-                for output in data['outputs']:
-                    seg_data = output.nodes[:, :-6]
-                    seg_data = np.reshape(seg_data, [-1, 120, 160, 2])
-                    seg_data = sigmoid(seg_data)
-                    seg_data = seg_data[:, :, :, 1]  # always select the 2nd feature map containing the 1's
-                    seg_data = np.reshape(seg_data, [-1, 19200])
-                    seg_data[seg_data >= 0.4] = 1.0
-                    seg_data[seg_data < 0.4] = 0.0
-                    output.nodes[:, :-6-19200] = seg_data
-                    #output.nodes = output.nodes[:, :19206]
+
+            """ currently we are interested in values in {0,1} since we train binary cross entropy (segmentation images). 
+            tf.nn.sigmoid_cross_entropy_with_logits runs the logits through sigmoid() which is why for outputs we also 
+            need to run a sigmoid(). """
+            for output in data['outputs']:
+                seg_data = output.nodes[:, :-6]
+                seg_data = np.reshape(seg_data, [-1, 120, 160, 2])
+                seg_data = sigmoid(seg_data)
+                seg_data = seg_data[:, :, :, 1]  # always select the 2nd feature map containing the 1's
+                seg_data = np.reshape(seg_data, [-1, 19200])
+                seg_data[seg_data >= sigmoid_threshold] = 1.0
+                seg_data[seg_data < sigmoid_threshold] = 0.0
+                output.nodes[:, :-6-19200] = seg_data
+                #output.nodes = output.nodes[:, :19206]
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
 
 
@@ -405,108 +405,111 @@ class SingulationTrainer(BaseTrain):
         #exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
 
         export_images = self.config.export_test_images
-        initial_pos_vel_known = self.config.initial_pos_vel_known
         export_latent_data = True
         process_all_nn_outputs = True
-        sub_dir_name = "test_3_objects_specific_exp_ids_against_lins_baseline_{}_iterations_trained".format(cur_batch_it)
 
-        while True:
-            try:
-                losses_total = []
-                losses_img = []
-                losses_iou = []
-                losses_velocity = []
-                losses_position = []
-                losses_distance = []
-                outputs_total = []
+        thresholds_to_test = [0.3, 0.4, 0.5]
 
-                features = self.sess.run(self.next_element_test)
+        for thresh in thresholds_to_test:
+            sub_dir_name = "test_3_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
+            while True:
+                try:
+                    losses_total = []
+                    losses_img = []
+                    losses_iou = []
+                    losses_velocity = []
+                    losses_position = []
+                    losses_distance = []
+                    outputs_total = []
 
-                features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+                    features = self.sess.run(self.next_element_test)
 
-                if exp_ids_to_export:
-                    features_to_export = []
-                    for dct in features:
-                        if dct["experiment_id"] in exp_ids_to_export:
-                            features_to_export.append(dct)
-                            print("added", dct["experiment_id"])
+                    features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-                    features = features_to_export
+                    if exp_ids_to_export:
+                        features_to_export = []
+                        for dct in features:
+                            if dct["experiment_id"] in exp_ids_to_export:
+                                features_to_export.append(dct)
+                                print("added", dct["experiment_id"])
 
-                if exp_ids_to_export and not features_to_export:
+                        features = features_to_export
+
+                    if exp_ids_to_export and not features_to_export:
+                        continue
+
+
+                    start_time = time.time()
+                    last_log_time = start_time
+
+                    for i in range(len(features)):
+                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                            batch_data=features[i],
+                                                                            batch_size=1,
+                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                            )
+                        output_i = []
+
+                        for j in range(features[i]["unpadded_experiment_length"] - 1):
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
+                                                                                                           target_graphs_all_exp[j],
+                                                                                                           features[i],
+                                                                                                           sigmoid_threshold=thresh,
+                                                                                                           train=False
+                                                                                                           )
+                            output = output[0]
+                            if total_loss is not None:
+                                losses_total.append(total_loss)
+                                losses_img.append(loss_img)
+                                losses_iou.append(loss_iou)
+                                losses_velocity.append(loss_velocity)
+                                losses_position.append(loss_position)
+                                losses_distance.append(loss_distance)
+
+                            output_i.append(output)
+
+                        outputs_total.append((output_i, i))
+
+                    the_time = time.time()
+                    elapsed_since_last_log = the_time - last_log_time
+                    cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+                    if not process_all_nn_outputs:
+                        """ due to brevity, just use last results """
+                        outputs_for_summary = [outputs_for_summary[-1]]
+
+                    if losses_total:
+                        batch_loss = np.mean(losses_total)
+                        img_batch_loss = np.mean(losses_img)
+                        iou_batch_loss = np.mean(losses_iou)
+                        vel_batch_loss = np.mean(losses_velocity)
+                        pos_batch_loss = np.mean(losses_position)
+                        dis_batch_loss = np.mean(losses_distance)
+
+                        print('total test batch loss: {:<8.6f} | img loss: {:<10.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
+                                batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
+                                elapsed_since_last_log))
+
+                    if outputs_total:
+                        if self.config.parallel_batch_processing:
+                            with parallel_backend('loky', n_jobs=-2):
+                                Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
+                                                              export_latent_data, sub_dir_name) for output in outputs_for_summary)
+                        else:
+                            for output in outputs_total:
+                                generate_results(output=output,
+                                                        config=self.config,
+                                                        prefix=prefix,
+                                                        features=features,
+                                                        cur_batch_it=cur_batch_it,
+                                                        export_images=export_images,
+                                                        export_latent_data=export_latent_data,
+                                                        dir_name=sub_dir_name, reduce_dict=True)
+                except tf.errors.OutOfRangeError:
+                    break
+                else:
+                    print("continue")
                     continue
-
-
-                start_time = time.time()
-                last_log_time = start_time
-
-                for i in range(len(features)):
-                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
-                                                                        batch_data=features[i],
-                                                                        batch_size=1,
-                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known
-                                                                        )
-                    output_i = []
-
-                    for j in range(features[i]["unpadded_experiment_length"] - 1):
-                        total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
-                                                                                                       target_graphs_all_exp[j],
-                                                                                                       features[i],
-                                                                                                       train=False
-                                                                                                       )
-                        output = output[0]
-                        if total_loss is not None:
-                            losses_total.append(total_loss)
-                            losses_img.append(loss_img)
-                            losses_iou.append(loss_iou)
-                            losses_velocity.append(loss_velocity)
-                            losses_position.append(loss_position)
-                            losses_distance.append(loss_distance)
-
-                        output_i.append(output)
-
-                    outputs_total.append((output_i, i))
-
-                the_time = time.time()
-                elapsed_since_last_log = the_time - last_log_time
-                cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-                if not process_all_nn_outputs:
-                    """ due to brevity, just use last results """
-                    outputs_for_summary = [outputs_for_summary[-1]]
-
-                if losses_total:
-                    batch_loss = np.mean(losses_total)
-                    img_batch_loss = np.mean(losses_img)
-                    iou_batch_loss = np.mean(losses_iou)
-                    vel_batch_loss = np.mean(losses_velocity)
-                    pos_batch_loss = np.mean(losses_position)
-                    dis_batch_loss = np.mean(losses_distance)
-
-                    print('total test batch loss: {:<8.6f} | img loss: {:<10.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
-                            batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
-                            elapsed_since_last_log))
-
-                if outputs_total:
-                    if self.config.parallel_batch_processing:
-                        with parallel_backend('loky', n_jobs=-2):
-                            Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
-                                                          export_latent_data, sub_dir_name) for output in outputs_for_summary)
-                    else:
-                        for output in outputs_total:
-                            generate_results(output=output,
-                                                    config=self.config,
-                                                    prefix=prefix,
-                                                    features=features,
-                                                    cur_batch_it=cur_batch_it,
-                                                    export_images=export_images,
-                                                    export_latent_data=export_latent_data,
-                                                    dir_name=sub_dir_name, reduce_dict=True)
-            except tf.errors.OutOfRangeError:
-                break
-            else:
-                print("continue")
-                continue
 
     def test_statistics(self, prefix, initial_pos_vel_known, export_images=False, sub_dir_name="test_statistics", export_latent_data=True):
 
