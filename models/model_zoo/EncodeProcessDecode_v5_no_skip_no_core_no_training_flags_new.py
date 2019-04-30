@@ -237,7 +237,7 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                                                                     activation_final=False,
                                                                     name="mlp_encoder_edge"),
 
-                node_model_fn=lambda: VisualAndLatentEncoder(name="visual_and_latent_node_encoder"),
+                node_model_fn=lambda: VisualAndLatentEncoderSonnet(name="visual_and_latent_node_encoder"),
 
                 global_model_fn=None
             )
@@ -603,6 +603,533 @@ class VisualAndLatentDecoder(snt.AbstractModule):
             print("shape decoded output (visual):", visual_latent_output.get_shape())
             print("shape decoded output (latent):", non_visual_decoded_output.get_shape())
             print("final decoder output shape after including non-visual data", outputs.get_shape())
+
+        return outputs
+
+
+class VisualAndLatentDecoderSonnet(snt.AbstractModule):
+    def __init__(self, name='VisualAndLatentDecoder'):
+        super(VisualAndLatentDecoderSonnet, self).__init__(name=name)
+        self._name = name
+
+    def _build(self, inputs, is_training=False, verbose=VERBOSITY, keep_dropout_prop=0.9):
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_conv_filters * 2]
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_tanh:
+            activation = tf.nn.tanh
+        else:
+            activation = tf.nn.relu
+
+        """ get image data, get everything >except< last n elements which are non-visual (position and velocity) """
+        # image_data = inputs[:, :-EncodeProcessDecode_v5_no_skip_no_core.n_neurons_nodes_non_visual]
+        image_data = inputs
+
+        """ in order to apply 2D convolutions, transform shape (batch_size, features) -> shape (batch_size, 1, 1, features)"""
+        image_data = tf.expand_dims(image_data, axis=1)
+        image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,latent_dim)
+
+        ''' layer 0 (1,1,latent_dim) -> (2,2,filter_sizes[1])'''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=1, padding="VALID")(image_data)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(image_data, filters=filter_sizes[1], kernel_size=2, strides=2, padding='valid',
+        #                                    activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+        l01_shape = outputs.get_shape()
+
+        ''' layer 0_1 (2,2,latent_dim) -> (4,4,filter_sizes[1])'''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=2, padding="VALID")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='valid',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+        l02_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 0_2 (4,4,latent_dim) -> (7,10,filter_sizes[1])'''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=[4,4], stride=[1,2], padding="VALID")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=[4, 4], strides=[1, 2], padding='valid',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l1_shape = outputs.get_shape()
+
+        ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=[3,2], stride=2, padding="VALID")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l2_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 3 (15,20,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='same',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l3_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 5 (15,20,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=2, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+        l5_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 6 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=2, stride=2, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='same',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l6_shape = outputs.get_shape()
+
+        ''' layer 7 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l7_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 8 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[0]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l8_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 9 (30,40,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=3, stride=2, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same',
+        #                                     activation=activation, use_bias=False,
+        #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l9_shape = outputs.get_shape()
+
+        ''' layer 10 (60,80,filter_sizes[0]) -> (60,80,filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l10_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 11 (60,80,filter_sizes[0])  -> (60,80,filter_sizes[0]) '''
+        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
+        #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l11_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 12 (60,80,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
+        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=2, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=2, padding='same', activation=activation,
+        #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l12_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+
+        ''' layer 13 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
+        #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l13_shape = outputs.get_shape()
+
+        # outputs = outputs1 + outputs
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' layer 14 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
+        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
+        #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l14_shape = outputs.get_shape()
+
+        ''' layer 15 (120,160,filter_sizes[0]) -> (120,160,1) '''
+        outputs = snt.Conv2D(output_channels=2, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=2, kernel_size=3, strides=1, padding='same', activation=None, use_bias=False,
+        #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+        l15_shape = outputs.get_shape()
+
+        visual_latent_output = tf.layers.flatten(outputs)
+        visual_latent_output2 = snt.BatchFlatten(outputs)
+        snt.BatchNorm
+
+        if verbose:
+            print("Latent visual data shape", image_data.get_shape())
+            print("Layer01 decoder output shape", l01_shape)
+            print("Layer02 decoder output shape", l02_shape)
+            print("Layer1 decoder output shape", l1_shape)
+            print("Layer2 decoder output shape", l2_shape)
+            print("Layer3 decoder output shape", l3_shape)
+            print("Layer4 decoder output shape", l5_shape)
+            print("Layer5 decoder output shape", l6_shape)
+            print("Layer6 decoder output shape", l7_shape)
+            print("Layer7 decoder output shape", l8_shape)
+            print("Layer8 decoder output shape", l9_shape)
+            print("Layer9 decoder output shape", l10_shape)
+            print("Layer10 decoder output shape", l11_shape)
+            print("Layer11 decoder output shape", l12_shape)
+            print("Layer12 decoder output shape", l13_shape)
+            print("Layer13 decoder output shape", l14_shape)
+            print("Layer14 decoder output shape", l15_shape)
+            print("decoder shape before adding non-visual data", visual_latent_output.get_shape())  # print("shape before skip3 {}".format(l1_shape))  # print("shape after skip3 {}".format(after_skip3))  # print("shape before skip2 {}".format(l11_shape))  # print("shape after skip2 {}".format(after_skip2))  # print("shape before skip1 {}".format(l17_shape))  # print("shape after skip1 {}".format(after_skip1))
+
+
+        n_non_visual_elements = 6
+        """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual:]
+
+        # Transforms the outputs into the appropriate shape.
+        """ map latent position/velocity (nodes) from 32d to original 6d space """
+        n_neurons = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
+        n_layers = 2
+        net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
+        non_visual_decoded_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(n_non_visual_elements)])(non_visual_latent_output)
+
+        """ concatenate 6d space latent data with visual data 
+        (dimensions if segmentation image only: (?, 19200)) """
+        outputs = tf.concat([visual_latent_output, non_visual_decoded_output], axis=1)
+
+        if verbose:
+            print("shape decoded output (visual):", visual_latent_output.get_shape())
+            print("shape decoded output (latent):", non_visual_decoded_output.get_shape())
+            print("final decoder output shape after including non-visual data", outputs.get_shape())
+
+        return outputs
+
+class VisualAndLatentEncoderSonnet(snt.AbstractModule):
+    def __init__(self, name='VisualAndLatentEncoder'):
+        super(VisualAndLatentEncoderSonnet, self).__init__(name=name)
+        self._name = name
+
+    def _build(self, inputs, is_training=False, verbose=VERBOSITY, keep_dropout_prop=0.9):
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_tanh:
+            activation = tf.nn.tanh
+        else:
+            activation = tf.nn.relu
+
+        """ velocity (x,y,z) and position (x,y,z) """
+        n_globals = 9
+        n_non_visual_elements = 6
+
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_conv_filters * 2]
+
+        """ shape: (batch_size, features), get everything except velocity and position """
+        img_data = inputs[:, :-(n_non_visual_elements + n_globals)]
+        img_shape = get_correct_image_shape(config=None, get_type="all",
+                                            depth_data_provided=EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.depth_data_provided)
+        img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
+
+        ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
+        outputs1 = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(img_data)
+        outputs1 = activation(outputs1)
+        #outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
+        #                            kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        #if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+        #    outputs1 = tf.contrib.layers.instance_norm(outputs1)
+
+        l1_shape = outputs1.get_shape()
+
+        ''' Layer2 encoder output shape (?, 120, 160, filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs1)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs1, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
+        #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        #if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+        #    outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l2_shape = outputs.get_shape()
+
+        ''' Layer3 encoder output shape (?, 60, 80, filter_sizes[0]) '''
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_pooling:
+            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        l3_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' Layer4 encoder output shape (?, 60, 80, filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l4_shape = outputs.get_shape()
+
+        ''' Layer5 encoder output shape (?, 60, 80, filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        # --------------- SKIP CONNECTION --------------- #
+        outputs2 = outputs
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l5_shape = outputs.get_shape()
+
+        ''' Layer6 encoder output shape (?, 30, 40, filter_sizes[0]) '''
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_pooling:
+            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        l6_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' Layer7 encoder output shape (?, 30, 40, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l7_shape = outputs.get_shape()
+
+        ''' Layer8 encoder output shape (?, 30, 40, filter_sizes[0]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l8_shape = outputs.get_shape()
+
+        ''' Layer9 encoder output shape (?, 15, 20, filter_sizes[0]) '''
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_pooling:
+            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        l9_shape = outputs.get_shape()
+
+        #if is_training:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
+        #else:
+        #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
+
+        ''' Layer10 encoder output shape (?, 15, 20, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l10_shape = outputs.get_shape()
+
+        ''' Layer11 encoder output shape (?, 15, 20, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+        # --------------- SKIP CONNECTION --------------- #
+        outputs3 = outputs
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l11_shape = outputs.get_shape()
+
+        ''' Layer12 encoder output shape (?, 7, 10, filter_sizes[1]) '''
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_pooling:
+            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        l12_shape = outputs.get_shape()
+
+        ''' Layer13 encoder output shape (?, 4, 5, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=2, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l13_shape = outputs.get_shape()
+
+        ''' Layer14 encoder output shape (?, 2, 3, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=2, padding="SAME")(outputs)
+        outputs = activation(outputs)
+        #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
+        #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
+
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.conv_layer_instance_norm:
+            outputs = tf.contrib.layers.instance_norm(outputs)
+
+        l14_shape = outputs.get_shape()
+
+        ''' Layer15 encoder output shape (?, 1, 1, filter_sizes[1]) '''
+        if EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.convnet_pooling:
+            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        l15_shape = outputs.get_shape()
+
+        if verbose:
+            print("Layer1 encoder output shape", l1_shape)
+            print("Layer2 encoder output shape", l2_shape)
+            print("Layer3 encoder output shape", l3_shape)
+            print("Layer4 encoder output shape", l4_shape)
+            print("Layer5 encoder output shape", l5_shape)
+            print("Layer6 encoder output shape", l6_shape)
+            print("Layer7 encoder output shape", l7_shape)
+            print("Layer8 encoder output shape", l8_shape)
+            print("Layer9 encoder output shape", l9_shape)
+            print("Layer10 encoder output shape", l10_shape)
+            print("Layer11 encoder output shape", l11_shape)
+            print("Layer12 encoder output shape", l12_shape)
+            print("Layer13 encoder output shape", l13_shape)
+            print("Layer14 encoder output shape", l14_shape)
+            print("Layer15 encoder output shape", l15_shape)
+
+        # ' shape (?, 7, 10, filter_sizes[1]) -> (?, n_neurons_nodes_total_dim-n_neurons_nodes_non_visual) '
+        visual_latent_output = tf.layers.flatten(outputs)
+        # visual_latent_output = tf.layers.dense(inputs=visual_latent_output, units=EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_total_dim - EncodeProcessDecode_v4_172_improve_shapes_exp1.n_neurons_nodes_non_visual)
+
+        # --------------- SKIP CONNECTION --------------- #
+        self.skip1 = outputs1
+        self.skip2 = outputs2
+        self.skip3 = outputs3
+
+
+        n_globals = 9
+        n_non_visual_elements = 6
+
+        gripper_input = inputs[:, -n_globals:]  # get x,y,z-gripper position and x,y,z-gripper velocity
+
+        n_neurons = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
+        n_layers = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
+        output_size = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
+        net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
+        """ map velocity and position into a latent space, concatenate with visual latent space vector """
+        gripper_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(output_size)])(gripper_input)
+
+        outputs = tf.concat([visual_latent_output, gripper_latent_output], axis=1)
+
+        if verbose:
+            print("final encoder output shape", outputs.get_shape())
 
         return outputs
 
