@@ -121,15 +121,12 @@ class EncodeProcessDecode_v5_no_skip_no_core_no_training_flags(snt.AbstractModul
         new_input_op = input_op.replace(nodes=tf.concat([input_op.nodes, globals], axis=1))
         latent = self._encoder(new_input_op, is_training)
 
-        skip1 = self._encoder.visual_encoder.skip1
-        skip2 = self._encoder.visual_encoder.skip2
-        skip3 = self._encoder.visual_encoder.skip3
 
         output_ops = []
 
         for step in range(num_processing_steps):
             #latent = self._core(latent)
-            decoded_op = self._decoder(latent, is_training, skip1=skip1, skip2=skip2, skip3=skip3)
+            decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
         return output_ops
 
@@ -230,10 +227,6 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
         self.model_id = model_id
 
         with self._enter_variable_scope():
-            """ we want to re-use the cnn encoder for both nodes and global attributes """
-            self.visual_encoder = get_model_from_config(self.model_id, model_type="visual_encoder")(
-                is_training=False, name="visual_encoder")
-
             """ we use a visual AND latent decoder for the nodes since it is necessary to entangle position / velocity and visual data """
             self._network = modules.GraphIndependent(
                 edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
@@ -245,7 +238,6 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
                                                                     name="mlp_encoder_edge"),
 
                 node_model_fn=lambda: get_model_from_config(self.model_id, model_type="visual_and_latent_encoder")(
-                                                                    self.visual_encoder,
                                                                     name="visual_and_latent_node_encoder"),
 
                 global_model_fn=None
@@ -263,13 +255,6 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
         self.model_id = model_id
 
         with self._enter_variable_scope():
-            self.visual_decoder = get_model_from_config(model_id=self.model_id, model_type="visual_decoder")(
-                is_training=False, name="visual_decoder")
-
-            # --------------- SKIP CONNECTION --------------- #
-            #self.visual_decoder.skip1 = skip1
-            #self.visual_decoder.skip2 = skip2
-            #self.visual_decoder.skip3 = skip3
 
             self._network = modules.GraphIndependent(
                 edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
@@ -282,7 +267,6 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
 
                 node_model_fn=lambda: get_model_from_config(model_id=self.model_id,
                                                             model_type="visual_and_latent_decoder")(
-                                                            self.visual_decoder,
                                                             name="visual_and_latent_node_decoder"),
 
                 global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
@@ -294,7 +278,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                             name="mlp_decoder_global")
             )
 
-    def _build(self, inputs, is_training, skip1, skip2, skip3, verbose=VERBOSITY):
+    def _build(self, inputs, is_training, verbose=VERBOSITY):
         return self._network(inputs)
 
 
@@ -773,14 +757,15 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
 
 
 class VisualAndLatentDecoder(snt.AbstractModule):
-    def __init__(self, visual_dec, name='VisualAndLatentDecoder'):
+    def __init__(self, name='VisualAndLatentDecoder'):
         super(VisualAndLatentDecoder, self).__init__(name=name)
-        self.visual_dec = visual_dec
         self._name = name
 
     def _build(self, inputs, is_training=True, verbose=VERBOSITY):
+        visual_decoder = get_model_from_config(model_id="cnn2d", model_type="visual_decoder")(is_training=False,
+            name="visual_decoder")
 
-        visual_decoded_output = self.visual_dec(inputs, name=self._name)
+        visual_decoded_output = visual_decoder(inputs, name=self._name)
 
         n_non_visual_elements = 6
         """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
@@ -810,15 +795,16 @@ class VisualAndLatentDecoder(snt.AbstractModule):
 
 
 class VisualAndLatentEncoder(snt.AbstractModule):
-    def __init__(self, visual_enc, name='VisualAndLatentEncoder'):
+    def __init__(self, name='VisualAndLatentEncoder'):
         super(VisualAndLatentEncoder, self).__init__(name=name)
-        self._visual_enc = visual_enc
         self._name = name
 
     def _build(self, inputs, verbose=VERBOSITY):
 
         # visual_enc filters 9+6 elements away so it only gets visual input
-        visual_latent_output = self._visual_enc(inputs, name=self._name)
+        """ we want to re-use the cnn encoder for both nodes and global attributes """
+        visual_encoder = get_model_from_config("cnn2d", model_type="visual_encoder")(is_training=False, name="visual_encoder")
+        visual_latent_output = visual_encoder(inputs, name=self._name)
 
         n_globals = 9
         n_non_visual_elements = 6
