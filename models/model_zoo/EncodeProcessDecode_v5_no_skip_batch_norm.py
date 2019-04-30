@@ -330,7 +330,7 @@ class MLPGraphNetwork(snt.AbstractModule):
 class Decoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, is_training, name='decoder_convnet2d'):
         super(Decoder5LayerConvNet2D, self).__init__(name=name)
-        self.is_training = is_training
+        self._is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
         filter_sizes = [EncodeProcessDecode_v5_no_skip_batch_norm.n_conv_filters, EncodeProcessDecode_v5_no_skip_batch_norm.n_conv_filters * 2]
@@ -353,7 +353,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         l01_shape = outputs.get_shape()
 
         ''' layer 0_1 (2,2,latent_dim) -> (4,4,filter_sizes[1])'''
@@ -362,10 +362,10 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         l02_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -376,7 +376,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l1_shape = outputs.get_shape()
 
@@ -385,7 +385,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l2_shape = outputs.get_shape()
 
@@ -402,7 +402,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #outputs = outputsl2 + outputs
         #after_skip3 = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -411,11 +411,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l3_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -424,10 +424,10 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         l5_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -436,7 +436,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=2, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l6_shape = outputs.get_shape()
 
@@ -444,11 +444,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l7_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -457,11 +457,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l8_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -470,7 +470,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[0], kernel_size=3, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l9_shape = outputs.get_shape()
 
@@ -478,11 +478,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l10_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -491,7 +491,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l11_shape = outputs.get_shape()
 
@@ -509,7 +509,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         #outputs = outputsl13 + outputs
         #after_skip2 = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -518,11 +518,11 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l12_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -537,13 +537,13 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l13_shape = outputs.get_shape()
 
         #outputs = outputs1 + outputs
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -552,7 +552,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l14_shape = outputs.get_shape()
 
@@ -596,7 +596,7 @@ class Decoder5LayerConvNet2D(snt.AbstractModule):
 class Encoder5LayerConvNet2D(snt.AbstractModule):
     def __init__(self, is_training, name="encoder_convnet2d"):
         super(Encoder5LayerConvNet2D, self).__init__(name=name)
-        self.is_training = is_training
+        self._is_training = is_training
 
     def _build(self, inputs, name, verbose=VERBOSITY, keep_dropout_prop=0.9):
 
@@ -619,7 +619,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs1 = tf.contrib.layers.batch_norm(outputs1)
+            outputs1 = snt.BatchNorm()(outputs1, is_training=self._is_training)
 
         l1_shape = outputs1.get_shape()
 
@@ -627,7 +627,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs1, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l2_shape = outputs.get_shape()
 
@@ -636,7 +636,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -645,7 +645,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l4_shape = outputs.get_shape()
 
@@ -656,7 +656,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs2 = outputs
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l5_shape = outputs.get_shape()
 
@@ -665,7 +665,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -674,7 +674,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l7_shape = outputs.get_shape()
 
@@ -682,7 +682,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l8_shape = outputs.get_shape()
 
@@ -691,7 +691,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
-        if self.is_training:
+        if self._is_training:
             outputs = tf.nn.dropout(outputs, keep_prob=keep_dropout_prop)
         else:
             outputs = tf.nn.dropout(outputs, keep_prob=1.0)
@@ -700,7 +700,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l10_shape = outputs.get_shape()
 
@@ -710,7 +710,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs3 = outputs
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l11_shape = outputs.get_shape()
 
@@ -723,7 +723,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l13_shape = outputs.get_shape()
 
@@ -731,7 +731,7 @@ class Encoder5LayerConvNet2D(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation, use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
         if EncodeProcessDecode_v5_no_skip_batch_norm.conv_layer_instance_norm:
-            outputs = tf.contrib.layers.batch_norm(outputs)
+            outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l14_shape = outputs.get_shape()
 

@@ -869,7 +869,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
 
         ''' layer 15 (120,160,filter_sizes[0]) -> (120,160,2) '''
         outputs = snt.Conv2D(output_channels=2, kernel_shape=3, stride=1, padding="SAME")(outputs)
-        outputs = activation(outputs)
+        #outputs = activation(outputs)
         #outputs = tf.layers.conv2d(outputs, filters=2, kernel_size=3, strides=1, padding='same', activation=None, use_bias=False,
         #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
         l15_shape = outputs.get_shape()
