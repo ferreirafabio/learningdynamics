@@ -36,7 +36,7 @@ import sonnet as snt
 import tensorflow as tf
 
 
-VERBOSITY = False
+VERBOSITY = True
 
 class EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new(snt.AbstractModule, BaseModel):
     """
@@ -264,7 +264,7 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
                                                             activation_final=False,
                                                             name="mlp_decoder_edge"),
 
-                node_model_fn=lambda: VisualAndLatentDecoder(name="visual_and_latent_node_decoder"),
+                node_model_fn=lambda: VisualAndLatentDecoderSonnet(name="visual_and_latent_node_decoder"),
 
                 global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
                                                             n_neurons=EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_globals,
@@ -641,7 +641,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         l01_shape = outputs.get_shape()
 
         ''' layer 0_1 (2,2,latent_dim) -> (4,4,filter_sizes[1])'''
-        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=2, padding="VALID")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=2, strides=2, padding='valid',
         #                                     activation=activation, use_bias=False,
@@ -657,7 +657,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 0_2 (4,4,latent_dim) -> (7,10,filter_sizes[1])'''
-        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=[4,4], stride=[1,2], padding="VALID")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[7, 10], kernel_shape=4, stride=[1, 2], padding="VALID")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=[4, 4], strides=[1, 2], padding='valid',
         #                                     activation=activation, use_bias=False,
@@ -669,7 +669,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         l1_shape = outputs.get_shape()
 
         ''' layer 2 (7,10,filter_sizes[1]) -> (15,20,filter_sizes[1]) '''
-        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=[3,2], stride=2, padding="VALID")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[15, 20], kernel_shape=[3, 2], stride=2, padding="VALID")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=(3, 2), strides=2, padding='valid',
         #                                     activation=activation, use_bias=False,
@@ -860,9 +860,9 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
         l15_shape = outputs.get_shape()
 
-        visual_latent_output = tf.layers.flatten(outputs)
-        visual_latent_output2 = snt.BatchFlatten(outputs)
-        snt.BatchNorm
+        #visual_latent_output = tf.layers.flatten(outputs)
+        visual_latent_output = snt.BatchFlatten()(outputs)
+
 
         if verbose:
             print("Latent visual data shape", image_data.get_shape())
