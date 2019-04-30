@@ -801,9 +801,10 @@ class VisualAndLatentEncoder(snt.AbstractModule):
 
         n_neurons = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
         n_layers = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
+        output_size = EncodeProcessDecode_v5_no_skip_no_core_no_training_flags_new.n_neurons_nodes_non_visual
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
-        gripper_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(self.output_size)])(gripper_input)
+        gripper_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(output_size)])(gripper_input)
 
         outputs = tf.concat([visual_latent_output, gripper_latent_output], axis=1)
 
