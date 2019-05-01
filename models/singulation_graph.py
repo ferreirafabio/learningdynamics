@@ -5,6 +5,8 @@ import scipy.constants as constants
 from utils.utils import make_all_runnable_in_session
 from itertools import product
 from graph_nets import utils_tf, utils_np
+from utils.utils import chunks
+import random
 
 
 def generate_singulation_graph(config, n_manipulable_objects, omit_edges=True):
@@ -52,7 +54,7 @@ def generate_singulation_graph(config, n_manipulable_objects, omit_edges=True):
     return graph_nx
 
 
-def graph_to_input_and_targets_single_experiment(config, graph, features, initial_pos_vel_known):
+def graph_to_input_and_targets_single_experiment(config, graph, features, initial_pos_vel_known, return_only_unpadded=False):
     """Returns 2 graphs with input and target feature vectors for training.
 
     Args:
@@ -251,6 +253,13 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                 feat[:] = 0
                 graph.add_edge(sender, receiver, features=feat)
 
+    if return_only_unpadded:
+        input_graphs = [graph for graph in input_graphs if graph.graph['features'][0] == 0]
+        target_graphs = [graph for graph in target_graphs if graph.graph['features'][0] == 0]
+
+    """ check if the gripper pos+vel in the input graph are values from the next time step """
+    assert (input_graphs[0].graph['features'] == target_graphs[0].graph['features']).all()
+
     return input_graphs, target_graphs
 
 
@@ -289,35 +298,77 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
     plt.show()
 
 
-def create_graph_batch(config, graph, batch_data, initial_pos_vel_known):
+def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True):
     input_graph_lst, target_graph_lst = [], []
-    final_input_graphs, final_output_graphs = [], []
     for data in batch_data:
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known)
-        input_graph_lst.append(input_graphs)
-        target_graph_lst.append(target_graphs)
-        # todo: concatenate graphs
-        # https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.operators.binary.compose.html
+        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=True)
+        input_graph_lst.append((input_graphs, data['experiment_id']))
+        target_graph_lst.append((target_graphs, data['experiment_id']))
+
+    "flatten lists"
+    input_graph_lst = [(lst, tpl_e2) for tpl_e1, tpl_e2 in input_graph_lst for lst in tpl_e1]
+    target_graph_lst = [(lst, tpl_e2) for tpl_e1, tpl_e2 in target_graph_lst for lst in tpl_e1]
+
+    "shuffle lists"
+    shuffled_list = list(zip(input_graph_lst, target_graph_lst))
+
+    random.shuffle(shuffled_list)
+    if ensure_no_exp_id_in_same_batch:
+        """ ensure that no batch has input/output graph with the same experiment id """
+        lst = []
+        sublist = []
+        while True:
+            smpl = random.choice(shuffled_list)
+            if smpl is None or len(lst) > 1:
+                break
+            ids_in_list = [elements[0][1] for elements in sublist]
+            if smpl[0][1] not in ids_in_list:
+                sublist.append(smpl)
+                shuffled_list.remove(smpl)
+            if len(sublist) == config.train_batch_size:
+                lst.append(sublist)
+                sublist = []
+
+        input_batches = []
+        target_batches = []
+        for batch in lst:
+            input_batch = []
+            target_batch = []
+            for sublist in batch:
+                input_batch.append(sublist[0][0])
+                target_batch.append(sublist[1][0])
+
+            input_batches.append(input_batch)
+            target_batches.append(target_batch)
+
+        return input_batches, target_batches
+    else:
+        input_graph_lst, target_graph_lst = zip(*shuffled_list)
+
+        input_graph_lst = list(input_graph_lst)
+        target_graph_lst = list(target_graph_lst)
+
+        input_graph_lst = list(chunks(input_graph_lst, config.train_batch_size))
+        target_graph_lst = list(chunks(target_graph_lst, config.train_batch_size))
+
+        return input_graph_lst, target_graph_lst
 
 
-    return final_input_graphs, final_output_graphs
-
-
-def create_singulation_graphs(config, batch_data, train_batch_size, initial_pos_vel_known):
-
-    if not config.batch_processing:
+def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True):
+    if not batch_processing:
         n_manipulable_objects = batch_data['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
         input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known)
     else:
-        raise NotImplementedError
-        #input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known)
+        n_manipulable_objects = batch_data[0]['n_manipulable_objects']
+        graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
+        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known)
 
     return input_graphs, target_graphs
 
 
-def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, batch_size, initial_pos_vel_known=initial_pos_vel_known)
+def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True):
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
@@ -325,25 +376,26 @@ def create_graphs(config, batch_data, batch_size, initial_pos_vel_known):
     return input_graphs, target_graphs
 
 
-def create_placeholders(config, batch_data, init=True):
+def create_placeholders(config, batch_data, batch_processing=True):
     """ if gripper_as_global = False, this function will still return 3 values (input_ph, target_ph, input_ctrl_ph) but the last will
     (input_ctrl_ph) will be None, caller needs to check this """
-    if config.batch_processing:
-        input_graphs, target_graphs = create_singulation_graphs(config, batch_data, train_batch_size=config.train_batch_size, initial_pos_vel_known=config.initial_pos_vel_known)
-    else:
-        input_graphs, target_graphs = create_singulation_graphs(config, batch_data, train_batch_size=1, initial_pos_vel_known=config.initial_pos_vel_known)
-
     if config.remove_edges:
         edge_shape_hint = [0]
     else:
         edge_shape_hint = None
 
-    if init:
-        input_ph = utils_tf.placeholders_from_networkxs([input_graphs[0]], force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
-        target_ph = utils_tf.placeholders_from_networkxs([target_graphs[0]], force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=config.initial_pos_vel_known, batch_processing=batch_processing)
+
+    if batch_processing:
+        """ in this case we get a list of chunk lists (each representing a full batch)"""
+        input_graphs = input_graphs[0]
+        target_graphs = target_graphs[0]
     else:
-        input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
-        target_ph = utils_tf.placeholders_from_networkxs(target_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
+        input_graphs = [input_graphs[0]]
+        target_graphs = [target_graphs[0]]
+
+    input_ph = utils_tf.placeholders_from_networkxs(input_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
+    target_ph = utils_tf.placeholders_from_networkxs(target_graphs, force_dynamic_num_graphs=True, edge_shape_hint=edge_shape_hint)
 
     if config.remove_edges:
         print("=== WARNING: graph has no edges! ===")
@@ -353,7 +405,7 @@ def create_placeholders(config, batch_data, init=True):
     return input_ph, target_ph
 
 
-def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs, config):
+def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs, config, batch_processing=True):
     if config.remove_edges:
         edge_shape_hint_inp = [0 for _ in range(len(input_graphs))]
         edge_shape_hint_targ = [0 for _ in range(len(target_graphs))]
@@ -361,8 +413,15 @@ def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs, config):
         edge_shape_hint_inp = None
         edge_shape_hint_targ = None
 
-    input_tuple = utils_np.networkxs_to_graphs_tuple([input_graphs], edge_shape_hint=edge_shape_hint_inp)
-    target_tuple = utils_np.networkxs_to_graphs_tuple([target_graphs], edge_shape_hint=edge_shape_hint_targ)
+    if batch_processing:
+        input_graphs = input_graphs
+        target_graphs = target_graphs
+    else:
+        input_graphs = [input_graphs]
+        target_graphs = [target_graphs]
+
+    input_tuple = utils_np.networkxs_to_graphs_tuple(input_graphs, edge_shape_hint=edge_shape_hint_inp)
+    target_tuple = utils_np.networkxs_to_graphs_tuple(target_graphs, edge_shape_hint=edge_shape_hint_targ)
 
     if config.remove_edges:
         print("=== WARNING: graph has no edges! ===")
