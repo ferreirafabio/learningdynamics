@@ -797,7 +797,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 11 (60,80,filter_sizes[0])  -> (60,80,filter_sizes[0]) '''
-        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
@@ -814,7 +814,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 12 (60,80,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=2, padding="SAME")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=128, kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=2, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
@@ -832,7 +832,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
 
 
         ''' layer 13 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
         #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
@@ -851,7 +851,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 14 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs)
+        outputs = snt.Conv2DTranspose(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
@@ -943,7 +943,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
-        outputs1 = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(img_data)
+        outputs1 = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(img_data)
         outputs1 = activation(outputs1)
         #outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
         #                            kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
@@ -955,7 +955,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         l1_shape = outputs1.get_shape()
 
         ''' Layer2 encoder output shape (?, 120, 160, filter_sizes[0]) '''
-        outputs = snt.Conv2D(output_channels=64, kernel_shape=3, stride=1, padding="SAME")(outputs1)
+        outputs = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs1)
         outputs = activation(outputs)
         #outputs = tf.layers.conv2d(outputs1, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
         #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
