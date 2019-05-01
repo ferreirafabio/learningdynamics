@@ -472,7 +472,7 @@ class SingulationTrainer(BaseTrain):
         export_latent_data = True
         process_all_nn_outputs = True
 
-        thresholds_to_test = [0.3, 0.4, 0.5]
+        thresholds_to_test = [0.4]
 
         for thresh in thresholds_to_test:
             sub_dir_name = "test_3_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
@@ -509,8 +509,8 @@ class SingulationTrainer(BaseTrain):
                     for i in range(len(features)):
                         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                             batch_data=features[i],
-                                                                            batch_size=1,
-                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                            batch_processing=False
                                                                             )
                         output_i = []
 
@@ -519,7 +519,8 @@ class SingulationTrainer(BaseTrain):
                                                                                                            target_graphs_all_exp[j],
                                                                                                            features[i],
                                                                                                            sigmoid_threshold=thresh,
-                                                                                                           train=False
+                                                                                                           train=False,
+                                                                                                           batch_processing=False
                                                                                                            )
                             output = output[0]
                             if total_loss is not None:
