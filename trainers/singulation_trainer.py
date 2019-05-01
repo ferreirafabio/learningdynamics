@@ -20,26 +20,43 @@ class SingulationTrainer(BaseTrain):
     def train_epoch(self):
         prefix = self.config.exp_name
         print("rollout steps set to {}".format(self.config.n_rollouts))
-
+        n_batches_trained_since_last_test = 0
+        n_batches_trained_since_last_save = 0
         while True:
             try:
-                _, _, _, _, _, cur_batch_it = self.train_batch(prefix)
-                if cur_batch_it % self.config.model_save_step_interval == 1:
-                    self.model.save(self.sess)
-                if cur_batch_it % self.config.test_interval == 1:
-                    print("Executing test batch")
-                    self.test_batch(prefix, export_images=self.config.export_test_images,
-                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                    sub_dir_name="tests_during_training")
+                if self.config.batch_processing:
+                    cur_batch_it, n_batches_trained_since_last_test, n_batches_trained_since_last_save = \
+                        self.train_multiple_batches(prefix, n_batches_trained_since_last_test, n_batches_trained_since_last_save)
+
+                    if n_batches_trained_since_last_test > self.config.test_interval:
+                        n_batches_trained_since_last_test = 0
+                        print("Executing test batch")
+                        self.test_batch(prefix, export_images=self.config.export_test_images,
+                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                        sub_dir_name="tests_during_training")
+
+                    if n_batches_trained_since_last_save > self.config.model_save_step_interval:
+                        n_batches_trained_since_last_save = 0
+                        self.model.save(self.sess)
+
+                else:
+                    cur_batch_it = self.train_batch(prefix)
+                    if cur_batch_it % self.config.model_save_step_interval == 1:
+                        self.model.save(self.sess)
+                    if cur_batch_it % self.config.test_interval == 1:
+                        print("Executing test batch")
+                        self.test_batch(prefix, export_images=self.config.export_test_images,
+                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                        sub_dir_name="tests_during_training")
 
             except tf.errors.OutOfRangeError:
                 break
 
-    def do_step(self, input_graph, target_graphs, feature, train=True, sigmoid_threshold=0.4):
+    def do_step(self, input_graph, target_graphs, feature, train=True, sigmoid_threshold=0.4, batch_processing=True):
 
         if train:
             self.model.input_ph, self.model.target_ph, feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph,
-                                         input_graph, target_graphs, self.config)
+                                         input_graph, target_graphs, self.config, batch_processing=batch_processing)
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
@@ -55,7 +72,7 @@ class SingulationTrainer(BaseTrain):
 
         else:
             self.model.input_ph_test, self.model.target_ph_test, feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test,
-                                         input_graph, target_graphs, self.config)
+                                         input_graph, target_graphs, self.config, batch_processing=batch_processing)
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
@@ -220,12 +237,15 @@ class SingulationTrainer(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
+
         for i in range(self.config.train_batch_size):
             input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                         batch_data=features[i],
-                                                                        batch_size=1,
-                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                        batch_processing=False
                                                                         )
+
+
             for j in range(features[i]["unpadded_experiment_length"]-1):
                 total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
@@ -255,9 +275,11 @@ class SingulationTrainer(BaseTrain):
             pos_batch_loss = np.mean(losses_position)
             dis_batch_loss = np.mean(losses_distance)
 
-            print('batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | edge loss: {:<8.6f} time(s): {:<10.2f} '
-                .format(cur_batch_it, batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, elapsed_since_last_log)
-            )
+            print(
+                'batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | edge loss: {:<8.6f} time(s): {:<10.2f} '
+                .format(cur_batch_it, batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss,
+                        dis_batch_loss, elapsed_since_last_log)
+                )
             summaries_dict = {prefix + '_total_loss': batch_loss,
                               prefix + '_img_loss': img_batch_loss,
                               prefix + '_iou_loss': iou_batch_loss,
@@ -266,10 +288,51 @@ class SingulationTrainer(BaseTrain):
                               prefix + '_distance_loss': dis_batch_loss
                               }
             self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
-        else:
-            batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, iou_batch_loss = 0, 0, 0, 0, 0, 0
 
-        return batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, iou_batch_loss, cur_batch_it
+        return cur_batch_it
+
+    def train_multiple_batches(self, prefix, n_batches_trained, n_batches_trained_since_last_save):
+        features = self.sess.run(self.next_element_train)
+
+        features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
+
+        input_graphs_batches, target_graphs_batches = create_graphs(config=self.config,
+                                                                    batch_data=features,
+                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                    batch_processing=True
+                                                                    )
+
+        if len(input_graphs_batches[-1]) != self.config.train_batch_size:
+            input_graphs_batches = input_graphs_batches[:-1]
+            target_graphs_batches = target_graphs_batches[:-1]
+
+        for input_batch, target_batch in zip(input_graphs_batches, target_graphs_batches):
+            start_time = time.time()
+            last_log_time = start_time
+
+            total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_batch, target_batch, features, train=True, batch_processing=True)
+
+            self.sess.run(self.model.increment_cur_batch_tensor)
+            cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+            the_time = time.time()
+            elapsed_since_last_log = the_time - last_log_time
+
+            print(
+                'batch: {:<8} total loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss: {:<8.6f} | edge loss: {:<8.6f} time(s): {:<10.2f} '
+                    .format(cur_batch_it, total_loss, loss_img, loss_iou, loss_velocity, loss_position,
+                            loss_distance, elapsed_since_last_log)
+            )
+            summaries_dict = {prefix + '_total_loss': total_loss,
+                              prefix + '_img_loss': loss_img,
+                              prefix + '_iou_loss': loss_iou,
+                              prefix + '_velocity_loss': loss_velocity,
+                              prefix + '_position_loss': loss_position,
+                              prefix + '_distance_loss': loss_distance
+                              }
+            self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
+
+        return cur_batch_it, n_batches_trained + len(input_graphs_batches), n_batches_trained_since_last_save + len(input_graphs_batches)
 
     def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
                    export_latent_data=True, output_results=True):
@@ -294,8 +357,8 @@ class SingulationTrainer(BaseTrain):
         for i in range(self.config.test_batch_size):
             input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                         batch_data=features[i],
-                                                                        batch_size=1,
-                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known
+                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                        batch_processing=False
                                                                         )
             output_i = []
 
@@ -303,7 +366,8 @@ class SingulationTrainer(BaseTrain):
                 total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
-                                                                                                       train=False
+                                                                                                       train=False,
+                                                                                                       batch_processing=False
                                                                                                        )
                 output = output[0]
                 if total_loss is not None:

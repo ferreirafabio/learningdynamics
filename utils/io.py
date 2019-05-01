@@ -50,7 +50,7 @@ def get_all_experiment_file_paths_from_dir(source_path, file_type=".npz", order=
     return [list(file_paths[i].values()) for i in file_paths.keys()]
 
 
-def load_all_experiments_from_dir(data_list, use_with=True):
+def load_all_experiments_from_dir(data_list, single_object_files=False, obj_ids=None):
     """
     Returns a dict of dicts containing the available attribute information about an experiment, e.g.
     all_experiments
@@ -71,12 +71,16 @@ def load_all_experiments_from_dir(data_list, use_with=True):
      """
     all_experiments = {}
     for i, batch_element in enumerate(data_list):
-        experiment = load_data_from_list_of_paths(batch_element, use_with=use_with)
+        if single_object_files:
+            experiment = load_data_from_list_of_paths_single_object_files(batch_element, obj_ids)
+        else:
+            experiment = load_data_from_list_of_paths(batch_element)
+
         all_experiments[i] = experiment
     return all_experiments
 
 
-def load_data_from_list_of_paths(batch_element, use_with=True):
+def load_data_from_list_of_paths(batch_element):
     """
     loads all the data from a single experiment which is represented by a list of paths
     Args:
@@ -89,17 +93,39 @@ def load_data_from_list_of_paths(batch_element, use_with=True):
     for j, trajectory in enumerate(batch_element):
         trajectory_step_data = {}
         for traj in trajectory:
-            if use_with:
-                with np.load(traj) as fhandle:
-                    key = list(fhandle.keys())[0]
-                    data = fhandle[key]
-                    # save some space:
-                    if key in ['img', 'seg']:
-                        data = data.astype(np.uint8)
-                    trajectory_step_data[key] = data
-                    trajectory_step_data['experiment_id'] = get_dir_name(traj)
-                experiment[j] = trajectory_step_data
-            else:
+            with np.load(traj) as fhandle:
+                key = list(fhandle.keys())[0]
+                data = fhandle[key]
+                # save some space:
+                if key in ['img', 'seg']:
+                    data = data.astype(np.uint8)
+                trajectory_step_data[key] = data
+                trajectory_step_data['experiment_id'] = get_dir_name(traj)
+            experiment[j] = trajectory_step_data
+
+            trajectory_step_data[key] = data
+            trajectory_step_data['experiment_id'] = get_dir_name(traj)
+        experiment[j] = trajectory_step_data
+    return experiment
+
+
+def load_data_from_list_of_paths_single_object_files(batch_element, obj_ids):
+    """
+    loads all the data from a single experiment which is represented by a list of paths
+    Args:
+        batch_element: a list of lists while every list contains a path as a string (can be relative or absolute)
+        get_path: a boolean flag indicating whether the path given as input should also be contained in the returned sub-dicts
+    Returns:
+        A dictionary containing sub-dictionaries while every sub-dict contains the loaded data as ndarray
+    """
+    experiment = {}
+
+    for j, trajectory in enumerate(batch_element):
+        obj_id_dct = {}
+        for obj_id in obj_ids:
+            trajectory_step_data = {}
+            trajectory_obj = [obj_traj for obj_traj in trajectory if obj_id in obj_traj]
+            for traj in trajectory_obj:
                 data = np.load(traj)
                 # only for segmentation implemented
                 if data.dtype == np.bool:
@@ -108,8 +134,13 @@ def load_data_from_list_of_paths(batch_element, use_with=True):
                     key = 'seg'
                 trajectory_step_data[key] = data
                 trajectory_step_data['experiment_id'] = get_dir_name(traj)
-            experiment[j] = trajectory_step_data
+            obj_id_dct[obj_id] = trajectory_step_data
+        experiment[j] = obj_id_dct
     return experiment
+
+def get_object_id(path):
+    """ assumes paths of type .../0_3gt.npy to extract the 3 """
+    return str.split(os.path.basename(path), "_")[1][0]
 
 
 def get_dir_name(path):

@@ -58,7 +58,10 @@ class BaseTrain:
         features = self.sess.run(next_element)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
-        input_ph, target_ph = create_placeholders(self.config, features[0])
+        if self.config.batch_processing:
+            input_ph, target_ph = create_placeholders(self.config, features, batch_processing=True)
+        else:
+            input_ph, target_ph = create_placeholders(self.config, features[0], batch_processing=False)
 
         self.model.input_ph = input_ph
         self.model.target_ph = target_ph
@@ -84,7 +87,7 @@ class BaseTrain:
         features = self.sess.run(next_element)
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-        input_ph, target_ph = create_placeholders(self.config, features[0])
+        input_ph, target_ph = create_placeholders(self.config, features[0], batch_processing=False)
 
         self.model.input_ph_test = input_ph
         self.model.target_ph_test = target_ph
