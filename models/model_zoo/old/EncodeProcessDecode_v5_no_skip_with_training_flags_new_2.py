@@ -38,7 +38,7 @@ import tensorflow as tf
 
 VERBOSITY = True
 
-class EncodeProcessDecode_v5_no_skip_with_training_flags_new(snt.AbstractModule, BaseModel):
+class EncodeProcessDecode_v5_no_skip_with_training_flags_new_2(snt.AbstractModule, BaseModel):
     """
     Full encode-process-decode model.
 
@@ -63,27 +63,27 @@ class EncodeProcessDecode_v5_no_skip_with_training_flags_new(snt.AbstractModule,
     """
     def __init__(self, config, name="EncodeProcessDecode"):
 
-        super(EncodeProcessDecode_v5_no_skip_with_training_flags_new, self).__init__(name=name)
+        super(EncodeProcessDecode_v5_no_skip_with_training_flags_new_2, self).__init__(name=name)
 
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling = config.convnet_pooling
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_tanh = config.convnet_tanh
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.depth_data_provided = config.depth_data_provided
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters = config.n_conv_filters
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.model_id = config.model_type
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.latent_state_noise = config.latent_state_noise
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling = config.convnet_pooling
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_tanh = config.convnet_tanh
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.depth_data_provided = config.depth_data_provided
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters = config.n_conv_filters
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.model_id = config.model_type
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.latent_state_noise = config.latent_state_noise
 
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.edge_output_size = config.edge_output_size
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.node_output_size = config.node_output_size
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.global_output_size = config.global_output_size
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.edge_output_size = config.edge_output_size
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.node_output_size = config.node_output_size
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.global_output_size = config.global_output_size
 
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_globals = config.n_layers_globals
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_nodes = config.n_layers_nodes
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_edges = config.n_layers_edges
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_edges = config.n_neurons_edges
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes = config.n_neurons_nodes
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_globals = config.n_neurons_globals
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
-        EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm = config.conv_layer_instance_norm
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_globals = config.n_layers_globals
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_nodes = config.n_layers_nodes
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes = config.n_neurons_nodes
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_globals = config.n_neurons_globals
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
+        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm = config.conv_layer_instance_norm
 
         self.config = config
         # init the global step
@@ -206,8 +206,8 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
                 edge_model_fn=None,
                 node_model_fn=None,
                 global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_globals,
+                                                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_globals,
                                                                                         output_size=None,
                                                                                         activation_final=False,
                                                                                         typ="mlp_layer_norm",
@@ -228,8 +228,8 @@ class CNNMLPEncoderGraphIndependent(snt.AbstractModule):
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_edges,
-                                                                n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_edges,
+                                                                n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_edges,
+                                                                n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_edges,
                                                                 output_size=None,
                                                                 typ="mlp_layer_norm",
                                                                 activation_final=False,
@@ -251,9 +251,9 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
     def _build(self, inputs, is_training, verbose=VERBOSITY):
         self._network = modules.GraphIndependent(
             edge_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_edges,
-                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_edges,
-                                                        output_size=EncodeProcessDecode_v5_no_skip_with_training_flags_new.edge_output_size,
+                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_edges,
+                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_edges,
+                                                        output_size=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.edge_output_size,
                                                         typ="mlp_transform",
                                                         activation_final=False,
                                                         name="mlp_decoder_edge"),
@@ -261,9 +261,9 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
             node_model_fn=lambda: VisualAndLatentDecoderSonnet(name="visual_and_latent_node_decoder", is_training=is_training),
 
             global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_globals,
-                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_globals,
-                                                        output_size=EncodeProcessDecode_v5_no_skip_with_training_flags_new.global_output_size,
+                                                        n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_globals,
+                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_globals,
+                                                        output_size=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.global_output_size,
                                                         typ="mlp_transform",
                                                         activation_final=False,
                                                         name="mlp_decoder_global")
@@ -279,20 +279,20 @@ class MLPGraphNetwork(snt.AbstractModule):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
           self._network = modules.GraphNetwork(
-              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_edges,
-                                                                                      n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_edges,
+              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_edges,
+                                                                                      n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_edges,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes,
-                                                                                      n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_nodes,
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes,
+                                                                                      n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_nodes,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       activation_final=False,
                                                                                       name="mlp_core_node"),
 
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_layers_globals,
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_layers_globals,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_core_global")
@@ -326,10 +326,10 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         self._name = name
 
     def _build(self, inputs, is_training=False, verbose=VERBOSITY, keep_dropout_prop=0.9):
-        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters,
-                        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters * 2]
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_tanh:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -347,7 +347,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
         l01_shape = outputs.get_shape()
 
@@ -356,7 +356,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
         l02_shape = outputs.get_shape()
 
@@ -370,7 +370,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l1_shape = outputs.get_shape()
@@ -380,7 +380,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l2_shape = outputs.get_shape()
@@ -408,7 +408,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l3_shape = outputs.get_shape()
@@ -423,7 +423,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
         l5_shape = outputs.get_shape()
 
@@ -437,7 +437,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l6_shape = outputs.get_shape()
@@ -446,7 +446,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l7_shape = outputs.get_shape()
@@ -461,7 +461,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l8_shape = outputs.get_shape()
@@ -476,7 +476,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
                                              activation=activation, use_bias=False,
                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l9_shape = outputs.get_shape()
@@ -485,7 +485,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l10_shape = outputs.get_shape()
@@ -499,7 +499,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
                                              use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l11_shape = outputs.get_shape()
@@ -513,7 +513,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=2, padding='same', activation=activation,
                                              use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l12_shape = outputs.get_shape()
@@ -528,7 +528,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
                                    kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l13_shape = outputs.get_shape()
@@ -544,7 +544,7 @@ class VisualAndLatentDecoder(snt.AbstractModule):
         outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
                                              use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l14_shape = outputs.get_shape()
@@ -579,11 +579,11 @@ class VisualAndLatentDecoder(snt.AbstractModule):
 
         n_non_visual_elements = 6
         """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
-        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual:]
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual:]
 
         # Transforms the outputs into the appropriate shape.
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
         n_layers = 2
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         non_visual_decoded_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(n_non_visual_elements)])(non_visual_latent_output)
@@ -607,10 +607,10 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         self._is_training = is_training
 
     def _build(self, inputs, verbose=VERBOSITY, keep_dropout_prop=0.9):
-        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters,
-                        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters * 2]
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_tanh:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -630,7 +630,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                    activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
         l01_shape = outputs.get_shape()
@@ -642,7 +642,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
         l02_shape = outputs.get_shape()
@@ -653,13 +653,14 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #    outputs = tf.nn.dropout(outputs, keep_prob=1.0)
 
         ''' layer 0_2 (4,4,latent_dim) -> (7,10,filter_sizes[1])'''
-        outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[7, 10], kernel_shape=4, stride=[1, 2], padding="VALID")(outputs)
-        outputs = activation(outputs)
+        outputs = tf.image.resize_bilinear(outputs, [7, 10], align_corners=True)
+        #outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[7, 10], kernel_shape=4, stride=[1, 2], padding="VALID")(outputs)
+        #outputs = activation(outputs)
         #outputs = tf.layers.conv2d_transpose(outputs, filters=filter_sizes[1], kernel_size=[4, 4], strides=[1, 2], padding='valid',
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -672,7 +673,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -690,7 +691,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -708,7 +709,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
         l5_shape = outputs.get_shape()
@@ -725,7 +726,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -737,7 +738,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -755,7 +756,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -773,7 +774,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #                                     activation=activation, use_bias=False,
         #                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -785,7 +786,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -802,7 +803,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -819,7 +820,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=2, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -837,7 +838,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
         #                           kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -856,7 +857,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d_transpose(outputs, filters=64, kernel_size=3, strides=1, padding='same', activation=activation,
         #                                     use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -896,11 +897,11 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
 
         n_non_visual_elements = 6
         """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
-        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual:]
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual:]
 
         # Transforms the outputs into the appropriate shape.
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
         n_layers = 2
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         non_visual_decoded_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(n_non_visual_elements)])(non_visual_latent_output)
@@ -924,7 +925,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
 
     def _build(self, inputs, verbose=VERBOSITY, keep_dropout_prop=0.9):
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_tanh:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -933,13 +934,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         n_globals = 9
         n_non_visual_elements = 6
 
-        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters,
-                        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
         img_data = inputs[:, :-(n_non_visual_elements + n_globals)]
         img_shape = get_correct_image_shape(config=None, get_type="all",
-                                            depth_data_provided=EncodeProcessDecode_v5_no_skip_with_training_flags_new.depth_data_provided)
+                                            depth_data_provided=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
@@ -948,7 +949,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
         #                            kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs1 = snt.BatchNorm()(outputs1, is_training=self._is_training)
             #outputs1 = tf.contrib.layers.instance_norm(outputs1)
 
@@ -966,7 +967,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         l2_shape = outputs.get_shape()
 
         ''' Layer3 encoder output shape (?, 60, 80, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -981,7 +982,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -996,14 +997,14 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs2 = outputs
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
         l5_shape = outputs.get_shape()
 
         ''' Layer6 encoder output shape (?, 30, 40, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
@@ -1018,7 +1019,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -1030,14 +1031,14 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
         l8_shape = outputs.get_shape()
 
         ''' Layer9 encoder output shape (?, 15, 20, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
@@ -1052,7 +1053,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -1066,14 +1067,14 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs3 = outputs
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
         l11_shape = outputs.get_shape()
 
         ''' Layer12 encoder output shape (?, 7, 10, filter_sizes[1]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l12_shape = outputs.get_shape()
 
@@ -1083,7 +1084,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
@@ -1095,15 +1096,16 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         #outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
         #                           use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
             #outputs = tf.contrib.layers.instance_norm(outputs)
 
         l14_shape = outputs.get_shape()
 
         ''' Layer15 encoder output shape (?, 1, 1, filter_sizes[1]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
-            outputs = tf.layers.max_pooling2d(outputs, 2, 2)
+        ''' Layer14 encoder output shape (?, 2, 3, filter_sizes[1]) '''
+        outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=2, stride=2, padding="VALID")(outputs)
+        outputs = activation(outputs)
         l15_shape = outputs.get_shape()
 
         if verbose:
@@ -1138,9 +1140,9 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
 
         gripper_input = inputs[:, -n_globals:]  # get x,y,z-gripper position and x,y,z-gripper velocity
 
-        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
-        n_layers = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
-        output_size = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
+        n_layers = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
+        output_size = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         gripper_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(output_size)])(gripper_input)
@@ -1160,7 +1162,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
 
     def _build(self, inputs, is_training=False, verbose=VERBOSITY, keep_dropout_prop=0.9):
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_tanh:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -1169,20 +1171,20 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         n_globals = 9
         n_non_visual_elements = 6
 
-        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters,
-                        EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters,
+                        EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
         img_data = inputs[:, :-(n_non_visual_elements + n_globals)]
         img_shape = get_correct_image_shape(config=None, get_type="all",
-                                            depth_data_provided=EncodeProcessDecode_v5_no_skip_with_training_flags_new.depth_data_provided)
+                                            depth_data_provided=EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
         outputs1 = tf.layers.conv2d(img_data, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs1 = tf.contrib.layers.instance_norm(outputs1)
 
         l1_shape = outputs1.get_shape()
@@ -1191,13 +1193,13 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs1, filters=64, kernel_size=3, strides=1, padding='same', activation=activation, use_bias=False,
                                    kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l2_shape = outputs.get_shape()
 
         ''' Layer3 encoder output shape (?, 60, 80, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -1210,7 +1212,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l4_shape = outputs.get_shape()
@@ -1222,13 +1224,13 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs2 = outputs
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l5_shape = outputs.get_shape()
 
         ''' Layer6 encoder output shape (?, 30, 40, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
@@ -1241,7 +1243,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l7_shape = outputs.get_shape()
@@ -1250,13 +1252,13 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[0], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l8_shape = outputs.get_shape()
 
         ''' Layer9 encoder output shape (?, 15, 20, filter_sizes[0]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
@@ -1269,7 +1271,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=1, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l10_shape = outputs.get_shape()
@@ -1280,13 +1282,13 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs3 = outputs
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l11_shape = outputs.get_shape()
 
         ''' Layer12 encoder output shape (?, 7, 10, filter_sizes[1]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l12_shape = outputs.get_shape()
 
@@ -1294,7 +1296,7 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l13_shape = outputs.get_shape()
@@ -1303,13 +1305,13 @@ class VisualAndLatentEncoder(snt.AbstractModule):
         outputs = tf.layers.conv2d(outputs, filters=filter_sizes[1], kernel_size=3, strides=2, padding='same', activation=activation,
                                    use_bias=False, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=1e-05))
 
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.conv_layer_instance_norm:
             outputs = tf.contrib.layers.instance_norm(outputs)
 
         l14_shape = outputs.get_shape()
 
         ''' Layer15 encoder output shape (?, 1, 1, filter_sizes[1]) '''
-        if EncodeProcessDecode_v5_no_skip_with_training_flags_new.convnet_pooling:
+        if EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l15_shape = outputs.get_shape()
 
@@ -1345,9 +1347,9 @@ class VisualAndLatentEncoder(snt.AbstractModule):
 
         gripper_input = inputs[:, -n_globals:]  # get x,y,z-gripper position and x,y,z-gripper velocity
 
-        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
-        n_layers = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
-        output_size = EncodeProcessDecode_v5_no_skip_with_training_flags_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
+        n_layers = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
+        output_size = EncodeProcessDecode_v5_no_skip_with_training_flags_new_2.n_neurons_nodes_non_visual
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         gripper_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(output_size)])(gripper_input)

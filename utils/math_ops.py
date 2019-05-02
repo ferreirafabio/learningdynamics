@@ -8,6 +8,35 @@ X_MAX = 0.856
 Y_MAX = 0.256
 Z_MAX = -0.0307
 
+def peak_signal_to_noise_ratio(true, pred, color_depth=None):
+    """Image quality metric based on maximal signal power vs. power of the noise.
+    Args:
+    true: the ground truth image.
+    pred: the predicted image.
+    Returns:
+    peak signal to noise ratio (PSNR)
+    """
+    assert color_depth is not None, "please specify color depth"
+
+    mse = mean_squared_error(true, pred)
+    if mse == 0 or mse is None:
+        psnr = float('inf')
+    else:
+        psnr = 10.0 * np.log(np.square(color_depth) / mse)
+
+    return psnr
+
+
+def mean_squared_error(y, y_pred):
+    return np.mean((y.flatten() - y_pred.flatten()) ** 2)
+
+
+def iou_metric(true, pred):
+    intersection = np.logical_and(true, pred)
+    union = np.logical_or(true, pred)
+    iou_score = np.sum(intersection) / np.sum(union)
+    return iou_score
+
 
 def sigmoid(x):
   return 1 / (1 + np.exp(-x))

@@ -250,7 +250,8 @@ class SingulationTrainer(BaseTrain):
                 total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
-                                                                                                       train=True
+                                                                                                       train=True,
+                                                                                                       batch_processing=False
                                                                                                        )
 
                 if total_loss is not None:
