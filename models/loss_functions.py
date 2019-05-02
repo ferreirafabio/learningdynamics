@@ -2,6 +2,15 @@ import tensorflow as tf
 from utils.utils import get_correct_image_shape
 
 
+
+def create_loss_ops_new(config, gt_label_tf, out_image_tf):
+    loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
+                                                                         logits=out_image_tf))
+
+    return loss
+
+
+
 def create_loss_ops(config, target_op, output_ops):
     """ ground truth nodes are given by tensor target_op of shape (n_nodes*experience_length, node_output_size) but output_ops
     is a list of graph tuples with shape (n_nodes, node_output_size) --> split at the first dimension in order to compute node-wise MSE error

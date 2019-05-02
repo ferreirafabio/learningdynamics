@@ -14,13 +14,12 @@ class DataGenerator:
         """
         self.old_tfrecords = config.old_tfrecords
         self.config = config
-        self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
+        #self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
         self.depth_data_provided = config.depth_data_provided
         path = self.config.tfrecords_dir
         train_batch_size = self.config.train_batch_size
         test_batch_size = self.config.test_batch_size
         use_compression = self.config.use_tfrecord_compression
-        self.use_object_seg_data_only_for_init = self.config.use_object_seg_data_only_for_init
 
         if train:
             filenames = gfile.Glob(os.path.join(path, "train*"))
@@ -58,16 +57,16 @@ class DataGenerator:
                         'n_manipulable_objects': ()
         }
 
-        if not self.use_object_seg_data_only_for_init:
-            if self.depth_data_provided:
-                padded_shapes['object_segments'] = (None, None, 120, 160, 7)
-            else:
-                padded_shapes['object_segments'] = (None, None, 120, 160, 4)
+        #if not self.use_object_seg_data_only_for_init:
+        if self.depth_data_provided:
+            padded_shapes['object_segments'] = (None, None, 120, 160, 7)
         else:
-            if self.depth_data_provided:
-                padded_shapes['object_segments'] = (None, 120, 160, 7)
-            else:
-                padded_shapes['object_segments'] = (None, 120, 160, 4)
+            padded_shapes['object_segments'] = (None, None, 120, 160, 4)
+        #else:
+        #    if self.depth_data_provided:
+        #        padded_shapes['object_segments'] = (None, 120, 160, 7)
+        #    else:
+        #        padded_shapes['object_segments'] = (None, 120, 160, 4)
 
         if self.depth_data_provided:
             padded_shapes['depth'] = (None, 120, 160, 3)
@@ -117,15 +116,15 @@ class DataGenerator:
             depth = tf.decode_raw(sequence['depth'], out_type=tf.float32)
             depth = tf.reshape(depth, tf.stack([experiment_length, 120, 160, 3]))
 
-            if not self.use_object_seg_data_only_for_init:
-                shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 7])
-            else:
-                shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 7])
+            #if not self.use_object_seg_data_only_for_init:
+            shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 7])
+            #else:
+            #    shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 7])
         else:
-            if not self.use_object_seg_data_only_for_init:
-                shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 4])
-            else:
-                shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 4])
+            #if not self.use_object_seg_data_only_for_init:
+            shape_if_depth_provided = tf.stack([experiment_length, n_total_objects, 120, 160, 4])
+            #else:
+            #    shape_if_depth_provided = tf.stack([n_total_objects, 120, 160, 4])
 
         gripperpos = tf.decode_raw(sequence['gripperpos'], out_type=tf.float64)
         gripperpos = tf.reshape(gripperpos, tf.stack([experiment_length, 3]))

@@ -23,8 +23,8 @@ import tensorflow as tf
 import sys
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TOP_ROOT_DIR = os.path.join(BASE_DIR,'../../../')
-SLIM_DIR = os.path.join(TOP_ROOT_DIR,'models/research/slim')
+TOP_ROOT_DIR = os.path.join(BASE_DIR,'../')
+SLIM_DIR = os.path.join(TOP_ROOT_DIR,'models/slim')
 print("slim_dir",SLIM_DIR)
 sys.path.append(SLIM_DIR)
 

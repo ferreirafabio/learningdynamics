@@ -2,7 +2,7 @@ import tensorflow as tf
 from models.singulation_graph import create_placeholders
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
-from models.loss_functions import create_loss_ops
+from models.loss_functions import create_loss_ops, create_loss_ops_new
 
 
 class BaseTrain:
@@ -13,10 +13,13 @@ class BaseTrain:
         self.sess = sess
         self.train_data = train_data
         self.test_data = test_data
+        #if not only_test:
+            #self.initialize_train_model()
+            #self.initialize_train_model_new()
 
-        if not only_test:
-            self.initialize_train_model()
-        self.initialize_test_model()
+        #self.initialize_test_model()
+
+        self.initialize_model()
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         self.sess.run(self.init)
@@ -52,6 +55,19 @@ class BaseTrain:
         - return any metrics you need to summarize
         """
         raise NotImplementedError
+
+    def initialize_model(self):
+        self.in_image_tf = tf.placeholder(tf.float32, [None, 120, 160, 3], 'in_image')
+        self.in_segxyz_tf = tf.placeholder(tf.float32, [None, 120, 160, 4], 'in_xyzseg')
+
+        self.gt_label_tf = tf.placeholder(tf.float32, [None, 120, 160], 'out_image')
+        self.in_control_tf = tf.placeholder(tf.float32, [None, 3], 'in_control')
+
+        self.out_image_tf = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=True)
+        self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
+        self.model.loss_op = create_loss_ops_new(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
+        self.model.train_op = self.model.optimizer.minimize(self.model.loss_op, global_step=self.model.global_step_tensor)
+
 
     def initialize_train_model(self):
         next_element = self.train_data.get_next_batch()
