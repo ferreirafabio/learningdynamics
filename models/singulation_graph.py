@@ -298,12 +298,22 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
     plt.show()
 
 
-def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True):
+def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True, shuffle=True):
     input_graph_lst, target_graph_lst = [], []
     for data in batch_data:
         input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=True)
         input_graph_lst.append((input_graphs, data['experiment_id']))
         target_graph_lst.append((target_graphs, data['experiment_id']))
+
+    if not shuffle:
+        input_graph_lst = list(input_graph_lst)
+        target_graph_lst = list(target_graph_lst)
+
+        input_graph_lst = list(chunks(input_graph_lst, config.train_batch_size))
+        target_graph_lst = list(chunks(target_graph_lst, config.train_batch_size))
+
+        return input_graph_lst, target_graph_lst
+
 
     "flatten lists"
     input_graph_lst = [(lst, tpl_e2) for tpl_e1, tpl_e2 in input_graph_lst for lst in tpl_e1]
@@ -319,7 +329,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_
         sublist = []
         while True:
             smpl = random.choice(shuffled_list)
-            if smpl is None or len(lst) > 1:
+            if smpl is None or len(lst) > 0:
                 break
             ids_in_list = [elements[0][1] for elements in sublist]
             if smpl[0][1] not in ids_in_list:
@@ -354,7 +364,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_
         return input_graph_lst, target_graph_lst
 
 
-def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True):
+def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True):
     if not batch_processing:
         n_manipulable_objects = batch_data['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
@@ -362,13 +372,13 @@ def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_p
     else:
         n_manipulable_objects = batch_data[0]['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
-        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known)
+        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True, shuffle=shuffle)
 
     return input_graphs, target_graphs
 
 
-def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True):
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing)
+def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True):
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing, shuffle=shuffle)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
@@ -440,7 +450,7 @@ def create_feed_dict(input_ph, target_ph, input_graphs, target_graphs, config, b
 
 
 def _sanity_check_pos_vel(input_graphs):
-    """ assertts whether position and velocity are zero """
+    """ asserts whether position and velocity are zero """
     """ sanity checking one of the graphs """
     for _, node_feature in input_graphs[1].nodes(data=True):
         assert not np.any(node_feature['features'][-6:])
@@ -449,4 +459,55 @@ def _sanity_check_pos_vel(input_graphs):
         assert not np.any(edge_feature['features'][-3:])
 
 
+def graphs_to_images(config, input_graphs_batch, target_graphs_batch):
+    number_of_nodes = input_graphs_batch[0][0].number_of_nodes()
+    node_ids = np.arange(start=1, stop=number_of_nodes+1)
+
+    in_image = []
+    gt_label = []
+    in_segxyz = []
+    in_control = []
+
+    for graph in input_graphs_batch[0]:
+        for i, node_feature in graph.nodes(data=True):
+            in_control.append(graph.graph['features'][3:6:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
+
+            node_feature = node_feature['features'][:-6]
+            node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+            seg_of_node_i = node_feature_reshaped[:,:,3]
+
+            """ we keep full rgb and depth, if masked, multiply by seg """
+            xyz = node_feature_reshaped[:, :, -3:]
+            seg = np.expand_dims(seg_of_node_i, axis=-1)
+            seg_xyz = np.concatenate([seg, xyz], axis=-1)
+
+            rgb = node_feature_reshaped[:, :, :3]
+            in_image.append(rgb)
+            in_segxyz.append(seg_xyz)
+
+    for graph in target_graphs_batch[0]:
+        for i, node_feature in graph.nodes(data=True):
+            node_feature = node_feature['features'][:-6]
+            node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+            seg_of_node_i = node_feature_reshaped[:, :, 3]
+
+            gt_label.append(seg_of_node_i)
+
+    #import matplotlib
+    #matplotlib.use("TkAgg")
+
+    #import matplotlib.pyplot as plt
+
+    #plt.figure("input")
+    #plt.imshow(in_segxyz[12][:, :, 0])
+
+    #plt.figure("target")
+    #plt.imshow(gt_label[12])
+
+    #plt.figure("in_image")
+    #plt.imshow(in_image[12])
+    #plt.show()
+
+
+    return np.array(in_segxyz), np.array(in_image), np.array(in_control), np.array(gt_label)
 

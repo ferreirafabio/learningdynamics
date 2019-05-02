@@ -1,5 +1,6 @@
 import tensorflow as tf
 from data_loader.data_generator import DataGenerator
+from trainers.singulation_trainer_new import SingulationTrainerNew
 from trainers.singulation_trainer import SingulationTrainer
 from utils.config import process_config
 from utils.dirs import create_dirs
@@ -66,6 +67,7 @@ def main():
         else:
             print("-- using unnormalized data as input --")
 
+
         model_class = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
 
     except Exception as e:
@@ -95,7 +97,8 @@ def main():
         only_test = True
 
     # create trainer and pass all the previous components to it
-    trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
+    #trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
+    trainer = SingulationTrainerNew(sess, model, train_data, test_data, config, logger, only_test=False)
 
     # load model if exists
     model.load(sess)
