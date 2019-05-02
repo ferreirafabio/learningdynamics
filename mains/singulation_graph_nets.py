@@ -102,6 +102,7 @@ def main():
 
     # load model if exists
     model.load(sess)
+    model.load_resnet(sess)
 
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")
@@ -115,9 +116,6 @@ def main():
     elif config.mode == "test_5_objects":
         print("--- Running 5 object test mode ---")
         trainer.test_5_objects()
-    elif config.mode == "compute_losses_over_test_set":
-        print("--- Running computation of mean loss over full test set ---")
-        trainer.compute_losses_over_test_set()
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
         trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,
