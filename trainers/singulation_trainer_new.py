@@ -7,7 +7,7 @@ from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_results
 from utils.io import create_dir
 from utils.math_ops import sigmoid
-from models.singulation_graph import create_graphs, graphs_to_images
+from models.singulation_graph import create_graphs, networkx_graphs_to_images
 from joblib import parallel_backend, Parallel, delayed
 from eval.compute_test_run_statistics import compute_psnr
 
@@ -45,7 +45,7 @@ class SingulationTrainerNew(BaseTrain):
                                                                     batch_processing=True
                                                                     )
 
-        in_segxyz, in_image, in_control, gt_label = graphs_to_images(self.config, input_graphs_batch, target_graphs_batch)
+        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch)
 
         start_time = time.time()
         last_log_time = start_time
@@ -170,12 +170,13 @@ class SingulationTrainerNew(BaseTrain):
             input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                         batch_data=features[i],
                                                                         initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                        batch_processing=False
+                                                                        batch_processing=False,
+                                                                        return_only_unpadded=True
                                                                         )
             input_graphs_all_exp = [input_graphs_all_exp]
             target_graphs_all_exp = [target_graphs_all_exp]
 
-            in_segxyz, in_image, in_control, gt_label = graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp)
+            in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp)
 
             loss_img, out_label = self.sess.run([self.model.loss_op, self.out_label_tf],
                                                    feed_dict={self.in_segxyz_tf: in_segxyz,
@@ -219,7 +220,7 @@ class SingulationTrainerNew(BaseTrain):
                           prefix + '_edge_loss': edge_batch_loss
                           }
 
-
+        # todo: check number of objects
         #if outputs_total and output_results:
         #    for output in outputs_total:
         #        summaries_dict_images, summaries_pos_dict_images, _ = generate_results(output=output,

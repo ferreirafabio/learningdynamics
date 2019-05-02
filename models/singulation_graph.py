@@ -298,17 +298,20 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
     plt.show()
 
 
-def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True, shuffle=True):
+def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True):
     input_graph_lst, target_graph_lst = [], []
     for data in batch_data:
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=True)
-        input_graph_lst.append((input_graphs, data['experiment_id']))
-        target_graph_lst.append((target_graphs, data['experiment_id']))
+        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
+        if not shuffle:
+            input_graph_lst.append(input_graphs)
+            target_graph_lst.append(target_graphs)
+        else:
+            input_graph_lst.append((input_graphs, data['experiment_id']))
+            target_graph_lst.append((target_graphs, data['experiment_id']))
 
     if not shuffle:
         input_graph_lst = list(input_graph_lst)
         target_graph_lst = list(target_graph_lst)
-
         input_graph_lst = list(chunks(input_graph_lst, config.train_batch_size))
         target_graph_lst = list(chunks(target_graph_lst, config.train_batch_size))
 
@@ -323,62 +326,53 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_
     shuffled_list = list(zip(input_graph_lst, target_graph_lst))
 
     random.shuffle(shuffled_list)
-    if ensure_no_exp_id_in_same_batch:
-        """ ensure that no batch has input/output graph with the same experiment id """
-        lst = []
-        sublist = []
-        while True:
-            smpl = random.choice(shuffled_list)
-            if smpl is None or len(lst) > 0:
-                break
-            ids_in_list = [elements[0][1] for elements in sublist]
-            if smpl[0][1] not in ids_in_list:
-                sublist.append(smpl)
-                shuffled_list.remove(smpl)
-            if len(sublist) == config.train_batch_size:
-                lst.append(sublist)
-                sublist = []
 
-        input_batches = []
-        target_batches = []
-        for batch in lst:
-            input_batch = []
-            target_batch = []
-            for sublist in batch:
-                input_batch.append(sublist[0][0])
-                target_batch.append(sublist[1][0])
+    """ ensure that no batch has input/output graph with the same experiment id """
+    lst = []
+    sublist = []
+    while True:
+        smpl = random.choice(shuffled_list)
+        if smpl is None or len(lst) > 0:
+            break
+        ids_in_list = [elements[0][1] for elements in sublist]
+        if smpl[0][1] not in ids_in_list:
+            sublist.append(smpl)
+            shuffled_list.remove(smpl)
+        if len(sublist) == config.train_batch_size:
+            lst.append(sublist)
+            sublist = []
 
-            input_batches.append(input_batch)
-            target_batches.append(target_batch)
+    input_batches = []
+    target_batches = []
+    for batch in lst:
+        input_batch = []
+        target_batch = []
+        for sublist in batch:
+            input_batch.append(sublist[0][0])
+            target_batch.append(sublist[1][0])
 
-        return input_batches, target_batches
-    else:
-        input_graph_lst, target_graph_lst = zip(*shuffled_list)
+        input_batches.append(input_batch)
+        target_batches.append(target_batch)
 
-        input_graph_lst = list(input_graph_lst)
-        target_graph_lst = list(target_graph_lst)
-
-        input_graph_lst = list(chunks(input_graph_lst, config.train_batch_size))
-        target_graph_lst = list(chunks(target_graph_lst, config.train_batch_size))
-
-        return input_graph_lst, target_graph_lst
+    return input_batches, target_batches
 
 
-def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True):
+
+def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True):
     if not batch_processing:
         n_manipulable_objects = batch_data['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known)
+        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
     else:
         n_manipulable_objects = batch_data[0]['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects, config.remove_edges)
-        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known, ensure_no_exp_id_in_same_batch=True, shuffle=shuffle)
+        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=shuffle, return_only_unpadded=return_only_unpadded)
 
     return input_graphs, target_graphs
 
 
-def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True):
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing, shuffle=shuffle)
+def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True):
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing, shuffle=shuffle,return_only_unpadded=True)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
@@ -459,10 +453,7 @@ def _sanity_check_pos_vel(input_graphs):
         assert not np.any(edge_feature['features'][-3:])
 
 
-def graphs_to_images(config, input_graphs_batch, target_graphs_batch):
-    number_of_nodes = input_graphs_batch[0][0].number_of_nodes()
-    node_ids = np.arange(start=1, stop=number_of_nodes+1)
-
+def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch):
     in_image = []
     gt_label = []
     in_segxyz = []
@@ -508,6 +499,12 @@ def graphs_to_images(config, input_graphs_batch, target_graphs_batch):
     #plt.imshow(in_image[12])
     #plt.show()
 
+    in_segxyz = np.array(in_segxyz)
+    in_image = np.array(in_image)
+    in_control = np.array(in_control)
+    #print("converting gt_label to bool array")
+    gt_label = np.array(gt_label, dtype=np.bool)
 
-    return np.array(in_segxyz), np.array(in_image), np.array(in_control), np.array(gt_label)
+
+    return in_segxyz, in_image, in_control, gt_label
 

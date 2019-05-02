@@ -3,6 +3,7 @@ import tensorflow as tf
 import tflearn
 import sys
 import os
+from utils.utils import get_var_list_to_restore_by_name
 from base.base_model import BaseModel
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -205,3 +206,9 @@ class Model_naive_xyz_net(BaseModel):
 
         self.pos_vel_loss_ops_test = None
         self.pos_vel_loss_ops_train = None
+
+    def load_resnet(self, sess):
+        tf_initial_checkpoint_v2 = "../models/pretrained_nets/resnet_v2_50/resnet_v2_50.ckpt"
+        variables_to_restore_v2 = get_var_list_to_restore_by_name('resnet_v2_50')
+        restorer_v2 = tf.train.Saver(variables_to_restore_v2)
+        restorer_v2.restore(sess, tf_initial_checkpoint_v2)
