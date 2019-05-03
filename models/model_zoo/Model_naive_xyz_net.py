@@ -25,7 +25,6 @@ class Model_naive_xyz_net(BaseModel):
         # init the batch counter
         self.init_batch_step()
 
-        self.init_ops()
         self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
 
     def cnn(self, in_segxyz):
@@ -197,15 +196,6 @@ class Model_naive_xyz_net(BaseModel):
     def init_saver(self):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_checkpoints_to_keep)
 
-    def init_ops(self):
-        self.loss_op_train = None
-        self.loss_op_test = None
-
-        self.loss_ops_train = None
-        self.loss_ops_test = None
-
-        self.pos_vel_loss_ops_test = None
-        self.pos_vel_loss_ops_train = None
 
     def load_resnet(self, sess):
         tf_initial_checkpoint_v2 = "../models/pretrained_nets/resnet_v2_50/resnet_v2_50.ckpt"

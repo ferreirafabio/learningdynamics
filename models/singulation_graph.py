@@ -503,7 +503,8 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch):
     in_image = np.array(in_image)
     in_control = np.array(in_control)
     #print("converting gt_label to bool array")
-    gt_label = np.array(gt_label, dtype=np.bool)
+    #gt_label = np.array(gt_label, dtype=np.bool)
+    gt_label = np.array(gt_label)
 
 
     return in_segxyz, in_image, in_control, gt_label

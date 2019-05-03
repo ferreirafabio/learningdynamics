@@ -31,5 +31,6 @@
   "global_output_size": 9,
   "data_offset_manipulable_objects": 2,
   "n_rollouts": 15,
-  "use_object_seg_data_only_for_init": false
+  "use_object_seg_data_only_for_init": false,
+  "use_lins_gn_net": true
 }

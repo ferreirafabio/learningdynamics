@@ -7,7 +7,7 @@
   "data_offset_manipulable_objects": 2,
   "dataset_prefetch_size": 80,
   "depth_data_provided": true,
-  "edge_output_size": 9,
+  "edge_output_size": 19200,
   "exp_name": "singulation19_latent256_3_objects_no_skip",
   "export_test_images": true,
   "global_output_size": 9,
@@ -23,7 +23,7 @@
   "n_layers_nodes": 3,
   "n_layers_edges": 3,
   "n_neurons_nodes": 256,
-  "n_neurons_edges": 64,
+  "n_neurons_edges": 128,
   "n_neurons_globals": 32,
   "n_neurons_nodes_non_visual": 64,
   "n_rollouts": 15,
@@ -43,5 +43,7 @@
   "model_zoo_file": "EncodeProcessDecode_v6_no_skip",
   "do_multi_step_prediction": false,
   "batch_processing": true,
-  "nodes_get_full_rgb_depth": true
+  "nodes_get_full_rgb_depth": true,
+  "edges_carry_segmentation_data": true,
+  "use_lins_gn_net": false
 }

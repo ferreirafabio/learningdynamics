@@ -58,7 +58,8 @@ class SingulationTrainerNew(BaseTrain):
 
 
         _, loss_img, out_label = self.sess.run([self.model.train_op, self.model.loss_op, self.out_label_tf], feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
-                                                                                                                          self.gt_label_tf: gt_label, self.in_control_tf: in_control})
+                                                                                                                        self.gt_label_tf: gt_label, self.in_control_tf: in_control,
+                                                                                                                        self.is_training: True})
         loss_velocity = np.array(0.0)
         loss_position = np.array(0.0)
         loss_edge = np.array(0.0)
@@ -187,7 +188,8 @@ class SingulationTrainerNew(BaseTrain):
                                                    feed_dict={self.in_segxyz_tf: in_segxyz,
                                                               self.in_image_tf: in_image,
                                                               self.gt_label_tf: gt_label,
-                                                              self.in_control_tf: in_control})
+                                                              self.in_control_tf: in_control,
+                                                              self.is_training: False})
             loss_velocity = np.array(0.0)
             loss_position = np.array(0.0)
             loss_edge = np.array(0.0)

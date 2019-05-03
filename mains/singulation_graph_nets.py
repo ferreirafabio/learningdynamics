@@ -57,10 +57,20 @@ def main():
         else:
             print("convolution layers are not normalized")
 
+        if not hasattr(config, 'use_lins_gn_net'):
+            config.use_lins_gn_net = False
+        else:
+            print("Using DeepMinds GN framework")
+
         if not hasattr(config, 'nodes_get_full_rgb_depth'):
             config.nodes_get_full_rgb_depth = False
         else:
             print("Each node in the graph receives full RGB and depth data")
+
+        if not hasattr(config, 'edges_carry_segmentation_data'):
+           config.edges_carry_segmentation_data = False
+        else:
+            print("Nodes carry position_t, position_t-1 and velocity (9 dim)")
 
         if config.normalize_data:
             print("-- using normalized data as input --")
@@ -97,13 +107,16 @@ def main():
         only_test = True
 
     # create trainer and pass all the previous components to it
-    #trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
-    trainer = SingulationTrainerNew(sess, model, train_data, test_data, config, logger, only_test=False)
+    if config.use_lins_gn_net:
+        trainer = SingulationTrainerNew(sess, model, train_data, test_data, config, logger, only_test=False)
+    else:
+        trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
 
     # load model if exists
-    model.load(sess)
-    #print("resnet weight loading deactivated")
-    model.load_resnet(sess)
+    model.load(trainer.sess)
+    if config.use_lins_gn_net:
+        model.load_resnet(trainer.sess)
+        print("ResNet weights loaded")
 
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")
