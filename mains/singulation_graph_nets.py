@@ -102,6 +102,7 @@ def main():
 
     # load model if exists
     model.load(sess)
+    #print("resnet weight loading deactivated")
     model.load_resnet(sess)
 
     if config.mode == "train_test":

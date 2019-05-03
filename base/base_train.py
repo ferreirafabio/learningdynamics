@@ -14,8 +14,7 @@ class BaseTrain:
         self.train_data = train_data
         self.test_data = test_data
         #if not only_test:
-            #self.initialize_train_model()
-            #self.initialize_train_model_new()
+        #    self.initialize_train_model()
 
         #self.initialize_test_model()
 

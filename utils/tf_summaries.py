@@ -194,6 +194,53 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
 
     return df, df_normalized
 
+def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_it, dir_name, reduce_dict=True, output_selection=['seg', 'rgb', 'depth']):
+    out_label, in_segxyz, in_image, in_control, features_index = output
+    unpad_exp_length = features[features_index]['unpadded_experiment_length']
+    n_objects = features[features_index]['n_manipulable_objects']
+
+    #images_rgb = np.split(in_image, n_objects)
+    #in_segxyz = np.split(in_segxyz, n_objects)
+    #images_depth = [obj[:, :, :, -3:] for obj in in_segxyz]
+    images_depth = []  # not predicted
+    images_rgb = []  # not predicted
+    images_seg = np.split(out_label, n_objects)
+    images_seg = [np.expand_dims(obj, 3) for obj in images_seg]
+
+    predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
+        images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,
+        config=config)
+
+    target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
+    target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config)
+
+    summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
+                             **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
+                             **target_summaries_dict_global_img, **target_summaries_dict_global_seg, **target_summaries_dict_global_depth}
+
+    dir_path = check_exp_folder_exists_and_create(features, features_index, prefix, dir_name, cur_batch_it)
+
+    if 'global_img' not in output_selection:
+        output_selection.append('global_img')
+
+    if reduce_dict:
+        summaries_dict_images = {summary_key: summaries_dict_images[summary_key] for summary_key in
+                                 summaries_dict_images.keys() for k in output_selection if k in summary_key}
+
+
+    if dir_path:  # skip if directory exists
+        export_summary_images(config=config, summaries_dict_images=summaries_dict_images, dir_path=dir_path,
+                              overlay_images=True, unpad_exp_length=unpad_exp_length)
+
+    keys = ["seg"]  # will only yield segmentation images
+    if reduce_dict:
+        summaries_dict_images = {summary_key: summaries_dict_images[summary_key] for summary_key in summaries_dict_images.keys() for k in keys if k in summary_key}
+
+
+    return summaries_dict_images
+
+
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name,
                      reduce_dict=True, overlay_images=True, output_selection=['seg', 'rgb', 'depth'], return_latent_df_only=False):

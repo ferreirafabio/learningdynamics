@@ -475,8 +475,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         # outputs = outputs1 + outputs
 
         ''' layer 14 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
-        outputs = snt.Conv2DTranspose(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
-        outputs = activation(outputs)
+        outputs = snt.Conv2D(output_channels=2, kernel_shape=3, stride=1, padding="SAME")(outputs)
 
         if EncodeProcessDecode_v6_no_skip.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
@@ -538,14 +537,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
             activation = tf.nn.relu
 
         """ velocity (x,y,z) and position (x,y,z) """
-        n_globals = 9
         n_non_visual_elements = 6
 
         filter_sizes = [EncodeProcessDecode_v6_no_skip.n_conv_filters,
                         EncodeProcessDecode_v6_no_skip.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
-        img_data = inputs[:, :-(n_non_visual_elements + n_globals)]
+        img_data = inputs[:, :-n_non_visual_elements]
         img_shape = get_correct_image_shape(config=None, get_type="all",
                                             depth_data_provided=EncodeProcessDecode_v6_no_skip.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
