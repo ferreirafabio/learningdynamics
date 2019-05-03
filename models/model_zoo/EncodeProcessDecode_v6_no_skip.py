@@ -537,13 +537,16 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
             activation = tf.nn.relu
 
         """ velocity (x,y,z) and position (x,y,z) """
+
         n_non_visual_elements = 6
 
         filter_sizes = [EncodeProcessDecode_v6_no_skip.n_conv_filters,
                         EncodeProcessDecode_v6_no_skip.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
+
         img_data = inputs[:, :-n_non_visual_elements]
+
         img_shape = get_correct_image_shape(config=None, get_type="all",
                                             depth_data_provided=EncodeProcessDecode_v6_no_skip.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension

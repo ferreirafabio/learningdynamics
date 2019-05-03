@@ -194,6 +194,7 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
 
     return df, df_normalized
 
+
 def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_it, dir_name, reduce_dict=True, output_selection=['seg', 'rgb', 'depth']):
     out_label, in_segxyz, in_image, in_control, features_index = output
     unpad_exp_length = features[features_index]['unpadded_experiment_length']
@@ -239,7 +240,6 @@ def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_
 
 
     return summaries_dict_images
-
 
 
 def generate_results(output, config, prefix, features, cur_batch_it, export_images, export_latent_data, dir_name,
