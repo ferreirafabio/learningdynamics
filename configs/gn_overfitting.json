@@ -1,6 +1,6 @@
 {
-  "exp_name": "gn1_3_object_dataset",
-  "learning_rate": 0.001,
+  "exp_name": "gn1_10sample_overfitting",
+  "learning_rate": 0.0001,
   "max_checkpoints_to_keep": 30,
   "model_save_step_interval": 1000,
   "n_conv_filters": 256,
@@ -16,7 +16,7 @@
   "do_multi_step_prediction": false,
   "test_batch_size": 5,
   "test_interval": 50,
-  "tfrecords_dir": "/scr2/fabiof/data/tfrecords_3_objects_15_rollouts_padded",
+  "tfrecords_dir": "/scr2/fabiof/data/tfrecords_overfit_dataset_10_samples_3_objects_15_rollouts_padded",
   "train_batch_size": 30,
   "use_tfrecord_compression": true,
   "mode": "train_test",
