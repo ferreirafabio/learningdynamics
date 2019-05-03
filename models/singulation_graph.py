@@ -372,7 +372,7 @@ def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_p
 
 
 def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True):
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing, shuffle=shuffle,return_only_unpadded=True)
+    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=initial_pos_vel_known, batch_processing=batch_processing, shuffle=shuffle, return_only_unpadded=return_only_unpadded)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)

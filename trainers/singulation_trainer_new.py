@@ -39,12 +39,15 @@ class SingulationTrainerNew(BaseTrain):
     def train_batch(self, prefix):
         features = self.sess.run(self.next_element_train)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
+        print("shuffle deactivated")
         input_graphs_batch, target_graphs_batch = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                    batch_processing=True
+                                                                    batch_processing=True,
+                                                                    shuffle=False
                                                                     )
-
+        input_graphs_batch = input_graphs_batch[0]  # todo: delete
+        target_graphs_batch = target_graphs_batch[0]  # todo: delete
         in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch)
 
         start_time = time.time()
@@ -157,7 +160,6 @@ class SingulationTrainerNew(BaseTrain):
         losses_position = []
         losses_edge = []
         outputs_total = []
-        summaries_dict = {}
         summaries_dict_images = {}
 
         features = self.sess.run(self.next_element_test)
@@ -223,8 +225,6 @@ class SingulationTrainerNew(BaseTrain):
                           prefix + '_edge_loss': edge_batch_loss
                           }
 
-        # todo: check number of objects
-        # todo: sigmoid
         if outputs_total and output_results:
             for output in outputs_total:
                 summaries_dict_images = generate_and_export_image_dicts(output=output, features=features, config=self.config,
