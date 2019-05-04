@@ -208,6 +208,31 @@ def get_var_list_to_restore_by_name(var_name=None):
   return variables_to_restore_final
 
 
+def extract_input_and_output(outputs, targets, shape=None):
+    ground_truth = []
+    predictions = []
+    if shape is None:
+        shape = [-1, 120, 160]
+
+    target_shape = [-1, 120, 160, 7]
+
+    assert len(outputs) == len(targets), "outputs and target lists are not equally long"
+
+    for output, target in zip(outputs, targets):
+        output = output[0]  # first idx is the actual list, scnd is the batch index
+        target = target[0]
+        for graph_output, graph_target in zip(output, target):
+            seg_img = np.reshape(graph_output.nodes[:, :-6-19200], shape)  # shape (n_nodes, 120,160,2)
+            predictions.append(seg_img)
+
+            gt_seg_img = np.reshape(graph_target.nodes[:, :-6], target_shape)  # actually has shape (n_nodes, 134406)
+            gt_seg_img = gt_seg_img[:,:,:,3]
+            ground_truth.append(gt_seg_img)
+
+    assert len(predictions) == len(ground_truth), "resulting prediction and ground truth list have not the same length"
+
+    return predictions, ground_truth
+
 if __name__ == '__main__':
     source_path = "../data/source"
     exp_number = 5

@@ -2,11 +2,13 @@ import numpy as np
 import tensorflow as tf
 import time
 import os
+import csv
 from base.base_train import BaseTrain
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_results
 from utils.io import create_dir
-from utils.math_ops import sigmoid
+from utils.math_ops import sigmoid, iou_metric
+from utils.utils import extract_input_and_output
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 from eval.compute_test_run_statistics import compute_psnr
@@ -98,8 +100,7 @@ class SingulationTrainer(BaseTrain):
                 seg_data[seg_data >= sigmoid_threshold] = 1.0
                 seg_data[seg_data < sigmoid_threshold] = 0.0
                 output.nodes[:, :-6-19200] = seg_data
-                #output.nodes = output.nodes[:, :19206]
-        return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance']
+        return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance'], data['target']
 
 
     def test(self):
@@ -132,7 +133,7 @@ class SingulationTrainer(BaseTrain):
 
         while True:
             try:
-                batch_total, img_loss, vel_loss, pos_loss, dist_loss, iou_loss, _ = self.test_batch(prefix=prefix,
+                batch_total, img_loss, vel_loss, pos_loss, dist_loss, iou_loss, _, _, _, _ = self.test_batch(prefix=prefix,
                                                                     export_images=self.config.export_test_images,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                     process_all_nn_outputs=True,
@@ -173,6 +174,45 @@ class SingulationTrainer(BaseTrain):
 
         return mean_total_loss, mean_vel_loss, mean_pos_loss, mean_dist_loss, mean_iou_loss
 
+    def compute_iou_over_test_set(self):
+        if not self.config.n_epochs == 1:
+            print("test mode --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+        prefix = self.config.exp_name
+        print("Computing IoU over full test set with initial_pos_vel_known={}".format(
+            self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        iou_list_test_set = []
+        full_batch_loss, full_img_loss, full_vel_loss, full_pos_loss, full_dist_loss, full_iou_loss = [], [], [], [], [], []
+        sub_dir_name = "iou_metric_over_full_3_objects_test_set_{}_iterations_trained".format(cur_batch_it)
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
+        with open(os.path.join(dir_path, 'iou_test_set.csv'), 'w') as csv_file:
+            writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n', )
+            writer.writerow(["iou over n shapes", "exp_id"])
+            while True:
+                try:
+
+
+                    batch_total, img_loss, vel_loss, pos_loss, dist_loss, iou_loss, _, outputs, targets, exp_ids = self.test_batch(prefix=prefix,
+                                                                        export_images=False,
+                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                        process_all_nn_outputs=True,
+                                                                        sub_dir_name="test_{}_iterations_trained".format(cur_batch_it),
+                                                                        output_results=False)
+
+                    predictions_list, ground_truth_list = extract_input_and_output(outputs=outputs, targets=targets)
+                    exp_ids = [exp_id_sub for exp_id_sup in exp_ids for exp_id_sub in exp_id_sup]
+                    for pred, true, exp_id in zip(predictions_list, ground_truth_list, exp_ids):
+                        iou = iou_metric(pred=pred, true=true)
+                        writer.writerow([iou, exp_id])
+                        iou_list_test_set.append(iou)
+                    csv_file.flush()
+                except tf.errors.OutOfRangeError:
+                    break
+
+            iou_mean = np.mean(iou_list_test_set)
+            writer.writerow(["iou mean over full set:", iou_mean])
 
     def test_5_objects(self):
         if not self.config.n_epochs == 1:
@@ -247,7 +287,7 @@ class SingulationTrainer(BaseTrain):
 
 
             for j in range(features[i]["unpadded_experiment_length"]-1):
-                total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
+                total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _ = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
                                                                                                        train=True,
@@ -311,7 +351,7 @@ class SingulationTrainer(BaseTrain):
             start_time = time.time()
             last_log_time = start_time
 
-            total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_batch, target_batch, features, train=True, batch_processing=True)
+            total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _ = self.do_step(input_batch, target_batch, features, train=True, batch_processing=True)
 
             self.sess.run(self.model.increment_cur_batch_tensor)
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -345,6 +385,8 @@ class SingulationTrainer(BaseTrain):
         losses_position = []
         losses_distance = []
         outputs_total = []
+        targets_total = []
+        exp_id_total = []
         summaries_dict = {}
         summaries_dict_images = {}
 
@@ -362,9 +404,12 @@ class SingulationTrainer(BaseTrain):
                                                                         batch_processing=False
                                                                         )
             output_i = []
+            target_i = []
+            exp_id_i = []
+
 
             for j in range(features[i]["unpadded_experiment_length"] - 1):
-                total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
+                total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
                                                                                                        train=False,
@@ -380,8 +425,13 @@ class SingulationTrainer(BaseTrain):
                     losses_distance.append(loss_distance)
 
                 output_i.append(output)
+                target_i.append(target)
+                exp_id_i.append(features[i]['experiment_id'])
+
 
             outputs_total.append((output_i, i))
+            targets_total.append((target_i, i))
+            exp_id_total.append(exp_id_i)
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time
@@ -458,7 +508,7 @@ class SingulationTrainer(BaseTrain):
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
                 self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
-        return batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, iou_batch_loss, cur_batch_it
+        return batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss, iou_batch_loss, cur_batch_it, outputs_total, targets_total, exp_id_total
 
     def test_specific_exp_ids(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
@@ -516,7 +566,7 @@ class SingulationTrainer(BaseTrain):
                         output_i = []
 
                         for j in range(features[i]["unpadded_experiment_length"] - 1):
-                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _ = self.do_step(input_graphs_all_exp[j],
                                                                                                            target_graphs_all_exp[j],
                                                                                                            features[i],
                                                                                                            sigmoid_threshold=thresh,
@@ -606,7 +656,7 @@ class SingulationTrainer(BaseTrain):
                                                                                                        )
 
                 for i in range(self.config.test_batch_size):
-                    _, output, _, _, _, _, _ = self.do_step(input_graphs_all_exp[i],
+                    _, output, _, _, _, _, _, _ = self.do_step(input_graphs_all_exp[i],
                                                                     target_graphs_all_exp[i],
                                                                     input_ctrl_graphs_all_exp[i],
                                                                     features[i],
