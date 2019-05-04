@@ -336,7 +336,7 @@ class SingulationTrainer(BaseTrain):
         return cur_batch_it, n_batches_trained + len(input_graphs_batches), n_batches_trained_since_last_save + len(input_graphs_batches)
 
     def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
-                   export_latent_data=True, output_results=True):
+                   export_latent_data=False, output_results=True):
 
         losses_total = []
         losses_img = []

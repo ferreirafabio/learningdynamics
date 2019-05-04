@@ -5,7 +5,7 @@ import scipy.constants as constants
 from utils.utils import make_all_runnable_in_session
 from itertools import product
 from graph_nets import utils_tf, utils_np
-from utils.utils import chunks
+from utils.utils import chunks, get_correct_image_shape
 import random
 
 
@@ -142,15 +142,21 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         pos2 = node_feature_snd['features'][-3:]
         return (pos1-pos2).astype(np.float32)
 
-    def create_edge_feature_vel_pos(sender, target_graph, target_graph_previous):
-        node_feature_snd_prev = target_graph_previous.nodes(data=True)[sender]
-        node_feature_snd = target_graph.nodes(data=True)[sender]
-        """ the position is always the last three elements of the flattened feature vector """
-        pos_prev = node_feature_snd_prev["features"][-3:]
-        vel_pos = node_feature_snd['features'][-6:]
-        vel_pos = np.insert(vel_pos, 3, pos_prev)
-        """ will yield (vel_t, pos_{t-1}, pos_t)"""
-        return vel_pos.astype(np.float32)
+    def create_edge_feature_vel_pos(sender, target_graph, target_graph_previous, seg_as_edges, img_shape=None):
+        if not seg_as_edges:
+            node_feature_snd_prev = target_graph_previous.nodes(data=True)[sender]
+            node_feature_snd = target_graph.nodes(data=True)[sender]
+            """ the position is always the last three elements of the flattened feature vector """
+            pos_prev = node_feature_snd_prev["features"][-3:]
+            vel_pos = node_feature_snd['features'][-6:]
+            vel_pos = np.insert(vel_pos, 3, pos_prev)
+            """ will yield (vel_t, pos_{t-1}, pos_t)"""
+            return vel_pos.astype(np.float32)
+        else:
+            node_feature = target_graph.nodes(data=True)[sender]['features'][:-6]
+            node_feature = np.reshape(node_feature, img_shape)
+            return node_feature[:,:,3].flatten()
+
 
     input_control_graphs = []
 
@@ -218,7 +224,10 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
                     target_graphs_previous = target_graphs[step]
                 else:
                     target_graphs_previous = target_graphs[step-1]
-                edge_feature = create_edge_feature_vel_pos(sender=sender, target_graph=target_graphs[step], target_graph_previous=target_graphs_previous)
+                edge_feature = create_edge_feature_vel_pos(sender=sender, target_graph=target_graphs[step],
+                                                           target_graph_previous=target_graphs_previous,
+                                                           seg_as_edges=config.edges_carry_segmentation_data,
+                                                           img_shape=get_correct_image_shape(config, get_type='all'))
                 target_graphs[step].add_edge(sender, receiver, key=0, features=edge_feature)
 
     else:
