@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 X_MIN = 0.344
 Y_MIN = -0.256
@@ -31,11 +32,45 @@ def mean_squared_error(y, y_pred):
     return np.mean((y.flatten() - y_pred.flatten()) ** 2)
 
 
-def iou_metric(true, pred):
+def compute_iou(true, pred):
     intersection = np.logical_and(true, pred)
     union = np.logical_or(true, pred)
     iou_score = np.sum(intersection) / np.sum(union)
     return iou_score
+
+
+def compute_precision(true, pred):
+    precisions = []
+
+    for true_obj, pred_obj in zip(true, pred):
+        true = np.array(true_obj).flatten()
+        pred = np.array(pred_obj).flatten()
+        score = precision_score(y_true=true, y_pred=pred)
+        precisions.append(score)
+
+    return np.mean(precisions), precisions.index(min(precisions)), precisions.index(max(precisions))
+
+
+def compute_recall(true, pred):
+    recalls = []
+
+    for true_obj, pred_obj in zip(true, pred):
+        true = np.array(true_obj).flatten()
+        pred = np.array(pred_obj).flatten()
+        score = recall_score(y_true=true, y_pred=pred)
+        recalls.append(score)
+
+    return np.mean(recalls), recalls.index(min(recalls)), recalls.index(max(recalls))
+
+def compute_f1(true, pred):
+    f1_scores = []
+
+    for true_obj, pred_obj in zip(true, pred):
+        true = np.array(true_obj).flatten()
+        pred = np.array(pred_obj).flatten()
+        score = f1_score(y_true=true, y_pred=pred)
+        f1_scores.append(score)
+    return np.mean(f1_scores), f1_scores.index(min(f1_scores)), f1_scores.index(max(f1_scores))
 
 
 def sigmoid(x):
