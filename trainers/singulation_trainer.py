@@ -174,12 +174,12 @@ class SingulationTrainer(BaseTrain):
 
         return mean_total_loss, mean_vel_loss, mean_pos_loss, mean_dist_loss, mean_iou_loss
 
-    def compute_iou_over_test_set(self):
+    def compute_metrics_over_test_set(self):
         if not self.config.n_epochs == 1:
             print("test mode --> n_epochs will be set to 1")
             self.config.n_epochs = 1
         prefix = self.config.exp_name
-        print("Computing IoU over full test set with initial_pos_vel_known={}".format(
+        print("Computing IoU, Precision, Recall and F1 score over full test set".format(
             self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
@@ -187,12 +187,15 @@ class SingulationTrainer(BaseTrain):
         prec_score_list_test_set = []
         rec_score_list_test_set = []
         f1_score_list_test_set = []
-        sub_dir_name = "iou_metric_over_full_3_objects_test_set_{}_iterations_trained".format(cur_batch_it)
+        sub_dir_name = "metric_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
+
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
-        
-        with open(os.path.join(dir_path, 'iou_test_set.csv'), 'w') as csv_file:
+        dataset_name = os.path.basename(self.config.tfrecords_dir)
+        csv_name = "dataset_{}.csv".format(dataset_name)
+
+        with open(os.path.join(dir_path, csv_name), 'w') as csv_file:
             writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n', )
-            writer.writerow(["mean IoU over n shapes", "exp_id", "mean precision over n shapes", "mean recall over n shapes", "mean f1 over n shapes"])
+            writer.writerow(["(metrics averaged over n shapes and full trajectory) mean IoU", "mean precision", "mean recall", "mean f1 over n shapes", "exp_id"])
             while True:
                 try:
 
@@ -205,31 +208,46 @@ class SingulationTrainer(BaseTrain):
                                                                         output_results=False)
 
                     predictions_list, ground_truth_list = extract_input_and_output(outputs=outputs, targets=targets)
-                    exp_ids = [exp_id_sub for exp_id_sup in exp_ids for exp_id_sub in exp_id_sup]
-                    for pred, true, exp_id in zip(predictions_list, ground_truth_list, exp_ids):
 
-                        iou = compute_iou(pred=pred, true=true)
-                        mean_obj_prec_score, idx_obj_min_prec, idx_obj_max_prec = compute_precision(pred=pred, true=true)
-                        mean_obj_rec_score, idx_obj_min_rec, idx_obj_max_rec = compute_recall(pred=pred, true=true)
-                        mean_obj_f1_score, idx_obj_min_f1, idx_obj_max_f1 = compute_f1(pred=pred, true=true)
+                    for pred_experiment, true_experiment, exp_id in zip(predictions_list, ground_truth_list, exp_ids):
+                        iou_scores = []
+                        prec_scores = []
+                        rec_scores = []
+                        f1_scores = []
 
-                        prec_score_list_test_set.append(mean_obj_prec_score)
-                        rec_score_list_test_set.append(mean_obj_rec_score)
-                        f1_score_list_test_set.append(mean_obj_f1_score)
-                        iou_list_test_set.append(iou)
+                        for pred, true in zip(pred_experiment, true_experiment):
+                            iou = compute_iou(pred=pred, true=true)
+                            mean_obj_prec_score, idx_obj_min_prec, idx_obj_max_prec = compute_precision(pred=pred, true=true)
+                            mean_obj_rec_score, idx_obj_min_rec, idx_obj_max_rec = compute_recall(pred=pred, true=true)
+                            mean_obj_f1_score, idx_obj_min_f1, idx_obj_max_f1 = compute_f1(pred=pred, true=true)
 
-                        writer.writerow([iou, exp_id, mean_obj_prec_score, mean_obj_rec_score, mean_obj_f1_score])
+                            iou_scores.append(iou)
+                            prec_scores.append(mean_obj_prec_score)
+                            rec_scores.append(mean_obj_rec_score)
+                            f1_scores.append(mean_obj_f1_score)
+
+                        iou_traj_mean = np.mean(iou_scores)
+                        prec_traj_mean = np.mean(prec_scores)
+                        rec_traj_mean = np.mean(rec_scores)
+                        f1_traj_mean = np.mean(f1_scores)
+
+                        writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id[0]])
+
+                        prec_score_list_test_set.append(prec_traj_mean)
+                        rec_score_list_test_set.append(rec_traj_mean)
+                        f1_score_list_test_set.append(f1_traj_mean)
+                        iou_list_test_set.append(iou_traj_mean)
 
                     csv_file.flush()
                 except tf.errors.OutOfRangeError:
                     break
 
-            iou_mean = np.mean(iou_list_test_set)
-            prec_mean = np.mean(prec_score_list_test_set)
-            rec_mean = np.mean(rec_score_list_test_set)
-            f1_mean = np.mean(f1_score_list_test_set)
+            iou_traj_mean = np.mean(iou_list_test_set)
+            prec_traj_mean = np.mean(prec_score_list_test_set)
+            rec_traj_mean = np.mean(rec_score_list_test_set)
+            f1_traj_mean = np.mean(f1_score_list_test_set)
 
-            writer.writerow(["means over full set", " IoU: ", iou_mean, " Precision: ", prec_mean, " Recall: ", rec_mean, "F1: ", f1_mean])
+            writer.writerow(["means over full set", " IoU: ", iou_traj_mean, " Precision: ", prec_traj_mean, " Recall: ", rec_traj_mean, "F1: ", f1_traj_mean])
 
     def test_5_objects(self):
         if not self.config.n_epochs == 1:

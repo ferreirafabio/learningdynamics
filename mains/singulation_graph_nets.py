@@ -124,9 +124,9 @@ def main():
     elif config.mode == "test":
         print("--- Running TEST MODE ---")
         trainer.test()
-    elif config.mode == "compute_iou_over_test_set":
-        print("--- Running IOU OVER TEST SET COMPUTATION ---")
-        trainer.compute_iou_over_test_set()
+    elif config.mode == "compute_metrics_over_test_set":
+        print("--- Running METRIC COMPUTATION OVER TEST SET ---")
+        trainer.compute_metrics_over_test_set()
     elif config.mode == "test_specific_exp_ids":
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
         trainer.test_specific_exp_ids()
