@@ -54,7 +54,7 @@ class SingulationTrainer(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
-    def do_step(self, input_graph, target_graphs, feature, train=True, sigmoid_threshold=0.4, batch_processing=True):
+    def do_step(self, input_graph, target_graphs, feature, train=True, sigmoid_threshold=0.5, batch_processing=True):
 
         if train:
             self.model.input_ph, self.model.target_ph, feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph,
@@ -198,7 +198,6 @@ class SingulationTrainer(BaseTrain):
             writer.writerow(["(metrics averaged over n shapes and full trajectory) mean IoU", "mean precision", "mean recall", "mean f1 over n shapes", "exp_id"])
             while True:
                 try:
-
 
                     batch_total, img_loss, vel_loss, pos_loss, dist_loss, iou_loss, _, outputs, targets, exp_ids = self.test_batch(prefix=prefix,
                                                                         export_images=False,
@@ -425,7 +424,10 @@ class SingulationTrainer(BaseTrain):
         summaries_dict = {}
         summaries_dict_images = {}
 
-        features = self.sess.run(self.next_element_test)
+        try:
+            features = self.sess.run(self.next_element_test)
+        except tf.errors.OutOfRangeError:
+            raise tf.errors.OutOfRangeError
 
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
@@ -558,7 +560,7 @@ class SingulationTrainer(BaseTrain):
         export_latent_data = True
         process_all_nn_outputs = True
 
-        thresholds_to_test = [0.4]
+        thresholds_to_test = [0.5]
 
         for thresh in thresholds_to_test:
             sub_dir_name = "test_3_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
