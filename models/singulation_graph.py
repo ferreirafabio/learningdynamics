@@ -341,7 +341,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
     sublist = []
     while True:
         smpl = random.choice(shuffled_list)
-        if smpl is None or len(lst) > 0:
+        if smpl is None or len(lst) > 1:
             break
         ids_in_list = [elements[0][1] for elements in sublist]
         if smpl[0][1] not in ids_in_list:
