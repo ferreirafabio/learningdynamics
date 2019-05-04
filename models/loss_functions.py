@@ -56,7 +56,7 @@ def create_loss_ops(config, target_op, output_ops):
             labels = segmentation_data_gt
             labels = tf.cast(labels, tf.int32)
 
-            loss_visual_ce_nodes = 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+            loss_visual_ce_nodes = 1.0 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=labels,
                 logits=logits))
 
@@ -87,7 +87,10 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_edges.append(loss_nonvisual_ce_edges)
 
-            total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_ce_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            print("--- only optimizing for visual CE of nodes ---")
+            #total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_ce_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            total_loss_ops.append(loss_visual_ce_nodes)
+ 
 
     elif config.loss_type == 'cross_entropy_seg_only':
         for i, output_op in enumerate(output_ops):
