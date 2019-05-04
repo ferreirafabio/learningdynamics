@@ -122,7 +122,7 @@ def create_loss_ops(config, target_op, output_ops):
 
             tf.losses.add_loss(loss_visual_ce_nodes)
 
-            loss_visual_iou_seg = 0.0  # no iou loss computed
+
 
             """ NONVISUAL LOSS (50% weight) """
             loss_nonvisual_mse_edges = tf.losses.mean_squared_error(
@@ -132,15 +132,18 @@ def create_loss_ops(config, target_op, output_ops):
 
             #loss_nonvisual_mse_edges = 0.0
 
-            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(
-                                                       labels=target_op.nodes[:, -3:],
-                                                       predictions=output_op.nodes[:, -3:],
-                                                       weights=0.1)
+            #loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(
+            #                                           labels=target_op.nodes[:, -3:],
+            #                                           predictions=output_op.nodes[:, -3:],
+            #                                           weights=0.1)
 
-            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(
-                                                       labels=target_op.nodes[:, -6:-3:],
-                                                       predictions=output_op.nodes[:, -6:-3:],
-                                                       weights=0.1)
+            loss_visual_iou_seg = 0.0  # no iou loss computed
+            loss_nonvisual_mse_nodes_vel = 0.0
+            loss_nonvisual_mse_nodes_pos = 0.0
+            #loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(
+            #                                           labels=target_op.nodes[:, -6:-3:],
+            #                                           predictions=output_op.nodes[:, -6:-3:],
+            #                                           weights=0.1)
 
             loss_ops_img.append(loss_visual_ce_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
@@ -148,9 +151,11 @@ def create_loss_ops(config, target_op, output_ops):
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_edges.append(loss_nonvisual_mse_edges)
 
-            print("---- image loss only ----")
-            total_loss_ops.append(loss_visual_ce_nodes)
+            #print("---- image loss only ----")
+            #total_loss_ops.append(loss_visual_ce_nodes)
             #total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
+            print("---- image + edge(mse) loss only ----")
+            total_loss_ops.append( loss_visual_ce_nodes + loss_nonvisual_mse_edges)
 
 
     else:
