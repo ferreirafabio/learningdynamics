@@ -72,7 +72,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
 
 def create_image_summary(output_for_summary, features_index, config, prefix, features, cur_batch_it):
     ''' returns n lists, each having an ndarray of shape (exp_length, w, h, c)  while n = number of objects '''
-    if config.loss_type == "cross_entropy_seg_only" or config.loss_type == "cross_entropy_seg_only_edges":
+    if config.loss_type == "cross_entropy_seg_only" or config.loss_type == "cross_entropy_seg_only_edges" or config.loss_type=="cross_entropy_seg_only_edges_no_edges":
         seg_only = True
     else:
         seg_only = False
