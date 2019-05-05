@@ -37,7 +37,7 @@ import tensorflow as tf
 
 VERBOSITY = False
 
-class EncodeProcessDecode_v6_edge_segmentation_new(snt.AbstractModule, BaseModel):
+class EncodeProcessDecode_v7_edge_segmentation(snt.AbstractModule, BaseModel):
     """
     Full encode-process-decode model.
 
@@ -62,27 +62,27 @@ class EncodeProcessDecode_v6_edge_segmentation_new(snt.AbstractModule, BaseModel
     """
     def __init__(self, config, name="EncodeProcessDecode"):
 
-        super(EncodeProcessDecode_v6_edge_segmentation_new, self).__init__(name=name)
+        super(EncodeProcessDecode_v7_edge_segmentation, self).__init__(name=name)
 
-        EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling = config.convnet_pooling
-        EncodeProcessDecode_v6_edge_segmentation_new.convnet_tanh = config.convnet_tanh
-        EncodeProcessDecode_v6_edge_segmentation_new.depth_data_provided = config.depth_data_provided
-        EncodeProcessDecode_v6_edge_segmentation_new.n_conv_filters = config.n_conv_filters
-        EncodeProcessDecode_v6_edge_segmentation_new.model_id = config.model_type
-        EncodeProcessDecode_v6_edge_segmentation_new.latent_state_noise = config.latent_state_noise
+        EncodeProcessDecode_v7_edge_segmentation.convnet_pooling = config.convnet_pooling
+        EncodeProcessDecode_v7_edge_segmentation.convnet_tanh = config.convnet_tanh
+        EncodeProcessDecode_v7_edge_segmentation.depth_data_provided = config.depth_data_provided
+        EncodeProcessDecode_v7_edge_segmentation.n_conv_filters = config.n_conv_filters
+        EncodeProcessDecode_v7_edge_segmentation.model_id = config.model_type
+        EncodeProcessDecode_v7_edge_segmentation.latent_state_noise = config.latent_state_noise
 
-        EncodeProcessDecode_v6_edge_segmentation_new.edge_output_size = config.edge_output_size
-        EncodeProcessDecode_v6_edge_segmentation_new.node_output_size = config.node_output_size
-        EncodeProcessDecode_v6_edge_segmentation_new.global_output_size = config.global_output_size
+        EncodeProcessDecode_v7_edge_segmentation.edge_output_size = config.edge_output_size
+        EncodeProcessDecode_v7_edge_segmentation.node_output_size = config.node_output_size
+        EncodeProcessDecode_v7_edge_segmentation.global_output_size = config.global_output_size
 
-        EncodeProcessDecode_v6_edge_segmentation_new.n_layers_globals = config.n_layers_globals
-        EncodeProcessDecode_v6_edge_segmentation_new.n_layers_nodes = config.n_layers_nodes
-        EncodeProcessDecode_v6_edge_segmentation_new.n_layers_edges = config.n_layers_edges
-        EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_edges = config.n_neurons_edges
-        EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes = config.n_neurons_nodes
-        EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_globals = config.n_neurons_globals
-        EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
-        EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm = config.conv_layer_instance_norm
+        EncodeProcessDecode_v7_edge_segmentation.n_layers_globals = config.n_layers_globals
+        EncodeProcessDecode_v7_edge_segmentation.n_layers_nodes = config.n_layers_nodes
+        EncodeProcessDecode_v7_edge_segmentation.n_layers_edges = config.n_layers_edges
+        EncodeProcessDecode_v7_edge_segmentation.n_neurons_edges = config.n_neurons_edges
+        EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes = config.n_neurons_nodes
+        EncodeProcessDecode_v7_edge_segmentation.n_neurons_globals = config.n_neurons_globals
+        EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual = config.n_neurons_nodes_non_visual
+        EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm = config.conv_layer_instance_norm
 
         self.config = config
         # init the global step
@@ -206,8 +206,8 @@ class EncoderGlobalsGraphIndependent(snt.AbstractModule):
                 edge_model_fn=None,
                 node_model_fn=None,
                 global_model_fn=lambda: get_model_from_config(self.model_id, model_type="mlp")(
-                                                                                        n_neurons=EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v6_edge_segmentation_new.n_layers_globals,
+                                                                                        n_neurons=EncodeProcessDecode_v7_edge_segmentation.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v7_edge_segmentation.n_layers_globals,
                                                                                         output_size=None,
                                                                                         activation_final=False,
                                                                                         typ="mlp_layer_norm",
@@ -265,9 +265,9 @@ class CNNMLPDecoderGraphIndependent(snt.AbstractModule):
             node_model_fn=lambda: VisualAndLatentDecoderSonnet(name="visual_and_latent_node_decoder", is_training=is_training),
 
             global_model_fn=lambda: get_model_from_config(model_id=self.model_id, model_type="mlp")(
-                                                        n_neurons=EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_globals,
-                                                        n_layers=EncodeProcessDecode_v6_edge_segmentation_new.n_layers_globals,
-                                                        output_size=EncodeProcessDecode_v6_edge_segmentation_new.global_output_size,
+                                                        n_neurons=EncodeProcessDecode_v7_edge_segmentation.n_neurons_globals,
+                                                        n_layers=EncodeProcessDecode_v7_edge_segmentation.n_layers_globals,
+                                                        output_size=EncodeProcessDecode_v7_edge_segmentation.global_output_size,
                                                         typ="mlp_transform",
                                                         activation_final=False,
                                                         name="mlp_decoder_global")
@@ -283,20 +283,20 @@ class MLPGraphNetwork(snt.AbstractModule):
         super(MLPGraphNetwork, self).__init__(name=name)
         with self._enter_variable_scope():
           self._network = modules.GraphNetwork(
-              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_edges,
-                                                                                      n_layers=EncodeProcessDecode_v6_edge_segmentation_new.n_layers_edges,
+              edge_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v7_edge_segmentation.n_neurons_edges,
+                                                                                      n_layers=EncodeProcessDecode_v7_edge_segmentation.n_layers_edges,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       name="mlp_core_edge"),
-              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes,
-                                                                                      n_layers=EncodeProcessDecode_v6_edge_segmentation_new.n_layers_nodes,
+              node_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes,
+                                                                                      n_layers=EncodeProcessDecode_v7_edge_segmentation.n_layers_nodes,
                                                                                       output_size=None,
                                                                                       typ="mlp_layer_norm",
                                                                                       activation_final=False,
                                                                                       name="mlp_core_node"),
 
-              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_globals,
-                                                                                        n_layers=EncodeProcessDecode_v6_edge_segmentation_new.n_layers_globals,
+              global_model_fn=lambda: get_model_from_config(model_id, model_type="mlp")(n_neurons=EncodeProcessDecode_v7_edge_segmentation.n_neurons_globals,
+                                                                                        n_layers=EncodeProcessDecode_v7_edge_segmentation.n_layers_globals,
                                                                                         output_size=None,
                                                                                         typ="mlp_layer_norm",
                                                                                         name="mlp_core_global")
@@ -313,41 +313,41 @@ class SmallEdgeEncoder(snt.AbstractModule):
 
     def _build(self, inputs, verbose=VERBOSITY):
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_tanh:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
 
         img_shape = get_correct_image_shape(config=None, get_type="seg",
-                                            depth_data_provided=EncodeProcessDecode_v6_edge_segmentation_new.depth_data_provided)
+                                            depth_data_provided=EncodeProcessDecode_v7_edge_segmentation.depth_data_provided)
         img_data = tf.reshape(inputs, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
         print(img_data.get_shape())
 
         ''' 60, 80 '''
         outputs = snt.Conv2D(output_channels=32, kernel_shape=3, stride=2, padding="SAME")(img_data)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         print(outputs.get_shape())
 
         ''' 30, 40 '''
         outputs = snt.Conv2D(output_channels=32, kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         print(outputs.get_shape())
 
         ''' 15, 20 '''
         outputs = snt.Conv2D(output_channels=16, kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         print(outputs.get_shape())
 
         ''' 8, 10 '''
         outputs = snt.Conv2D(output_channels=5, kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         print(outputs.get_shape())
 
@@ -364,7 +364,7 @@ class SmallEdgeDecoder(snt.AbstractModule):
 
     def _build(self, inputs, verbose=VERBOSITY):
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_tanh:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -376,49 +376,49 @@ class SmallEdgeDecoder(snt.AbstractModule):
         ''' 1,1,128 --> 2, 2, 64 '''
         outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=2, stride=1, padding="VALID")(image_data)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 2,2,64 --> 4, 4, 64 '''
         outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=2, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 4,4,64 --> 7, 10, 32 '''
         outputs = snt.Conv2DTranspose(output_channels=32, output_shape=[7, 10], kernel_shape=4, stride=[1, 2], padding="VALID")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 7,10,32 --> 15, 20, 16 '''
         outputs = snt.Conv2DTranspose(output_channels=16, output_shape=[15, 20], kernel_shape=[3, 2],  stride=2, padding="VALID")(outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 15, 20, 16 --> 30, 40, 8 '''
         outputs = snt.Conv2DTranspose(output_channels=8, kernel_shape=2, stride=2, padding="SAME")( outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 30, 40, 8 --> 60, 80, 2 '''
         outputs = snt.Conv2DTranspose(output_channels=2, kernel_shape=2, stride=2, padding="SAME")( outputs)
         outputs = activation(outputs)
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
         ''' 60, 80, 2 --> 120, 160, 1 '''
         outputs = snt.Conv2DTranspose(output_channels=2, kernel_shape=2, stride=2, padding="SAME")( outputs)
         # no activation
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
         if verbose: print(outputs.get_shape())
 
@@ -435,10 +435,10 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
 
 
     def _build(self, inputs, verbose=VERBOSITY, keep_dropout_prop=0.9):
-        filter_sizes = [EncodeProcessDecode_v6_edge_segmentation_new.n_conv_filters,
-                        EncodeProcessDecode_v6_edge_segmentation_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v7_edge_segmentation.n_conv_filters,
+                        EncodeProcessDecode_v7_edge_segmentation.n_conv_filters * 2]
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_tanh:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -451,14 +451,14 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         image_data = tf.expand_dims(image_data, axis=1)
         image_data = tf.expand_dims(image_data, axis=1)  # yields shape (?,1,1,latent_dim)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             image_data = snt.BatchNorm()(image_data, is_training=self._is_training)
 
         ''' layer 0 (1,1,latent_dim) -> (2,2,filter_sizes[1])'''
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=1, padding="VALID")(image_data)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l01_shape = outputs.get_shape()
@@ -467,7 +467,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l02_shape = outputs.get_shape()
@@ -481,7 +481,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[7, 10], kernel_shape=4, stride=[1, 2], padding="VALID")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l1_shape = outputs.get_shape()
@@ -490,7 +490,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], output_shape=[15, 20], kernel_shape=[3, 2], stride=2, padding="VALID")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l2_shape = outputs.get_shape()
@@ -504,7 +504,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[1], kernel_shape=2, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l3_shape = outputs.get_shape()
@@ -518,7 +518,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=2, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l5_shape = outputs.get_shape()
@@ -527,14 +527,14 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         ''' layer 6 (30,40,filter_sizes[1]) -> (30,40,filter_sizes[1]) '''
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=2, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l6_shape = outputs.get_shape()
@@ -548,7 +548,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l8_shape = outputs.get_shape()
@@ -557,7 +557,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
 
@@ -565,7 +565,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=filter_sizes[0], kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l9_shape = outputs.get_shape()
@@ -580,7 +580,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l11_shape = outputs.get_shape()
@@ -589,7 +589,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         #if is_training:
@@ -601,7 +601,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2DTranspose(output_channels=64, kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l12_shape = outputs.get_shape()
@@ -617,7 +617,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
         ''' layer 14 (120,160,filter_sizes[0]) -> (120,160,filter_sizes[0]) '''
         outputs = snt.Conv2D(output_channels=2, kernel_shape=3, stride=1, padding="SAME")(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l14_shape = outputs.get_shape()
@@ -643,11 +643,11 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
 
         n_non_visual_elements = 6
         """ get x,y,z-position and x,y,z-velocity from n_neurons_nodes_non_visual-dimensional space """
-        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual:]
+        non_visual_latent_output = inputs[:, -EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual:]
 
         # Transforms the outputs into the appropriate shape.
         """ map latent position/velocity (nodes) from 32d to original 6d space """
-        n_neurons = EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual
         n_layers = 2
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         non_visual_decoded_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(n_non_visual_elements)])(non_visual_latent_output)
@@ -671,7 +671,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
 
     def _build(self, inputs, verbose=VERBOSITY, keep_dropout_prop=0.9):
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_tanh:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_tanh:
             activation = tf.nn.tanh
         else:
             activation = tf.nn.relu
@@ -680,22 +680,22 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
 
         n_non_visual_elements = 6
 
-        filter_sizes = [EncodeProcessDecode_v6_edge_segmentation_new.n_conv_filters,
-                        EncodeProcessDecode_v6_edge_segmentation_new.n_conv_filters * 2]
+        filter_sizes = [EncodeProcessDecode_v7_edge_segmentation.n_conv_filters,
+                        EncodeProcessDecode_v7_edge_segmentation.n_conv_filters * 2]
 
         """ shape: (batch_size, features), get everything except velocity and position """
 
         img_data = inputs[:, :-n_non_visual_elements]
 
         img_shape = get_correct_image_shape(config=None, get_type="all",
-                                            depth_data_provided=EncodeProcessDecode_v6_edge_segmentation_new.depth_data_provided)
+                                            depth_data_provided=EncodeProcessDecode_v7_edge_segmentation.depth_data_provided)
         img_data = tf.reshape(img_data, [-1, *img_shape])  # -1 means "all", i.e. batch dimension
 
         ''' Layer1 encoder output shape (?, 120, 160, filter_sizes[0]) '''
         outputs1 = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(img_data)
         outputs1 = activation(outputs1)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs1 = snt.BatchNorm()(outputs1, is_training=self._is_training)
 
         l1_shape = outputs1.get_shape()
@@ -704,13 +704,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=128, kernel_shape=3, stride=1, padding="SAME")(outputs1)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs1 = snt.BatchNorm()(outputs1, is_training=self._is_training)
 
         l2_shape = outputs.get_shape()
 
         ''' Layer3 encoder output shape (?, 60, 80, filter_sizes[0]) '''
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l3_shape = outputs.get_shape()
 
@@ -723,7 +723,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l4_shape = outputs.get_shape()
@@ -735,13 +735,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs2 = outputs
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l5_shape = outputs.get_shape()
 
         ''' Layer6 encoder output shape (?, 30, 40, filter_sizes[0]) '''
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l6_shape = outputs.get_shape()
 
@@ -754,7 +754,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l7_shape = outputs.get_shape()
@@ -763,13 +763,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[0], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l8_shape = outputs.get_shape()
 
         ''' Layer9 encoder output shape (?, 15, 20, filter_sizes[0]) '''
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l9_shape = outputs.get_shape()
 
@@ -782,7 +782,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=1, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l10_shape = outputs.get_shape()
@@ -794,13 +794,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         # --------------- SKIP CONNECTION --------------- #
         outputs3 = outputs
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l11_shape = outputs.get_shape()
 
         ''' Layer12 encoder output shape (?, 7, 10, filter_sizes[1]) '''
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l12_shape = outputs.get_shape()
 
@@ -808,7 +808,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l13_shape = outputs.get_shape()
@@ -817,13 +817,13 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         outputs = snt.Conv2D(output_channels=filter_sizes[1], kernel_shape=3, stride=2, padding="SAME")(outputs)
         outputs = activation(outputs)
 
-        if EncodeProcessDecode_v6_edge_segmentation_new.conv_layer_instance_norm:
+        if EncodeProcessDecode_v7_edge_segmentation.conv_layer_instance_norm:
             outputs = snt.BatchNorm()(outputs, is_training=self._is_training)
 
         l14_shape = outputs.get_shape()
 
         ''' Layer15 encoder output shape (?, 1, 1, filter_sizes[1]) '''
-        if EncodeProcessDecode_v6_edge_segmentation_new.convnet_pooling:
+        if EncodeProcessDecode_v7_edge_segmentation.convnet_pooling:
             outputs = tf.layers.max_pooling2d(outputs, 2, 2)
         l15_shape = outputs.get_shape()
 
@@ -855,9 +855,9 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         n_non_visual_elements = 6
         non_visual_input = inputs[:, -n_non_visual_elements:]  # get x,y,z-gripper position and x,y,z-gripper velocity
 
-        n_neurons = EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual
-        n_layers = EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual
-        output_size = EncodeProcessDecode_v6_edge_segmentation_new.n_neurons_nodes_non_visual
+        n_neurons = EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual
+        n_layers = EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual
+        output_size = EncodeProcessDecode_v7_edge_segmentation.n_neurons_nodes_non_visual
         net = snt.nets.MLP([n_neurons] * n_layers, activate_final=False)
         """ map velocity and position into a latent space, concatenate with visual latent space vector """
         non_visual_latent_output = snt.Sequential([net, snt.LayerNorm(), snt.Linear(output_size)])(non_visual_input)
