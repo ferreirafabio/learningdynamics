@@ -58,7 +58,7 @@ class SingulationTrainer(BaseTrain):
 
         if train:
             self.model.input_ph, self.model.target_ph, feed_dict = create_feed_dict(self.model.input_ph, self.model.target_ph,
-                                         input_graph, target_graphs, self.config, batch_processing=batch_processing)
+                                         input_graph, target_graphs, batch_processing=batch_processing)
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
@@ -74,7 +74,7 @@ class SingulationTrainer(BaseTrain):
 
         else:
             self.model.input_ph_test, self.model.target_ph_test, feed_dict = create_feed_dict(self.model.input_ph_test, self.model.target_ph_test,
-                                         input_graph, target_graphs, self.config, batch_processing=batch_processing)
+                                         input_graph, target_graphs, batch_processing=batch_processing)
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
@@ -409,7 +409,6 @@ class SingulationTrainer(BaseTrain):
 
     def train_multiple_batches(self, prefix, n_batches_trained, n_batches_trained_since_last_save):
         features = self.sess.run(self.next_element_train)
-
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
         input_graphs_batches, target_graphs_batches = create_graphs(config=self.config,
