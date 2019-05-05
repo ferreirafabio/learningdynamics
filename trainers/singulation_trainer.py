@@ -102,7 +102,6 @@ class SingulationTrainer(BaseTrain):
                 output.nodes[:, :-6-19200] = seg_data
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], data['loss_position'], data['loss_distance'], data['target']
 
-
     def test(self):
         if not self.config.n_epochs == 1:
             print("test mode --> n_epochs will be set to 1")
@@ -198,17 +197,59 @@ class SingulationTrainer(BaseTrain):
             writer.writerow(["(metrics averaged over n shapes and full trajectory) mean IoU", "mean precision", "mean recall", "mean f1 over n shapes", "exp_id"])
             while True:
                 try:
+                    losses_total, losses_img, losses_iou, losses_velocity, losses_position = [], [], [], [], []
+                    losses_distance, outputs_total, targets_total, exp_id_total = [], [], [], []
 
-                    batch_total, img_loss, vel_loss, pos_loss, dist_loss, iou_loss, _, outputs, targets, exp_ids = self.test_batch(prefix=prefix,
-                                                                        export_images=False,
-                                                                        initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                        process_all_nn_outputs=True,
-                                                                        sub_dir_name="test_{}_iterations_trained".format(cur_batch_it),
-                                                                        output_results=False)
+                    features = self.sess.run(self.next_element_test)
+                    features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-                    predictions_list, ground_truth_list = extract_input_and_output(outputs=outputs, targets=targets)
+                    start_time = time.time()
+                    last_log_time = start_time
 
-                    for pred_experiment, true_experiment, exp_id in zip(predictions_list, ground_truth_list, exp_ids):
+                    for i in range(self.config.test_batch_size):
+                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                                    batch_data=features[i],
+                                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                    batch_processing=False
+                                                                                    )
+                        output_i, target_i, exp_id_i = [], [], []
+
+                        for j in range(features[i]["unpadded_experiment_length"] - 1):
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target = self.do_step(
+                                                                                                                    input_graphs_all_exp[j],
+                                                                                                                    target_graphs_all_exp[j],
+                                                                                                                    features[i],
+                                                                                                                    train=False,
+                                                                                                                    batch_processing=False
+                                                                                                                    )
+                            output = output[0]
+                            if total_loss is not None:
+                                losses_total.append(total_loss)
+                                losses_img.append(loss_img)
+                                losses_iou.append(loss_iou)
+                                losses_velocity.append(loss_velocity)
+                                losses_position.append(loss_position)
+                                losses_distance.append(loss_distance)
+
+                            output_i.append(output)
+                            target_i.append(target)
+                            exp_id_i.append(features[i]['experiment_id'])
+
+                        outputs_total.append((output_i, i))
+                        targets_total.append((target_i, i))
+                        exp_id_total.append(exp_id_i)
+
+                    the_time = time.time()
+                    elapsed_since_last_log = the_time - last_log_time
+                    batch_loss,img_batch_loss, iou_batch_loss = np.mean(losses_total), np.mean(losses_img), np.mean(losses_iou)
+                    vel_batch_loss, pos_batch_loss, dis_batch_loss = np.mean(losses_velocity), np.mean(losses_position), np.mean(losses_distance)
+                    print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | edge loss {:<8.6f} time(s): {:<10.2f}'.format(
+                            batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
+                            elapsed_since_last_log))
+
+                    predictions_list, ground_truth_list = extract_input_and_output(outputs=outputs_total, targets=targets_total)
+
+                    for pred_experiment, true_experiment, exp_id in zip(predictions_list, ground_truth_list, exp_id_total):
                         iou_scores = []
                         prec_scores = []
                         rec_scores = []
@@ -424,11 +465,7 @@ class SingulationTrainer(BaseTrain):
         summaries_dict = {}
         summaries_dict_images = {}
 
-        try:
-            features = self.sess.run(self.next_element_test)
-        except tf.errors.OutOfRangeError:
-            raise tf.errors.OutOfRangeError
-
+        features = self.sess.run(self.next_element_test)
         features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
         start_time = time.time()
@@ -747,19 +784,3 @@ class SingulationTrainer(BaseTrain):
             else:
                 print("continue")
                 continue
-
-
-    def _do_step_parallel(self, input_graph, target_graphs, input_ctrl_graph, features, outputs, losses, losses_img, losses_iou, losses_velocity, losses_position, losses_distance, yield_outputs=False, train=False, compute_losses=False):
-        total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graph, target_graphs, input_ctrl_graph, features, train=train)
-        if total_loss is not None and compute_losses:
-            losses.append(total_loss)
-            losses_img.append(loss_img)
-            losses_iou.append(loss_iou)
-            losses_velocity.append(loss_velocity)
-            losses_position.append(loss_position)
-            losses_distance.append(loss_distance)
-        if yield_outputs:
-            outputs.append(output)
-        return losses, outputs, losses_img, losses_iou, losses_velocity, losses_position, losses_distance
-
-
