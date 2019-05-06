@@ -190,8 +190,15 @@ def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_
     #images_depth = [obj[:, :, :, -3:] for obj in in_segxyz]
     images_depth = []  # not predicted
     images_rgb = []  # not predicted
-    images_seg = np.split(out_label, n_objects)
-    images_seg = [np.expand_dims(obj, 3) for obj in images_seg]
+    images_seg_times_split = np.split(out_label, unpad_exp_length-1)
+    images_seg = []
+
+    for n in range(n_objects):
+        object_lst = []
+        for time_step in images_seg_times_split:
+            obj_seg = np.expand_dims(time_step[n], 3)
+            object_lst.append(obj_seg)
+        images_seg.append(np.array(object_lst))
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
         images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,

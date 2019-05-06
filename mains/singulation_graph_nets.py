@@ -115,8 +115,9 @@ def main():
     # load model if exists
     model.load(trainer.sess)
     if config.use_lins_gn_net:
-        model.load_resnet(trainer.sess)
-        print("ResNet weights loaded")
+        print('No ResNet weights loaded')
+        #model.load_resnet(trainer.sess)
+        #print("ResNet weights loaded")
 
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")

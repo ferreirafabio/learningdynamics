@@ -4,13 +4,13 @@ import time
 import os
 from base.base_train import BaseTrain
 from utils.conversions import convert_dict_to_list_subdicts
-from utils.tf_summaries import generate_results, generate_and_export_image_dicts
-from utils.tf_summaries import generate_results
+from utils.tf_summaries import generate_and_export_image_dicts
+from utils.math_ops import compute_iou, compute_precision, compute_recall, compute_f1
+from utils.utils import extract_input_and_output
 from utils.io import create_dir
-from utils.math_ops import sigmoid
 from models.singulation_graph import create_graphs, networkx_graphs_to_images
-from joblib import parallel_backend, Parallel, delayed
-from eval.compute_test_run_statistics import compute_psnr
+import csv
+
 
 class SingulationTrainerNew(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger, only_test):
@@ -41,15 +41,13 @@ class SingulationTrainerNew(BaseTrain):
         features = self.sess.run(self.next_element_train)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
-        print("shuffle deactivated")
         input_graphs_batch, target_graphs_batch = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                    batch_processing=True,
-                                                                    shuffle=False
+                                                                    batch_processing=True
                                                                     )
-        input_graphs_batch = input_graphs_batch[0]  # todo: delete
-        target_graphs_batch = target_graphs_batch[0]  # todo: delete
+        #input_graphs_batch = input_graphs_batch[0]  # todo: delete
+        #target_graphs_batch = target_graphs_batch[0]  # todo: delete
 
         in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch)
 
@@ -189,7 +187,7 @@ class SingulationTrainerNew(BaseTrain):
                                                               self.in_image_tf: in_image,
                                                               self.gt_label_tf: gt_label,
                                                               self.in_control_tf: in_control,
-                                                              self.is_training: False})
+                                                              self.is_training: True})
             loss_velocity = np.array(0.0)
             loss_position = np.array(0.0)
             loss_edge = np.array(0.0)
@@ -246,8 +244,155 @@ class SingulationTrainerNew(BaseTrain):
 
         return batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, edge_batch_loss, cur_batch_it
 
+
+    def compute_metrics_over_test_set(self):
+        if not self.config.n_epochs == 1:
+            print("test mode --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+        prefix = self.config.exp_name
+        print("Computing IoU, Precision, Recall and F1 score over full test set".format(
+            self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        iou_list_test_set = []
+        prec_score_list_test_set = []
+        rec_score_list_test_set = []
+        f1_score_list_test_set = []
+        sub_dir_name = "metric_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
+
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
+        dataset_name = os.path.basename(self.config.tfrecords_dir)
+        csv_name = "dataset_{}.csv".format(dataset_name)
+
+        with open(os.path.join(dir_path, csv_name), 'w') as csv_file:
+            writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n', )
+            writer.writerow(["(metrics averaged over n shapes and full trajectory) mean IoU", "mean precision", "mean recall", "mean f1 over n shapes", "exp_id"])
+            while True:
+                try:
+                    losses_total, losses_img, losses_iou, losses_velocity, losses_position = [], [], [], [], []
+                    losses_distance, outputs_total, targets_total, exp_id_total = [], [], [], []
+
+                    features = self.sess.run(self.next_element_test)
+                    features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+
+                    start_time = time.time()
+                    last_log_time = start_time
+
+                    for i in range(self.config.test_batch_size):
+                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                                    batch_data=features[i],
+                                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                    batch_processing=False
+
+                                                                                    )
+                        output_i, target_i, exp_id_i = [], [], []
+
+                        input_graphs_all_exp = [input_graphs_all_exp]
+                        target_graphs_all_exp = [target_graphs_all_exp]
+
+                        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp)
+
+                        loss_img, out_label = self.sess.run([self.model.loss_op, self.out_label_tf],
+                                                            feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                       self.in_image_tf: in_image,
+                                                                       self.gt_label_tf: gt_label,
+                                                                       self.in_control_tf: in_control,
+                                                                       self.is_training: True})
+
+                        loss_velocity = np.array(0.0)
+                        loss_position = np.array(0.0)
+                        loss_edge = np.array(0.0)
+                        loss_iou = 0.0
+                        loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                        losses_total.append(loss_total)
+                        losses_img.append(loss_img)
+                        losses_iou.append(loss_iou)
+                        losses_velocity.append(loss_velocity)
+                        losses_position.append(loss_position)
+                        losses_distance.append(loss_edge)
+
+                        out_label[out_label >= 0.5] = 1.0
+                        out_label[out_label < 0.5] = 0.0
+
+                        exp_id_i.append(features[i]['experiment_id'])
+
+                        unpad_exp_length = features[i]['unpadded_experiment_length']
+                        n_objects = features[i]['n_manipulable_objects']
+                        out_label_split = np.split(out_label, unpad_exp_length - 1)
+                        in_seg_split = np.split(in_segxyz[:,:,:,0], unpad_exp_length - 1)
+
+                        out_label_entire_trajectory, in_seg_entire_trajectory = [], []
+
+                        for n in range(n_objects):
+                            out_obj_lst = []
+                            in_obj_lst = []
+                            for time_step_out, time_step_in in zip(out_label_split, in_seg_split):
+                                out_obj_lst.append(time_step_out[n])
+                                in_obj_lst.append(time_step_in[n])
+                            out_label_entire_trajectory.append(np.array(out_obj_lst))
+                            in_seg_entire_trajectory.append(np.array(in_obj_lst))
+
+                        outputs_total.append(out_label_entire_trajectory)
+                        targets_total.append(in_seg_entire_trajectory)
+                        exp_id_total.append(exp_id_i)
+
+                    the_time = time.time()
+                    elapsed_since_last_log = the_time - last_log_time
+                    batch_loss, img_batch_loss, iou_batch_loss = np.mean(losses_total), np.mean(losses_img), np.mean(losses_iou)
+                    vel_batch_loss, pos_batch_loss, dis_batch_loss = np.mean(losses_velocity), np.mean(losses_position), np.mean(losses_distance)
+                    print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | edge loss {:<8.6f} time(s): {:<10.2f}'.format(
+                            batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
+                            elapsed_since_last_log))
+
+                    for pred_experiment, true_experiment, exp_id in zip(outputs_total, targets_total, exp_id_total):
+                        iou_scores = []
+                        prec_scores = []
+                        rec_scores = []
+                        f1_scores = []
+
+                        # switch (n_objects, exp_len,...) to (exp_len, n_objects) since IoU computed per time step
+                        pred_experiment = np.swapaxes(pred_experiment, 0, 1)
+                        true_experiment = np.swapaxes(true_experiment, 0, 1)
+
+                        for pred, true in zip(pred_experiment, true_experiment):
+                            iou = compute_iou(pred=pred, true=true)
+                            mean_obj_prec_score, idx_obj_min_prec, idx_obj_max_prec = compute_precision(pred=pred, true=true)
+                            mean_obj_rec_score, idx_obj_min_rec, idx_obj_max_rec = compute_recall(pred=pred, true=true)
+                            mean_obj_f1_score, idx_obj_min_f1, idx_obj_max_f1 = compute_f1(pred=pred, true=true)
+
+                            iou_scores.append(iou)
+                            prec_scores.append(mean_obj_prec_score)
+                            rec_scores.append(mean_obj_rec_score)
+                            f1_scores.append(mean_obj_f1_score)
+
+                        iou_traj_mean = np.mean(iou_scores)
+                        prec_traj_mean = np.mean(prec_scores)
+                        rec_traj_mean = np.mean(rec_scores)
+                        f1_traj_mean = np.mean(f1_scores)
+
+                        writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id[0]])
+
+                        prec_score_list_test_set.append(prec_traj_mean)
+                        rec_score_list_test_set.append(rec_traj_mean)
+                        f1_score_list_test_set.append(f1_traj_mean)
+                        iou_list_test_set.append(iou_traj_mean)
+
+                    csv_file.flush()
+                except tf.errors.OutOfRangeError:
+                    break
+
+            iou_traj_mean = np.mean(iou_list_test_set)
+            prec_traj_mean = np.mean(prec_score_list_test_set)
+            rec_traj_mean = np.mean(rec_score_list_test_set)
+            f1_traj_mean = np.mean(f1_score_list_test_set)
+
+            writer.writerow(["means over full set", " IoU: ", iou_traj_mean, " Precision: ", prec_traj_mean, " Recall: ", rec_traj_mean, "F1: ", f1_traj_mean])
+
     def test_specific_exp_ids(self):
-        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
+        if not self.config.n_epochs == 1:
+            print("test mode for specific exp ids --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -255,11 +400,9 @@ class SingulationTrainerNew(BaseTrain):
         exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
         #exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
 
-        export_images = self.config.export_test_images
-        export_latent_data = True
         process_all_nn_outputs = True
 
-        thresholds_to_test = [0.4]
+        thresholds_to_test = [0.5]
 
         for thresh in thresholds_to_test:
             sub_dir_name = "test_3_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
@@ -267,10 +410,9 @@ class SingulationTrainerNew(BaseTrain):
                 try:
                     losses_total = []
                     losses_img = []
-                    losses_iou = []
                     losses_velocity = []
                     losses_position = []
-                    losses_distance = []
+                    losses_edge = []
                     outputs_total = []
 
                     features = self.sess.run(self.next_element_test)
@@ -289,74 +431,72 @@ class SingulationTrainerNew(BaseTrain):
                     if exp_ids_to_export and not features_to_export:
                         continue
 
-
                     start_time = time.time()
                     last_log_time = start_time
 
                     for i in range(len(features)):
                         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
-                                                                            batch_data=features[i],
-                                                                            initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                            batch_processing=False
-                                                                            )
-                        output_i = []
+                                                                                    batch_data=features[i],
+                                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                    batch_processing=False,
+                                                                                    return_only_unpadded=True
+                                                                                    )
 
-                        for j in range(features[i]["unpadded_experiment_length"] - 1):
-                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance = self.do_step(input_graphs_all_exp[j],
-                                                                                                           target_graphs_all_exp[j],
-                                                                                                           features[i],
-                                                                                                           sigmoid_threshold=thresh,
-                                                                                                           train=False,
-                                                                                                           batch_processing=False
-                                                                                                           )
-                            output = output[0]
-                            if total_loss is not None:
-                                losses_total.append(total_loss)
-                                losses_img.append(loss_img)
-                                losses_iou.append(loss_iou)
-                                losses_velocity.append(loss_velocity)
-                                losses_position.append(loss_position)
-                                losses_distance.append(loss_distance)
+                        input_graphs_all_exp = [input_graphs_all_exp]
+                        target_graphs_all_exp = [target_graphs_all_exp]
 
-                            output_i.append(output)
+                        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config,
+                                                                                              input_graphs_all_exp,
+                                                                                              target_graphs_all_exp)
 
-                        outputs_total.append((output_i, i))
+                        loss_img, out_label = self.sess.run([self.model.loss_op, self.out_label_tf],
+                                                            feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                       self.in_image_tf: in_image,
+                                                                       self.gt_label_tf: gt_label,
+                                                                       self.in_control_tf: in_control,
+                                                                       self.is_training: True})
+                        loss_velocity = np.array(0.0)
+                        loss_position = np.array(0.0)
+                        loss_edge = np.array(0.0)
+                        loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                        losses_total.append(loss_total)
+                        losses_img.append(loss_img)
+                        losses_velocity.append(loss_velocity)
+                        losses_position.append(loss_position)
+                        losses_edge.append(loss_edge)
+
+                        out_label[out_label >= 0.5] = 1.0
+                        out_label[out_label < 0.5] = 0.0
+
+                        outputs_total.append((out_label, in_segxyz, in_image, in_control, i))
 
                     the_time = time.time()
                     elapsed_since_last_log = the_time - last_log_time
                     cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
                     if not process_all_nn_outputs:
-                        """ due to brevity, just use last results """
-                        outputs_for_summary = [outputs_for_summary[-1]]
+                        """ due to brevity, just use last output """
+                        outputs_total = [outputs_total[-1]]
 
-                    if losses_total:
-                        batch_loss = np.mean(losses_total)
-                        img_batch_loss = np.mean(losses_img)
-                        iou_batch_loss = np.mean(losses_iou)
-                        vel_batch_loss = np.mean(losses_velocity)
-                        pos_batch_loss = np.mean(losses_position)
-                        dis_batch_loss = np.mean(losses_distance)
+                    batch_loss = np.mean(losses_total)
+                    img_batch_loss = np.mean(losses_img)
+                    vel_batch_loss = np.mean(losses_velocity)
+                    pos_batch_loss = np.mean(losses_position)
+                    edge_batch_loss = np.mean(losses_edge)
 
-                        print('total test batch loss: {:<8.6f} | img loss: {:<10.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | distance loss {:<8.6f} time(s): {:<10.2f}'.format(
-                                batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
-                                elapsed_since_last_log))
+                    print(
+                        'total test batch loss: {:<8.6f} | img loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | edge loss {:<8.6f} time(s): {:<10.2f}'.format(
+                            batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, edge_batch_loss,
+                            elapsed_since_last_log))
 
                     if outputs_total:
-                        if self.config.parallel_batch_processing:
-                            with parallel_backend('loky', n_jobs=-2):
-                                Parallel()(delayed(generate_results)(output, self.config, prefix, features, cur_batch_it, export_images,
-                                                              export_latent_data, sub_dir_name) for output in outputs_for_summary)
-                        else:
-                            for output in outputs_total:
-                                generate_results(output=output,
-                                                        config=self.config,
-                                                        prefix=prefix,
-                                                        features=features,
-                                                        cur_batch_it=cur_batch_it,
-                                                        export_images=export_images,
-                                                        export_latent_data=export_latent_data,
-                                                        dir_name=sub_dir_name, reduce_dict=True)
+                        for output in outputs_total:
+                            generate_and_export_image_dicts(output=output, features=features,
+                                                                        config=self.config,
+                                                                        prefix=prefix, cur_batch_it=cur_batch_it,
+                                                                        dir_name=sub_dir_name, reduce_dict=True)
+
                 except tf.errors.OutOfRangeError:
                     break
                 else:
