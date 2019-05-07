@@ -650,7 +650,7 @@ class VisualAndLatentDecoderSonnet(snt.AbstractModule):
             print("shape decoded output (latent):", non_visual_decoded_output.get_shape())
             print("final decoder output shape after including non-visual data", outputs.get_shape())
 
-            return outputs
+        return outputs
 
 class VisualAndLatentEncoderSonnet(snt.AbstractModule):
     def __init__(self, name='VisualAndLatentEncoder', is_training=False):
