@@ -14,9 +14,9 @@ from nets_factory import get_network_fn
 
 model_dirs = os.path.join(os.path.dirname(os.path.abspath(__file__)),'./.')
 
-class Model_naive_xyz(BaseModel):
-    def __init__(self, config, name="Model_naive_xyz_net"):
-        super(Model_naive_xyz, self).__init__(self)
+class Model_naive_xyz_no_MLP(BaseModel):
+    def __init__(self, config, name="Model_naive_xyz_no_MLP"):
+        super(Model_naive_xyz_no_MLP, self).__init__(self)
         self.config = config
         # init the global step
         self.init_global_step()
