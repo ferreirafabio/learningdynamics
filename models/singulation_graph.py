@@ -130,8 +130,8 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
             #vel = (diff * 240.0).flatten().astype(np.float32)
             vel = features['objvel'][step][obj_id].flatten().astype(np.float32)
             if config.remove_pos_vel:
-                pos = np.zeros(shape=np.shape(pos))
-                vel = np.zeros(shape=np.shape(vel))
+                pos = np.zeros(shape=np.shape(pos), dtype=np.float32)
+                vel = np.zeros(shape=np.shape(vel), dtype=np.float32)
             return np.concatenate((obj_seg, vel, pos))
 
     def create_edge_feature_distance(receiver, sender, target_graph_i):
