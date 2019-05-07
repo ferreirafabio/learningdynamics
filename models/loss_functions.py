@@ -57,7 +57,7 @@ def create_loss_ops(config, target_op, output_ops):
             labels = segmentation_data_gt
             labels = tf.cast(labels, tf.int32)
 
-            loss_visual_ce_nodes = 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+            loss_visual_ce_nodes = 0.9 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=labels,
                 logits=logits))
 
@@ -71,7 +71,7 @@ def create_loss_ops(config, target_op, output_ops):
             labels_edges = tf.cast(target_edges_reshaped[:,:,:,0], tf.int32)
 
 
-            loss_nonvisual_ce_edges = 0.2 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+            loss_nonvisual_ce_edges = 0.1 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=labels_edges,
                 logits=logits_edges))
 
@@ -107,7 +107,7 @@ def create_loss_ops(config, target_op, output_ops):
             labels = segmentation_data_gt
             labels = tf.cast(labels, tf.int32)
 
-            loss_visual_ce_nodes = 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+            loss_visual_ce_nodes = 0.9 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                         labels=labels,
                                                         logits=logits))
 
@@ -117,7 +117,7 @@ def create_loss_ops(config, target_op, output_ops):
             loss_nonvisual_mse_edges = tf.losses.mean_squared_error(
                                                    labels=target_op.edges,
                                                    predictions=output_op.edges,
-                                                   weights=0.2)
+                                                   weights=0.1)
 
             loss_visual_iou_seg = 0.0  # no iou loss computed
             loss_nonvisual_mse_nodes_vel = 0.0

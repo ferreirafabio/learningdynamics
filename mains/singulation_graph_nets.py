@@ -43,34 +43,25 @@ def main():
 
         if not hasattr(config, 'remove_edges'):
             config.remove_edges = False
-        else:
-            print("remove_edges is set to True, edges will be removed from graph")
 
         if not hasattr(config, 'batch_processing'):
             config.batch_processing = False
-        else:
-            print("batch_processing activated")
 
         if not hasattr(config, 'conv_layer_instance_norm'):
             config.conv_layer_instance_norm = True
             print("convolution layers are normalized with instance norm")
-        else:
-            print("convolution layers are not normalized")
 
         if not hasattr(config, 'use_lins_gn_net'):
             config.use_lins_gn_net = False
-        else:
-            print("Using DeepMinds GN framework")
 
         if not hasattr(config, 'nodes_get_full_rgb_depth'):
             config.nodes_get_full_rgb_depth = False
-        else:
-            print("Each node in the graph receives full RGB and depth data")
+
+        if not hasattr(config, 'remove_pos_vel'):
+            config.remove_pos_vel = False
 
         if not hasattr(config, 'edges_carry_segmentation_data'):
-           config.edges_carry_segmentation_data = False
-        else:
-            print("Nodes carry position_t, position_t-1 and velocity (9 dim)")
+            config.edges_carry_segmentation_data = False
 
         if config.normalize_data:
             print("-- using normalized data as input --")
