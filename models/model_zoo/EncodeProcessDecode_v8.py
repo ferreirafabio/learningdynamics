@@ -844,7 +844,7 @@ class VisualAndLatentEncoderSonnet(snt.AbstractModule):
         if verbose:
             print("final encoder output shape", outputs.get_shape())
 
-        return outputs
+        return visual_latent_output
 
 
 
