@@ -69,7 +69,6 @@ class baseline_auto_predictor(BaseModel):
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
-        x = tf.layers.batch_normalization(x, training=is_training, momentum=0.9)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         x = tflearn.layers.flatten(x)
@@ -125,7 +124,6 @@ class baseline_auto_predictor(BaseModel):
 
         """ Layer 12 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training, momentum=0.9)
 
         return x
 
