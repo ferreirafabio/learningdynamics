@@ -29,47 +29,47 @@ class baseline_auto_predictor(BaseModel):
         x = in_rgbsegxyz
         """ Layer 1 """
         x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_1")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 2 """
         x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_2")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 3 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_3")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 4 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_4")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 5 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_5")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 6 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_6")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 7 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_7")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 8 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_8")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 9 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_9")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         x = tflearn.layers.flatten(x)
@@ -81,51 +81,51 @@ class baseline_auto_predictor(BaseModel):
 
         """ Layer 1 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[2, 2], nb_filter=256, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', padding='valid')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 2 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[4, 4], nb_filter=256, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 3 """
         x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[7, 10], filter_size=4, strides=[1, 2], activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 4 """
         x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 5 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=256, filter_size=2, strides=1,  activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 6 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=128, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 7 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 8 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 9 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=2, activation='relu',  weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 11 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=64, filter_size=3, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         """ Layer 12 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2')
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.contrib.layers.batch_norm(x, is_training=is_training)
 
         return x
 
@@ -133,12 +133,12 @@ class baseline_auto_predictor(BaseModel):
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True):
         ctrl = in_control
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        ctrl = tf.layers.batch_normalization(ctrl, training=is_training)
-
+        ctrl = tf.contrib.layers.batch_norm(ctrl, is_training=is_training)
+        
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        ctrl = tf.layers.batch_normalization(ctrl, training=is_training)
+        ctrl = tf.contrib.layers.batch_norm(ctrl, is_training=is_training)
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        latent_ctrl = tf.layers.batch_normalization(ctrl, training=is_training)
+        latent_ctrl = tf.contrib.layers.batch_norm(ctrl, is_training=is_training)
 
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
