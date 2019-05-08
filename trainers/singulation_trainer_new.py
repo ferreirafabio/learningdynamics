@@ -382,12 +382,16 @@ class SingulationTrainerNew(BaseTrain):
                 except tf.errors.OutOfRangeError:
                     break
 
-            iou_traj_mean = np.mean(iou_list_test_set)
-            prec_traj_mean = np.mean(prec_score_list_test_set)
-            rec_traj_mean = np.mean(rec_score_list_test_set)
-            f1_traj_mean = np.mean(f1_score_list_test_set)
+            iou_test_set_mean = np.mean(iou_list_test_set)
+            prec_test_set_mean = np.mean(prec_score_list_test_set)
+            rec_test_set_mean = np.mean(rec_score_list_test_set)
+            f1_test_set_mean = np.mean(f1_score_list_test_set)
 
-            writer.writerow(["means over full set", " IoU: ", iou_traj_mean, " Precision: ", prec_traj_mean, " Recall: ", rec_traj_mean, "F1: ", f1_traj_mean])
+            writer.writerow(["means over full set", " IoU: ", iou_test_set_mean, " Precision: ", prec_test_set_mean, " Recall: ", rec_test_set_mean, "F1: ", f1_test_set_mean])
+            print("Done. mean IoU: {}, mean precision: {}, mean recall: {}, mean f1: {}".format(iou_test_set_mean,
+                                                                                                prec_test_set_mean,
+                                                                                                rec_test_set_mean,
+                                                                                                f1_test_set_mean))
 
     def test_specific_exp_ids(self):
         if not self.config.n_epochs == 1:
