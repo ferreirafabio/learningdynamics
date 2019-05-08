@@ -51,8 +51,8 @@ def main():
             config.conv_layer_instance_norm = True
             print("convolution layers are normalized with instance norm")
 
-        if not hasattr(config, 'use_lins_gn_net'):
-            config.use_lins_gn_net = False
+        if not hasattr(config, 'use_baseline_auto_predictor'):
+            config.use_baseline_auto_predictor = False
 
         if not hasattr(config, 'nodes_get_full_rgb_depth'):
             config.nodes_get_full_rgb_depth = False
@@ -98,17 +98,13 @@ def main():
         only_test = True
 
     # create trainer and pass all the previous components to it
-    if config.use_lins_gn_net:
+    if config.use_baseline_auto_predictor:
         trainer = SingulationTrainerNew(sess, model, train_data, test_data, config, logger, only_test=False)
     else:
         trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
 
     # load model if exists
     model.load(trainer.sess)
-    if config.use_lins_gn_net:
-        print('No ResNet weights loaded')
-        #model.load_resnet(trainer.sess)
-        #print("ResNet weights loaded")
 
     if config.mode == "train_test":
         print("--- Running TRAIN/TEST MODE ---")

@@ -14,7 +14,7 @@ class BaseTrain:
         self.train_data = train_data
         self.test_data = test_data
 
-        if not self.config.use_lins_gn_net:
+        if not self.config.use_baseline_auto_predictor:
             if not only_test:
                 self.initialize_train_model()
             self.initialize_test_model()
@@ -62,6 +62,8 @@ class BaseTrain:
 
         self.gt_label_tf = tf.placeholder(tf.float32, [None, 120, 160], 'out_image')
         self.in_control_tf = tf.placeholder(tf.float32, [None, 3], 'in_control')
+        # todo:
+        print("Todo: in_control is currently a 3d vector. Update to 6d vector as in GN")
 
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 

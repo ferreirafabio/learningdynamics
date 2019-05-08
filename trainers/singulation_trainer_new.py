@@ -187,7 +187,7 @@ class SingulationTrainerNew(BaseTrain):
                                                               self.in_image_tf: in_image,
                                                               self.gt_label_tf: gt_label,
                                                               self.in_control_tf: in_control,
-                                                              self.is_training: True})
+                                                              self.is_training: False})
             loss_velocity = np.array(0.0)
             loss_position = np.array(0.0)
             loss_edge = np.array(0.0)
