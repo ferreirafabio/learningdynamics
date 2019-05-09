@@ -55,7 +55,7 @@ class SingulationTrainerNew(BaseTrain):
         last_log_time = start_time
 
 
-        _, loss_img, out_label = self.sess.run([self.model.train_op, self.model.loss_op, self.out_label_tf], feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
+        _, loss_img, out_label, in_rgb_seg_xyz = self.sess.run([self.model.train_op, self.model.loss_op, self.out_label_tf, self.in_rgb_seg_xyz], feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
                                                                                                                         self.gt_label_tf: gt_label, self.in_control_tf: in_control,
                                                                                                                         self.is_training: True})
         loss_velocity = np.array(0.0)
@@ -319,6 +319,7 @@ class SingulationTrainerNew(BaseTrain):
 
                         unpad_exp_length = features[i]['unpadded_experiment_length']
                         n_objects = features[i]['n_manipulable_objects']
+                        print(np.shape(out_label))
                         out_label_split = np.split(out_label, unpad_exp_length - 1)
                         in_seg_split = np.split(in_segxyz[:,:,:,0], unpad_exp_length - 1)
 
@@ -401,15 +402,20 @@ class SingulationTrainerNew(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
-        #exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+        #exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
+        #dir_name = "3_objects"
+        #exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+        #dir_name = "5_objects"
+        exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
+        dir_name = "5_novel_objects"
+
 
         process_all_nn_outputs = True
 
         thresholds_to_test = [0.5]
 
         for thresh in thresholds_to_test:
-            sub_dir_name = "test_3_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
+            sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(dir_name, cur_batch_it, thresh)
             while True:
                 try:
                     losses_total = []

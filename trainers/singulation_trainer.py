@@ -591,7 +591,11 @@ class SingulationTrainer(BaseTrain):
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         #exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
-        exp_ids_to_export = [2815, 608, 1691, 49, 922, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+        #dir_name = "3_objects"
+        exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+        dir_name = "5_objects"
+        #exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
+        #dir_name = "5_novel_objects"
 
         export_images = self.config.export_test_images
         export_latent_data = False
@@ -600,7 +604,7 @@ class SingulationTrainer(BaseTrain):
         thresholds_to_test = [0.5]
 
         for thresh in thresholds_to_test:
-            sub_dir_name = "test_5_objects_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(cur_batch_it, thresh)
+            sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(dir_name, cur_batch_it, thresh)
             while True:
                 try:
                     losses_total = []
