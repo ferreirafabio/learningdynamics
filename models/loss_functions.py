@@ -34,6 +34,7 @@ def create_loss_ops(config, target_op, output_ops):
     loss_ops_velocity = []
     loss_ops_edges = []
     loss_ops_img_iou = []
+    loss_ops_global = []
 
     img_scale = 1
     non_visual_scale = 1
@@ -81,12 +82,14 @@ def create_loss_ops(config, target_op, output_ops):
             loss_nonvisual_mse_nodes_pos = 0.0
             loss_nonvisual_mse_nodes_vel = 0.0
             loss_visual_iou_seg = 0.0
+            loss_nonvisual_mse_global = 0.0
 
             loss_ops_img.append(loss_visual_ce_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_edges.append(loss_nonvisual_ce_edges)
+            loss_ops_global.append(loss_nonvisual_mse_global)
 
             #print("--- only optimizing for visual CE of nodes ---")
             #total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_ce_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
@@ -122,12 +125,14 @@ def create_loss_ops(config, target_op, output_ops):
             loss_visual_iou_seg = 0.0  # no iou loss computed
             loss_nonvisual_mse_nodes_vel = 0.0
             loss_nonvisual_mse_nodes_pos = 0.0
+            loss_nonvisual_mse_global = 0.0
 
             loss_ops_img.append(loss_visual_ce_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_edges.append(loss_nonvisual_mse_edges)
+            loss_ops_global.append(loss_nonvisual_mse_global)
 
             #print("---- image loss only ----")
             #total_loss_ops.append(loss_visual_ce_nodes)
@@ -166,18 +171,63 @@ def create_loss_ops(config, target_op, output_ops):
             loss_nonvisual_mse_nodes_vel = 0.0
             loss_visual_iou_seg = 0.0
             loss_nonvisual_ce_edges = 0.0
+            loss_nonvisual_mse_global = 0.0
 
             loss_ops_img.append(loss_visual_ce_nodes)
             loss_ops_img_iou.append(loss_visual_iou_seg)
             loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
             loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
             loss_ops_edges.append(loss_nonvisual_ce_edges)
+            loss_ops_global.append(loss_nonvisual_mse_global)
 
             #print("--- only optimizing for visual CE of nodes ---")
             #total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_ce_edges + loss_nonvisual_mse_nodes_vel + loss_nonvisual_mse_nodes_pos)
             #total_loss_ops.append(loss_visual_ce_nodes)
             total_loss_ops.append(loss_visual_ce_nodes)
 
+    elif config.loss_type == 'cross_entropy_seg_only_global_loss':
+        for i, output_op in enumerate(output_ops):
+            """ VISUAL LOSS """
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes, img_type="seg", output_cnn_2_filter_maps=True)  # returns shape (?, 120,160,2)
+            target_node_reshaped = _transform_into_images(config, target_op.nodes, img_type="all")  # returns shape (?, 120,160,7)
+
+            segmentation_data_predicted = predicted_node_reshaped  # --> transform into (?,120,160,2)
+            segmentation_data_gt = target_node_reshaped[:, :, :, 3]  # --> transform into (?,120,160)
+
+            logits = segmentation_data_predicted
+            labels = segmentation_data_gt
+            labels = tf.cast(labels, tf.int32)
+
+            loss_visual_ce_nodes = 0.7 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                                        labels=labels,
+                                                        logits=logits))
+
+            tf.losses.add_loss(loss_visual_ce_nodes)
+
+            """ NONVISUAL LOSS (20% weight) """
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(
+                                                   labels=target_op.edges,
+                                                   predictions=output_op.edges,
+                                                   weights=0.1)
+
+            loss_nonvisual_mse_global = tf.losses.mean_squared_error(labels=target_op.globals,
+                                                                     predictions=output_op.globals,
+                                                                     weights=0.2)
+
+            loss_visual_iou_seg = 0.0  # no iou loss computed
+            loss_nonvisual_mse_nodes_vel = 0.0
+            loss_nonvisual_mse_nodes_pos = 0.0
+
+            loss_ops_img.append(loss_visual_ce_nodes)
+            loss_ops_img_iou.append(loss_visual_iou_seg)
+            loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
+            loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
+            loss_ops_edges.append(loss_nonvisual_mse_edges)
+            loss_ops_global.append(loss_nonvisual_mse_global)
+
+
+            print("---- image + edge(mse) + global (mse) loss only ----")
+            total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_mse_edges + loss_nonvisual_mse_global)
 
     else:
         raise ValueError("loss type must be in [\"mse\", \"mse_gdl\", \"mse_iou\", \"mse_seg_only\", \"cross_entropy_seg_only\" but is {}".format(config.loss_type))
@@ -185,7 +235,9 @@ def create_loss_ops(config, target_op, output_ops):
     l2_loss = tf.losses.get_regularization_loss()
     total_loss_ops += l2_loss
 
-    return tf.reduce_mean(total_loss_ops), tf.reduce_mean(loss_ops_img), tf.reduce_mean(loss_ops_img_iou), tf.reduce_mean(loss_ops_velocity), tf.reduce_mean(loss_ops_position), tf.reduce_mean(loss_ops_edges)
+    return tf.reduce_mean(total_loss_ops), tf.reduce_mean(loss_ops_img), tf.reduce_mean(loss_ops_img_iou),\
+           tf.reduce_mean(loss_ops_velocity), tf.reduce_mean(loss_ops_position), tf.reduce_mean(loss_ops_edges), \
+           tf.reduce_mean(loss_ops_global)
 
 def _transform_into_images(config, data, img_type="all", output_cnn_2_filter_maps=False):
     """ reshapes data (shape: (batch_size, feature_length)) into the required image shape with an
