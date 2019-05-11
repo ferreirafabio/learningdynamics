@@ -121,6 +121,9 @@ def main():
     elif config.mode == "test_5_objects":
         print("--- Running 5 object test mode ---")
         trainer.test_5_objects()
+    elif config.mode == "store_latent_vectors":
+        print("--- Running store latent vectors mode ---")
+        trainer.store_latent_vectors()
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
         trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,

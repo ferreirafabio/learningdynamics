@@ -751,7 +751,7 @@ class SingulationTrainer(BaseTrain):
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
-                    _, output, _, _, _, _, _, _, _, latent_init_img = self.do_step(
+                    _, _, _, _, _, _, _, _, _, latent_init_img = self.do_step(
                         input_graphs_all_exp[0], target_graphs_all_exp[0], features[i], sigmoid_threshold=0.5, train=False,
                         batch_processing=False)
 
