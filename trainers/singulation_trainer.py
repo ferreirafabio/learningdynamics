@@ -755,7 +755,7 @@ class SingulationTrainer(BaseTrain):
                         input_graphs_all_exp[0], target_graphs_all_exp[0], features[i], sigmoid_threshold=0.5, train=False,
                         batch_processing=False)
 
-                    df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len})
+                    df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len}, ignore_index=True)
 
             except tf.errors.OutOfRangeError:
                 df.to_pickle(file_name)
