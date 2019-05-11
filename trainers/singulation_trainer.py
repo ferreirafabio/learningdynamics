@@ -12,6 +12,7 @@ from utils.utils import extract_input_and_output
 from models.singulation_graph import create_graphs, create_feed_dict
 from joblib import parallel_backend, Parallel, delayed
 from eval.compute_test_run_statistics import compute_psnr
+import pandas as pd
 
 class SingulationTrainer(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger, only_test):
@@ -62,7 +63,7 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
-                                  #"logits": self.model.train_logits,
+                                  "latent_init_img": self.model.latent_init_img_train,
                                   "loss_total": self.model.loss_op_train_total,
                                   "outputs": self.model.output_ops_train,
                                   "loss_img": self.model.loss_ops_train_img,
@@ -79,7 +80,7 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
-                                  #"logits": self.model.test_logits,
+                                  "latent_init_img": self.model.latent_init_img_test,
                                   "outputs": self.model.output_ops_test,
                                   "loss_img": self.model.loss_ops_test_img,
                                   "loss_iou": self.model.loss_ops_test_iou,
@@ -102,8 +103,9 @@ class SingulationTrainer(BaseTrain):
                 seg_data[seg_data >= sigmoid_threshold] = 1.0
                 seg_data[seg_data < sigmoid_threshold] = 0.0
                 output.nodes[:, :-6-19200] = seg_data
+
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], \
-               data['loss_position'], data['loss_distance'], data['target'], data["loss_global"]
+               data['loss_position'], data['loss_distance'], data['target'], data["loss_global"], data['latent_init_img']
 
     def test(self):
         if not self.config.n_epochs == 1:
@@ -218,7 +220,7 @@ class SingulationTrainer(BaseTrain):
                         output_i, target_i, exp_id_i = [], [], []
 
                         for j in range(features[i]["unpadded_experiment_length"] - 1):
-                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target = self.do_step(
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target, _ = self.do_step(
                                                                                                                     input_graphs_all_exp[j],
                                                                                                                     target_graphs_all_exp[j],
                                                                                                                     features[i],
@@ -367,7 +369,7 @@ class SingulationTrainer(BaseTrain):
 
 
             for j in range(features[i]["unpadded_experiment_length"]-1):
-                total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global = self.do_step(input_graphs_all_exp[j],
+                total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global, _ = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
                                                                                                        train=True,
@@ -433,7 +435,7 @@ class SingulationTrainer(BaseTrain):
             start_time = time.time()
             last_log_time = start_time
 
-            total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global = self.do_step(input_batch, target_batch, features, train=True, batch_processing=True)
+            total_loss, _, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global, _ = self.do_step(input_batch, target_batch, features, train=True, batch_processing=True)
 
             self.sess.run(self.model.increment_cur_batch_tensor)
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -493,7 +495,7 @@ class SingulationTrainer(BaseTrain):
 
 
             for j in range(features[i]["unpadded_experiment_length"] - 1):
-                total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target, loss_global = self.do_step(input_graphs_all_exp[j],
+                total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target, loss_global, _ = self.do_step(input_graphs_all_exp[j],
                                                                                                        target_graphs_all_exp[j],
                                                                                                        features[i],
                                                                                                        train=False,
@@ -659,7 +661,7 @@ class SingulationTrainer(BaseTrain):
                         output_i = []
 
                         for j in range(features[i]["unpadded_experiment_length"] - 1):
-                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global = self.do_step(input_graphs_all_exp[j],
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, _, loss_global, _ = self.do_step(input_graphs_all_exp[j],
                                                                                                            target_graphs_all_exp[j],
                                                                                                            features[i],
                                                                                                            sigmoid_threshold=thresh,
@@ -722,85 +724,41 @@ class SingulationTrainer(BaseTrain):
                     print("continue")
                     continue
 
-    def test_statistics(self, prefix, initial_pos_vel_known, export_images=False, sub_dir_name="test_statistics", export_latent_data=True):
+    def store_latent_vectors(self, ):
+        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
+        prefix = self.config.exp_name
+        print("Storing latent vectors")
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        if not self.config.n_epochs == 1:
-            print("test statistics mode --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
+        df = pd.DataFrame(columns=['latent_vector_init_img', 'exp_id', 'exp_len'])
+        sub_dir_name = "latent_vectors_initial_image_of_full_test_set_{}_iterations_trained".format(cur_batch_it)
 
-        reduce_dict = False
-        overlay_images = True
-        pos_means = []
-        pos_std = []
-        vel_means = []
-        vel_std = []
-        psnr = []
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
+        dataset_name = os.path.basename(self.config.tfrecords_dir)
+        file_name = dir_path + "/latent_vectors_gn_dataset_{}.pkl".format(dataset_name)
 
-        create_dir(os.path.join("../experiments", prefix), sub_dir_name)
         while True:
             try:
-                outputs_total = []
-                features = self.sess.run(self.next_element_test)
 
+                features = self.sess.run(self.next_element_test)
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
-                input_graphs_all_exp, target_graphs_all_exp, input_ctrl_graphs_all_exp = create_graphs(config=self.config,
-                                                                                                       batch_data=features,
-                                                                                                       batch_size=self.config.test_batch_size,
-                                                                                                       initial_pos_vel_known=initial_pos_vel_known
-                                                                                                       )
+                for i in range(len(features)):
+                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features[i],
+                                                                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                batch_processing=False)
 
-                for i in range(self.config.test_batch_size):
-                    _, output, _, _, _, _, _, _, _ = self.do_step(input_graphs_all_exp[i],
-                                                                    target_graphs_all_exp[i],
-                                                                    input_ctrl_graphs_all_exp[i],
-                                                                    features[i],
-                                                                    train=False
-                                                                    )
-                    if output:
-                        outputs_total.append((output, i))
+                    exp_id = features[i]['experiment_id']
+                    exp_len = features[i]["unpadded_experiment_length"]  # the label
 
-                cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+                    _, output, _, _, _, _, _, _, _, latent_init_img = self.do_step(
+                        input_graphs_all_exp[0], target_graphs_all_exp[0], features[i], sigmoid_threshold=0.5, train=False,
+                        batch_processing=False)
 
-                if outputs_total:
-                    if self.config.parallel_batch_processing:
-                        with parallel_backend('loky', n_jobs=-2):
-                            results = Parallel()(delayed(generate_results)(output,
-                                                                self.config,
-                                                                prefix,
-                                                                features,
-                                                                cur_batch_it,
-                                                                export_images,
-                                                                export_latent_data,
-                                                                sub_dir_name,
-                                                                reduce_dict,
-                                                                overlay_images
-                                                                ) for output in outputs_total)
-
-                        for result in results:
-                            images_dict = result[0]
-                            df = result[2]
-
-                            psnr.append(compute_psnr(images_dict))
-                            #print(images_dict, df)
-
-                    else:
-                        for output in outputs_total:
-                            summaries_dict_images, _, df = generate_results(output=output,
-                                                                            config=self.config,
-                                                                            prefix=prefix,
-                                                                            features=features,
-                                                                            cur_batch_it=cur_batch_it,
-                                                                            export_images=export_images,
-                                                                            export_latent_data=export_latent_data,
-                                                                            dir_name=sub_dir_name,
-                                                                            reduce_dict=True,
-                                                                            overlay_images=overlay_images
-                                                                            )
-                summaries_dict_images = None
-                df = None
+                    df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len})
 
             except tf.errors.OutOfRangeError:
+                df.to_pickle(file_name)
                 break
             else:
                 print("continue")

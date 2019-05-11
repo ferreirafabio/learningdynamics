@@ -87,7 +87,7 @@ class BaseTrain:
         self.model.target_ph = target_ph
 
         self.model.is_training = True
-        self.model.output_ops_train = self.model(self.model.input_ph, self.model.target_ph,
+        self.model.output_ops_train, self.model.latent_init_img_train = self.model(self.model.input_ph, self.model.target_ph,
                                                  1, self.model.is_training)
 
         total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
@@ -113,7 +113,7 @@ class BaseTrain:
         self.model.target_ph_test = target_ph
 
         self.model.is_training = False
-        self.model.output_ops_test = self.model(self.model.input_ph_test,
+        self.model.output_ops_test, self.model.latent_init_img_test = self.model(self.model.input_ph_test,
                                                 self.model.target_ph_test, 1,
                                                 self.model.is_training)
 
