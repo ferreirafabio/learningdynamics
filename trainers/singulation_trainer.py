@@ -724,7 +724,7 @@ class SingulationTrainer(BaseTrain):
                     print("continue")
                     continue
 
-    def store_latent_vectors(self, ):
+    def store_latent_vectors(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
         prefix = self.config.exp_name
         print("Storing latent vectors")
