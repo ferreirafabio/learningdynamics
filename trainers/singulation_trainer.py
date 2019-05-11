@@ -71,7 +71,7 @@ class SingulationTrainer(BaseTrain):
                                   "loss_velocity": self.model.loss_ops_train_velocity,
                                   "loss_position": self.model.loss_ops_train_position,
                                   "loss_distance": self.model.loss_ops_train_distance,
-                                  "loss_global": self.model.loss_ops_train_global,
+                                  #"loss_global": self.model.loss_ops_train_global,
                                   }, feed_dict=feed_dict)
 
         else:
@@ -87,7 +87,7 @@ class SingulationTrainer(BaseTrain):
                                   "loss_velocity": self.model.loss_ops_test_velocity,
                                   "loss_position": self.model.loss_ops_test_position,
                                   "loss_distance": self.model.loss_ops_test_distance,
-                                  "loss_global": self.model.loss_ops_test_global
+                                  #"loss_global": self.model.loss_ops_test_global
                                   }, feed_dict=feed_dict)
 
 
