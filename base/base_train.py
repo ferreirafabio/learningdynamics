@@ -90,7 +90,7 @@ class BaseTrain:
         self.model.output_ops_train, self.model.latent_init_img_train = self.model(self.model.input_ph, self.model.target_ph,
                                                  1, self.model.is_training)
 
-        total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
+        total_loss_ops, loss_ops_img, loss_ops_iou, loss_ops_velocity, loss_ops_position, loss_ops_distance, _ = create_loss_ops(self.config, self.model.target_ph, self.model.output_ops_train)
         ''' remove all inf values --> correspond to padded entries '''
         self.model.loss_op_train_total = total_loss_ops
         self.model.loss_ops_train_img = loss_ops_img  # just for summary, is already included in loss_op_train
@@ -117,7 +117,7 @@ class BaseTrain:
                                                 self.model.target_ph_test, 1,
                                                 self.model.is_training)
 
-        total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
+        total_loss_ops_test, loss_ops_test_img, loss_ops_test_iou, loss_ops_test_velocity, loss_ops_test_position, loss_ops_test_distance, _ = create_loss_ops(self.config, self.model.target_ph_test, self.model.output_ops_test)
 
         ''' remove all inf values --> correspond to padded entries '''
         self.model.loss_op_test_total = total_loss_ops_test
