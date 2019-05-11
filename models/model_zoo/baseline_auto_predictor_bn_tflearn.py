@@ -150,7 +150,7 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
 
         score = self.decoder(latent=latent_img_ctrl, is_training=is_training)
 
-        return score
+        return score, latent_img_ctrl
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):

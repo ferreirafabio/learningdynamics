@@ -10,6 +10,7 @@ from utils.utils import extract_input_and_output
 from utils.io import create_dir
 from models.singulation_graph import create_graphs, networkx_graphs_to_images
 import csv
+import pandas as pd
 
 
 class SingulationTrainerNew(BaseTrain):
@@ -513,3 +514,50 @@ class SingulationTrainerNew(BaseTrain):
                     print("continue")
                     continue
 
+
+    def store_latent_vectors(self):
+        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
+        prefix = self.config.exp_name
+        print("Storing latent vectors baseline")
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        df = pd.DataFrame(columns=['latent_vector_init_img', 'exp_id', 'exp_len'])
+        sub_dir_name = "latent_vectors_initial_image_of_full_test_set_{}_iterations_trained".format(cur_batch_it)
+
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
+        dataset_name = os.path.basename(self.config.tfrecords_dir)
+        file_name = dir_path + "/latent_vectors_baseline_auto_predictor_dataset_{}.pkl".format(dataset_name)
+
+        while True:
+            try:
+
+                features = self.sess.run(self.next_element_test)
+                features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+
+                for i in range(len(features)):
+                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features[i],
+                                                                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                batch_processing=False)
+
+                    exp_id = features[i]['experiment_id']
+                    exp_len = features[i]["unpadded_experiment_length"]  # the label
+
+                    input_graphs_all_exp = [input_graphs_all_exp]
+                    target_graphs_all_exp = [target_graphs_all_exp]
+
+                    in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
+                                                                                          target_graphs_all_exp)
+
+                    loss_img, out_label, latent_init_img = self.sess.run([self.model.loss_op, self.out_label_tf, self.latent_init_img],
+                                                        feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
+                                                                   self.gt_label_tf: gt_label, self.in_control_tf: in_control,
+                                                                   self.is_training: True})
+
+                    df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len}, ignore_index=True)
+
+            except tf.errors.OutOfRangeError:
+                df.to_pickle(file_name)
+                break
+            else:
+                print("continue")
+                continue
