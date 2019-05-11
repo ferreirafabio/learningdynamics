@@ -76,6 +76,10 @@ class baseline_auto_predictor_extended(BaseModel):
         return x
 
     def decoder(self, latent, is_training):
+
+        latent = tf.expand_dims(latent, axis=1)
+        latent = tf.expand_dims(latent, axis=1)
+
         x = latent
 
         """ Layer 1 """
@@ -128,28 +132,35 @@ class baseline_auto_predictor_extended(BaseModel):
 
         return x
 
-    def mlp(self, latent_img, ctrl):
-        """ control """
+    def physics_predictor(self, latent, ctrl):
+        latent_last_step = latent
+        # todo: do interaction between objects here
+        """" interaction MLP """
+        # latent
+
+        """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
         latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
 
         latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
         latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
 
-        latent_img_ctrl = tf.concat([latent_img, latent_ctrl], axis=-1)
-        latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
+        latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
 
-        """" propagate image forward in latent space one time step """
-        latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
-        latent_img_ctrl = tflearn.layers.normalization.batch_normalization(latent_img_ctrl)
+        """" transition MLP to next time step """
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
-        latent_img_ctrl = tflearn.layers.normalization.batch_normalization(latent_img_ctrl)
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
-        latent_img_ctrl = tflearn.layers.normalization.batch_normalization(latent_img_ctrl)
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        return latent_img_ctrl
+        physics_output = latent_next_step + latent_last_step
+
+        return physics_output
 
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
@@ -158,13 +169,12 @@ class baseline_auto_predictor_extended(BaseModel):
 
         predictions = []
 
-        for i in range(n_predictions):
-            latent_img_ctrl = self.mlp(latent_img=latent_img, ctrl=in_control)  # todo: index in_control
+        latent_img_next_step = latent_img
+        in_control_T = tf.tile(in_control, num=n_predictions)
 
-            latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
-            latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
-            
-            img_decoded = self.decoder(latent=latent_img_ctrl, is_training=is_training)
+        for i in range(n_predictions):
+            latent_img_next_step = self.physics_predictor(latent=latent_img_next_step, ctrl=in_control_T[i])
+            img_decoded = self.decoder(latent=latent_img_next_step, is_training=is_training)
 
             predictions.append(img_decoded)
 
