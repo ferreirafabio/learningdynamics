@@ -553,6 +553,8 @@ class SingulationTrainerNew(BaseTrain):
                                                                    self.gt_label_tf: gt_label, self.in_control_tf: in_control,
                                                                    self.is_training: True})
 
+                    print(np.shape(latent_init_img))
+
                     df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len}, ignore_index=True)
 
             except tf.errors.OutOfRangeError:
