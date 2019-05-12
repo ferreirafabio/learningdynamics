@@ -544,8 +544,8 @@ class SingulationTrainerNew(BaseTrain):
 
                     print(np.shape(input_graphs_all_exp), np.shape(target_graphs_all_exp))
 
-                    input_graphs_all_exp = [input_graphs_all_exp]
-                    target_graphs_all_exp = [target_graphs_all_exp]
+                    input_graphs_all_exp = [input_graphs_all_exp[0]]
+                    target_graphs_all_exp = [target_graphs_all_exp[0]]
 
                     in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
                                                                                           target_graphs_all_exp)
