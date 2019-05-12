@@ -517,6 +517,7 @@ class SingulationTrainerNew(BaseTrain):
 
     def store_latent_vectors(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
+        assert self.config.test_batch_size == 1, "set test_batch_size to 1 for test mode"
         prefix = self.config.exp_name
         print("Storing latent vectors baseline")
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
@@ -530,7 +531,6 @@ class SingulationTrainerNew(BaseTrain):
 
         while True:
             try:
-
                 features = self.sess.run(self.next_element_test)
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
@@ -542,11 +542,13 @@ class SingulationTrainerNew(BaseTrain):
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
-                    input_graphs_all_exp = [input_graphs_all_exp]
-                    target_graphs_all_exp = [target_graphs_all_exp]
+                    input_graphs_all_exp = [input_graphs_all_exp[0]]
+                    target_graphs_all_exp = [target_graphs_all_exp[0]]
 
                     in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
                                                                                           target_graphs_all_exp)
+
+                    print(np.shape(in_segxyz), np.shape(in_image), np.shape(in_control), np.shape(gt_label))
 
                     loss_img, out_label, latent_init_img = self.sess.run([self.model.loss_op, self.out_label_tf, self.latent_init_img],
                                                         feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
