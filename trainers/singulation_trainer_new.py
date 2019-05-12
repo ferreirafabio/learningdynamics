@@ -539,13 +539,16 @@ class SingulationTrainerNew(BaseTrain):
                                                                                 initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                 batch_processing=False)
 
+                    input_graphs_all_exp = input_graphs_all_exp[0]
+                    target_graphs_all_exp = target_graphs_all_exp[0]
+
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
                     print(np.shape(input_graphs_all_exp), np.shape(target_graphs_all_exp))
 
-                    input_graphs_all_exp = [input_graphs_all_exp[0]]
-                    target_graphs_all_exp = [target_graphs_all_exp[0]]
+                    input_graphs_all_exp = [input_graphs_all_exp]
+                    target_graphs_all_exp = [target_graphs_all_exp]
 
                     in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
                                                                                           target_graphs_all_exp)
