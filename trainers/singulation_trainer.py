@@ -63,7 +63,8 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
-                                  "latent_init_img": self.model.latent_init_img_train,
+                                  "latent_core_output_init_img": self.model.latent_core_output_init_img_train,
+                                  "latent_encoder_output_init_img": self.model.latent_core_encoder_init_img_train,
                                   "loss_total": self.model.loss_op_train_total,
                                   "outputs": self.model.output_ops_train,
                                   "loss_img": self.model.loss_ops_train_img,
@@ -80,7 +81,8 @@ class SingulationTrainer(BaseTrain):
 
             data = self.sess.run({"target": self.model.target_ph_test,
                                   "loss_total": self.model.loss_op_test_total,
-                                  "latent_init_img": self.model.latent_init_img_test,
+                                  "latent_core_output_init_img": self.model.latent_core_output_init_img_test,
+                                  "latent_encoder_output_init_img": self.model.latent_encoder_output_init_img_test,
                                   "outputs": self.model.output_ops_test,
                                   "loss_img": self.model.loss_ops_test_img,
                                   "loss_iou": self.model.loss_ops_test_iou,
@@ -105,7 +107,8 @@ class SingulationTrainer(BaseTrain):
                 output.nodes[:, :-6-19200] = seg_data
 
         return data['loss_total'], data['outputs'], data['loss_img'], data['loss_iou'], data['loss_velocity'], \
-               data['loss_position'], data['loss_distance'], data['target'], data["loss_global"], data['latent_init_img']
+               data['loss_position'], data['loss_distance'], data['target'], data["loss_global"], \
+               (data['latent_core_output_init_img'], data['latent_encoder_output_init_img'])
 
     def test(self):
         if not self.config.n_epochs == 1:
@@ -730,7 +733,7 @@ class SingulationTrainer(BaseTrain):
         print("Storing latent vectors")
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        df = pd.DataFrame(columns=['latent_vector_init_img', 'exp_id', 'exp_len'])
+        df = pd.DataFrame(columns=['latent_vector_core_output_init_img', 'latent_vector_encoder_output_init_img', 'exp_id', 'exp_len'])
         sub_dir_name = "latent_vectors_initial_image_of_full_test_set_{}_iterations_trained".format(cur_batch_it)
 
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
@@ -751,11 +754,18 @@ class SingulationTrainer(BaseTrain):
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
-                    _, _, _, _, _, _, _, _, _, latent_init_img = self.do_step(
+                    _, _, _, _, _, _, _, _, _, latent = self.do_step(
                         input_graphs_all_exp[0], target_graphs_all_exp[0], features[i], sigmoid_threshold=0.5, train=False,
                         batch_processing=False)
 
-                    df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len}, ignore_index=True)
+                    "shape of latent: (n_nodes, latent_dim)"
+                    latent_core_output_init_img = latent[0].nodes
+                    latent_encoder_output_init_img = latent[1].nodes
+
+                    df = df.append({'latent_vector_core_output_init_img': latent_core_output_init_img,
+                                    'latent_vector_encoder_output_init_img': latent_encoder_output_init_img,
+                                    'exp_id': exp_id,
+                                    'exp_len': exp_len}, ignore_index=True)
 
             except tf.errors.OutOfRangeError:
                 df.to_pickle(file_name)

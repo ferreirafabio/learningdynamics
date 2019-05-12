@@ -123,12 +123,13 @@ class EncodeProcessDecode_v8(snt.AbstractModule, BaseModel):
 
         output_ops = []
 
+        latent_encoder_output_to_store = latent
         for step in range(num_processing_steps):
             latent = self._core(latent)
-            latent_to_store = latent
+            latent_core_to_store = latent
             decoded_op = self._decoder(latent, is_training)
             output_ops.append(decoded_op)
-        return output_ops, latent_to_store
+        return output_ops, latent_core_to_store, latent_encoder_output_to_store
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):

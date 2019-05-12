@@ -539,13 +539,13 @@ class SingulationTrainerNew(BaseTrain):
                                                                                 initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                 batch_processing=False)
 
-                    input_graphs_all_exp = input_graphs_all_exp[0]
-                    target_graphs_all_exp = target_graphs_all_exp[0]
+                    input_graphs_all_exp = [input_graphs_all_exp[0]]
+                    target_graphs_all_exp = [target_graphs_all_exp[0]]
 
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
-                    print(np.shape(input_graphs_all_exp), np.shape(target_graphs_all_exp))
+                    #print(np.shape(input_graphs_all_exp), np.shape(target_graphs_all_exp))
 
                     input_graphs_all_exp = [input_graphs_all_exp]
                     target_graphs_all_exp = [target_graphs_all_exp]
@@ -553,14 +553,14 @@ class SingulationTrainerNew(BaseTrain):
                     in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
                                                                                           target_graphs_all_exp)
 
-                    print(np.shape(in_segxyz), np.shape(in_image), np.shape(in_control), np.shape(gt_label), exp_len)
+                    #print(np.shape(in_segxyz), np.shape(in_image), np.shape(in_control), np.shape(gt_label), exp_len)
 
                     loss_img, out_label, latent_init_img = self.sess.run([self.model.loss_op, self.out_label_tf, self.latent_init_img],
                                                         feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
                                                                    self.gt_label_tf: gt_label, self.in_control_tf: in_control,
                                                                    self.is_training: True})
 
-                    print(np.shape(latent_init_img))
+                    #print(np.shape(latent_init_img))
 
                     df = df.append({'latent_vector_init_img': latent_init_img, 'exp_id': exp_id, 'exp_len': exp_len}, ignore_index=True)
 
