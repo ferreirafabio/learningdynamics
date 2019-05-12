@@ -548,7 +548,7 @@ class SingulationTrainerNew(BaseTrain):
                     in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp,
                                                                                           target_graphs_all_exp)
 
-                    print(np.shape(in_segxyz), np.shape(in_image), np.shape(in_control), np.shape(gt_label))
+                    print(np.shape(in_segxyz), np.shape(in_image), np.shape(in_control), np.shape(gt_label), exp_len)
 
                     loss_img, out_label, latent_init_img = self.sess.run([self.model.loss_op, self.out_label_tf, self.latent_init_img],
                                                         feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
