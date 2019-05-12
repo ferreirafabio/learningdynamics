@@ -167,8 +167,8 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
             print("Loading model checkpoint {} ...".format(latest_checkpoint))
             self.saver.restore(sess, latest_checkpoint)
             print("Model loaded")
-        from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
-        print_tensors_in_checkpoint_file(file_name=latest_checkpoint, tensor_name="", all_tensors = False, all_tensor_names = True)
+        #from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
+        #print_tensors_in_checkpoint_file(file_name=latest_checkpoint, tensor_name="", all_tensors = False, all_tensor_names = True)
 
     # just initialize a tensorflow variable to use it as epoch counter
     def init_cur_epoch(self):

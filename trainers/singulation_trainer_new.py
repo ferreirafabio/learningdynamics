@@ -542,6 +542,8 @@ class SingulationTrainerNew(BaseTrain):
                     exp_id = features[i]['experiment_id']
                     exp_len = features[i]["unpadded_experiment_length"]  # the label
 
+                    print(np.shape(input_graphs_all_exp), np.shape(target_graphs_all_exp))
+
                     input_graphs_all_exp = [input_graphs_all_exp]
                     target_graphs_all_exp = [target_graphs_all_exp]
 
