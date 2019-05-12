@@ -759,6 +759,7 @@ class SingulationTrainer(BaseTrain):
 
             except tf.errors.OutOfRangeError:
                 df.to_pickle(file_name)
+                print("Pandas dataframe with {} rows saved to: {} ".format(len(df.index), file_name))
                 break
             else:
                 print("continue")

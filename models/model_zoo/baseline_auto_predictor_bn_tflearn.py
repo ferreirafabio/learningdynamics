@@ -145,12 +145,14 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
         latent_img_ctrl = tf.concat([latent_img, latent_ctrl], axis=-1)
         latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
 
+        latent_img_ctrl_2dim = latent_img_ctrl
+
         latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
         latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
 
         score = self.decoder(latent=latent_img_ctrl, is_training=is_training)
 
-        return score, latent_img_ctrl
+        return score, latent_img_ctrl_2dim
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
