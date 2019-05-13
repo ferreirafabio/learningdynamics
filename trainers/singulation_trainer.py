@@ -64,7 +64,7 @@ class SingulationTrainer(BaseTrain):
             data = self.sess.run({"step": self.model.step_op,
                                   "target": self.model.target_ph,
                                   "latent_core_output_init_img": self.model.latent_core_output_init_img_train,
-                                  "latent_encoder_output_init_img": self.model.latent_core_encoder_init_img_train,
+                                  "latent_encoder_output_init_img": self.model.latent_encoder_output_init_img_train,
                                   "loss_total": self.model.loss_op_train_total,
                                   "outputs": self.model.output_ops_train,
                                   "loss_img": self.model.loss_ops_train_img,
@@ -386,7 +386,7 @@ class SingulationTrainer(BaseTrain):
                     losses_velocity.append(loss_velocity)
                     losses_position.append(loss_position)
                     losses_distance.append(loss_distance)
-                    losses_global.append(losses_global)
+                    losses_global.append(loss_global)
 
             the_time = time.time()
             elapsed_since_last_log = the_time - last_log_time
