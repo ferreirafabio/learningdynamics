@@ -50,7 +50,8 @@ class SingulationTrainer(BaseTrain):
                         print("Executing test batch")
                         self.test_batch(prefix, export_images=self.config.export_test_images,
                                         initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                        sub_dir_name="tests_during_training")
+                                        sub_dir_name="tests_during_training",
+                                        export_latent_data=self.config.export_test_images)
 
             except tf.errors.OutOfRangeError:
                 break
@@ -223,7 +224,7 @@ class SingulationTrainer(BaseTrain):
                         output_i, target_i, exp_id_i = [], [], []
 
                         for j in range(features[i]["unpadded_experiment_length"] - 1):
-                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target, _ = self.do_step(
+                            total_loss, output, loss_img, loss_iou, loss_velocity, loss_position, loss_distance, target, _, _ = self.do_step(
                                                                                                                     input_graphs_all_exp[j],
                                                                                                                     target_graphs_all_exp[j],
                                                                                                                     features[i],
