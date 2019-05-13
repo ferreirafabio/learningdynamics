@@ -140,6 +140,56 @@ def create_loss_ops(config, target_op, output_ops):
             print("---- image + edge(mse) loss only ----")
             total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_mse_edges)
 
+    elif config.loss_type == 'cross_entropy_seg_pos_vel':
+        for i, output_op in enumerate(output_ops):
+            """ VISUAL LOSS """
+            predicted_node_reshaped = _transform_into_images(config, output_op.nodes, img_type="seg", output_cnn_2_filter_maps=True)  # returns shape (?, 120,160,2)
+            target_node_reshaped = _transform_into_images(config, target_op.nodes, img_type="all")  # returns shape (?, 120,160,7)
+
+            segmentation_data_predicted = predicted_node_reshaped  # --> transform into (?,120,160,2)
+            segmentation_data_gt = target_node_reshaped[:, :, :, 3]  # --> transform into (?,120,160)
+
+            logits = segmentation_data_predicted
+            labels = segmentation_data_gt
+            labels = tf.cast(labels, tf.int32)
+
+            loss_visual_ce_nodes = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                                        labels=labels,
+                                                        logits=logits))
+
+            tf.losses.add_loss(loss_visual_ce_nodes)
+
+            """ NONVISUAL LOSS (20% weight) """
+            loss_nonvisual_mse_edges = tf.losses.mean_squared_error(
+                                                   labels=target_op.edges,
+                                                   predictions=output_op.edges,
+                                                   weights=0.1)
+
+            loss_nonvisual_mse_nodes_pos = tf.losses.mean_squared_error(
+                                                       labels=target_op.nodes[:, -3:],
+                                                       predictions=output_op.nodes[:, -3:],
+                                                       weights=0.2)
+
+            loss_nonvisual_mse_nodes_vel = tf.losses.mean_squared_error(
+                                                       labels=target_op.nodes[:, -6:-3:],
+                                                       predictions=output_op.nodes[:, -6:-3:],
+                                                       weights=0.2)
+
+
+            loss_visual_iou_seg = 0.0  # no iou loss computed
+            loss_nonvisual_mse_global = 0.0
+
+            loss_ops_img.append(loss_visual_ce_nodes)
+            loss_ops_img_iou.append(loss_visual_iou_seg)
+            loss_ops_velocity.append(loss_nonvisual_mse_nodes_vel)
+            loss_ops_position.append(loss_nonvisual_mse_nodes_pos)
+            loss_ops_edges.append(loss_nonvisual_mse_edges)
+            loss_ops_global.append(loss_nonvisual_mse_global)
+
+
+            print("---- image + edge(mse) + pos (mse) + vel(mse) loss ----")
+            total_loss_ops.append(loss_visual_ce_nodes + loss_nonvisual_mse_edges + loss_ops_velocity + loss_ops_position)
+
     elif config.loss_type == 'cross_entropy_seg_only_edges_no_edges':
         for i, output_op in enumerate(output_ops):
             ''' checks whether the padding_flag is 1 or 0 --> if 1, return inf loss (later removed)'''
