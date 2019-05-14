@@ -19,7 +19,11 @@ class BaseTrain:
                 self.initialize_train_model()
             self.initialize_test_model()
         else:
-            self.initialize_model()
+            if self.config.n_predictions > 1:
+                multistep = True
+            else:
+                multistep = False
+            self.initialize_model(multistep=multistep)
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         self.sess.run(self.init)
@@ -56,7 +60,7 @@ class BaseTrain:
         """
         raise NotImplementedError
 
-    def initialize_model(self):
+    def initialize_model(self, multistep=False):
         self.in_image_tf = tf.placeholder(tf.float32, [None, 120, 160, 3], 'in_image')
         self.in_segxyz_tf = tf.placeholder(tf.float32, [None, 120, 160, 4], 'in_xyzseg')
 
@@ -67,9 +71,9 @@ class BaseTrain:
 
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
-        self.out_image_tf, self.latent_init_img = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training)
+        self.out_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
         self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
-        self.model.loss_op = create_loss_ops_new(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
+        self.model.loss_op = create_loss_ops_new(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf, multistep=multistep)
         self.model.train_op = self.model.optimizer.minimize(self.model.loss_op, global_step=self.model.global_step_tensor)
 
 

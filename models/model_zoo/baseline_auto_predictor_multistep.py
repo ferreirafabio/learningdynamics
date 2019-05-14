@@ -28,38 +28,38 @@ class baseline_auto_predictor_multistep(BaseModel):
     def encoder(self, in_rgbsegxyz, is_training):
         x = in_rgbsegxyz
         """ Layer 1 """
-        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_1")
+        x = tflearn.layers.conv.conv_2d(x, 64, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_1")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 2 """
-        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_2")
+        x = tflearn.layers.conv.conv_2d(x, 64, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_2")
         x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 3 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_3")
+        x = tflearn.layers.conv.conv_2d(x, 64, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_3")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 4 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_4")
+        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_4")
         x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 5 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_5")
+        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_5")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 6 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_6")
+        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_6")
         x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 7 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_7")
+        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_7")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 8 """
-        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_8")
+        x = tflearn.layers.conv.conv_2d(x, 128, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_8")
         x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
@@ -95,11 +95,11 @@ class baseline_auto_predictor_multistep(BaseModel):
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 4 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
+        x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=128, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 5 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=256, filter_size=2, strides=1,  activation='relu', weight_decay=1e-5, regularizer='L2')
+        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=128, filter_size=2, strides=1,  activation='relu', weight_decay=1e-5, regularizer='L2')
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 6 """
@@ -111,15 +111,15 @@ class baseline_auto_predictor_multistep(BaseModel):
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 8 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
+        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=64, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 9 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=2, activation='relu',  weight_decay=1e-5, regularizer='L2')
+        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=64, filter_size=3, strides=2, activation='relu',  weight_decay=1e-5, regularizer='L2')
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 10 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
+        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=64, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 11 """
@@ -128,7 +128,6 @@ class baseline_auto_predictor_multistep(BaseModel):
 
         """ Layer 12 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
 
         return x
 
@@ -144,17 +143,11 @@ class baseline_auto_predictor_multistep(BaseModel):
         latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
         latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
 
-        latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-
         """" transition MLP to next time step """
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
+        latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
 
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
-
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
         #physics_output = latent_next_step + latent_last_step
@@ -177,6 +170,7 @@ class baseline_auto_predictor_multistep(BaseModel):
 
             predictions.append(img_decoded)
 
+        predictions = tf.concat(predictions, axis=0)
         return predictions, in_rgb_segxyz
 
     # save function that saves the checkpoint in the path defined in the config file
