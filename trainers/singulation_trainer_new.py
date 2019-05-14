@@ -410,7 +410,7 @@ class SingulationTrainerNew(BaseTrain):
                                                                                                 rec_test_set_mean,
                                                                                                 f1_test_set_mean))
 
-    def test_specific_exp_ids(self, multistep=False):
+    def test_specific_exp_ids(self):
         if not self.config.n_epochs == 1:
             print("test mode for specific exp ids --> n_epochs will be set to 1")
             self.config.n_epochs = 1

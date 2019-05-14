@@ -124,7 +124,7 @@ def main():
         else:
             multistep = False
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
-        trainer.test_specific_exp_ids(multistep)
+        trainer.test_specific_exp_ids()
     elif config.mode == "test_5_objects":
         print("--- Running 5 object test mode ---")
         trainer.test_5_objects()
