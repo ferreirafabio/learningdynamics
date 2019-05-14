@@ -42,19 +42,25 @@ class SingulationTrainerNew(BaseTrain):
         features = self.sess.run(self.next_element_train)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
+        if self.config.n_predictions > 1:
+            multistep = True
+        else:
+            multistep = False
+
         input_graphs_batch, target_graphs_batch = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                    batch_processing=True
+                                                                    batch_processing=True,
+                                                                    multistep=multistep
                                                                     )
-        #input_graphs_batch = input_graphs_batch[0]  # todo: delete
-        #target_graphs_batch = target_graphs_batch[0]  # todo: delete
+        if multistep:
+            input_graphs_batch = input_graphs_batch[0]
+            target_graphs_batch = target_graphs_batch[0]
 
-        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch)
+        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch, multistep=multistep)
 
         start_time = time.time()
         last_log_time = start_time
-
 
         _, loss_img, out_label, in_rgb_seg_xyz = self.sess.run([self.model.train_op, self.model.loss_op, self.out_label_tf, self.in_rgb_seg_xyz], feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
                                                                                                                         self.gt_label_tf: gt_label, self.in_control_tf: in_control,

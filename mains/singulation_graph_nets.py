@@ -57,6 +57,9 @@ def main():
         if not hasattr(config, 'nodes_get_full_rgb_depth'):
             config.nodes_get_full_rgb_depth = False
 
+        if not hasattr(config, 'n_predictions'):
+            config.n_predictions = 1
+
         if not hasattr(config, 'remove_pos_vel'):
             config.remove_pos_vel = False
 

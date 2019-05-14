@@ -12,9 +12,9 @@ sys.path.append(BASE_DIR)
 
 model_dirs = os.path.join(os.path.dirname(os.path.abspath(__file__)),'./.')
 
-class baseline_auto_predictor_extended(BaseModel):
-    def __init__(self, config, name="baseline_auto_predictor_extended"):
-        super(baseline_auto_predictor_extended, self).__init__(self)
+class baseline_auto_predictor_multistep(BaseModel):
+    def __init__(self, config, name="baseline_auto_predictor_multistep"):
+        super(baseline_auto_predictor_multistep, self).__init__(self)
         self.config = config
         # init the global step
         self.init_global_step()
@@ -134,9 +134,8 @@ class baseline_auto_predictor_extended(BaseModel):
 
     def physics_predictor(self, latent, ctrl):
         latent_last_step = latent
-        # todo: do interaction between objects here
         """" interaction MLP """
-        # latent
+        # todo: do interaction between objects here
 
         """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
@@ -158,9 +157,9 @@ class baseline_auto_predictor_extended(BaseModel):
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        physics_output = latent_next_step + latent_last_step
+        #physics_output = latent_next_step + latent_last_step
 
-        return physics_output
+        return latent_next_step
 
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
@@ -170,7 +169,7 @@ class baseline_auto_predictor_extended(BaseModel):
         predictions = []
 
         latent_img_next_step = latent_img
-        in_control_T = tf.tile(in_control, num=n_predictions)
+        in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
 
         for i in range(n_predictions):
             latent_img_next_step = self.physics_predictor(latent=latent_img_next_step, ctrl=in_control_T[i])
