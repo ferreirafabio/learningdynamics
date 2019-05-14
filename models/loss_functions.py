@@ -3,13 +3,11 @@ from utils.utils import get_correct_image_shape
 
 
 
-def create_loss_ops_new(config, gt_label_tf, out_image_tf, multistep=False):
-    #if multistep:
-    #    """ in this case we have a list of tensors """
-    #    out_image_tf = tf.concat(out_image_tf, axis=0)
+def create_loss_ops_new(config, gt_label_tf, out_image_tf):
 
     loss_total = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
                                                                          logits=out_image_tf))
+    tf.losses.add_loss(loss_total)
 
     return loss_total
 
