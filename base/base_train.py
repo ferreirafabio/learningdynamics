@@ -2,7 +2,7 @@ import tensorflow as tf
 from models.singulation_graph import create_placeholders
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.utils import make_all_runnable_in_session
-from models.loss_functions import create_loss_ops, create_baseline_loss_ops, create_loss_ops_new_pred_rec
+from models.loss_functions import create_loss_ops, create_baseline_loss_ops
 
 
 class BaseTrain:
