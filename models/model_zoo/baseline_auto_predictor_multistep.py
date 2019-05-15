@@ -132,6 +132,7 @@ class baseline_auto_predictor_multistep(BaseModel):
         return x
 
     def physics_predictor(self, latent, ctrl):
+        """"" example shapes: latent (90, 512), (90, 3)"""""
         latent_last_step = latent
         """" interaction MLP """
         # todo: do interaction between objects here

@@ -17,13 +17,13 @@
   "do_multi_step_prediction": false,
   "test_batch_size": 20,
   "test_interval": 100,
-  "tfrecords_dir": "/scr2/fabiof/data/tfrecords_3_objects_15_rollouts_padded",
-  "train_batch_size": 10,
+  "tfrecords_dir": "/Volumes/fabioexternal/Downloads/tfrecords_15_rollouts_padded_float32",
+  "train_batch_size": 30,
   "use_tfrecord_compression": true,
   "mode": "train_test",
   "initial_pos_vel_known": true,
   "loss_type": "cross_entropy_seg_only",
-  "model_zoo_file": "baseline_auto_predictor_multistep",
+  "model_zoo_file": "baseline_auto_predictor_extended",
   "batch_processing": true,
   "nodes_get_full_rgb_depth": true,
   "gripper_as_global": true,
@@ -33,6 +33,5 @@
   "data_offset_manipulable_objects": 2,
   "n_rollouts": 15,
   "use_object_seg_data_only_for_init": false,
-  "use_baseline_auto_predictor": true,
-  "n_predictions": 5
+  "use_baseline_auto_predictor": true
 }
