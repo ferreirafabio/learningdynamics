@@ -209,7 +209,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
         else:
             if config.global_output_size == 2:
                 target_graphs[step].graph["features"] = np.concatenate((np.atleast_1d(step),
-                                                                        np.atleast_1d( constants.g)
+                                                                        np.atleast_1d(constants.g)
                                                                         )).astype(np.float32)
 
             #assert target_graphs[step].graph["features"].shape[0]-3 == config.global_output_size
@@ -234,15 +234,12 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     input_graphs = []
     for i in range(experiment_length-1):
         inp = target_graphs[i].copy()
+        """ gripperpos and grippervel always reflect the current step. However, we are interested in predicting
+        the effects of a new/next control command --> shift by one """
         inp.graph["features"] = input_control_graphs[i+1].graph["features"]
         input_graphs.append(inp)
 
-    #input_graph = target_graphs[0].copy()
     target_graphs = target_graphs[1:]  # first state is used for init
-    #if gripper_as_global:
-    #    """ gripperpos and grippervel always reflect the current step. However, we are interested in predicting
-    #    the effects of a new/next control command --> shift by one """
-    #    input_control_graphs = input_control_graphs[1:]
 
     # todo: following code assumes all nodes are of type 'manipulable'
     """ set velocity and position info to zero """
@@ -318,12 +315,14 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
     if not shuffle:
         input_graph_lst = list(input_graph_lst)
         target_graph_lst = list(target_graph_lst)
+
         input_graph_lst = list(chunks(input_graph_lst, config.train_batch_size))
         target_graph_lst = list(chunks(target_graph_lst, config.train_batch_size))
 
+        #input_graph_lst = [graph for lst in input_graph_lst for graph in lst]
+        #target_graph_lst = [graph for lst in target_graph_lst for graph in lst]
+
         return input_graph_lst, target_graph_lst
-
-
 
     if not multistep:
         "flatten lists"
@@ -363,36 +362,6 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
         assert all(inp_ids[i] == targ_ids[i] for i in range(len(inp_ids)))
         input_batches = [input_batches]
         target_batches = [target_batches]
-
-    return input_batches, target_batches
-
-
-def ensure_batch_has_no_sample_with_same_exp_id_multistep(config, list):
-    lst = []
-    sublist = []
-    while True:
-        smpl = random.choice(list)
-        if smpl is None or len(lst) > 1:
-            break
-        ids_in_list = [elements[0][1] for elements in sublist]
-        if smpl[0][1] not in ids_in_list:
-            sublist.append(smpl)
-            list.remove(smpl)
-        if len(sublist) == config.train_batch_size:
-            lst.append(sublist)
-            sublist = []
-
-    input_batches = []
-    target_batches = []
-    for batch in lst:
-        input_batch = []
-        target_batch = []
-        for sublist in batch:
-            input_batch.append(sublist[0][0])
-            target_batch.append(sublist[1][0])
-
-        input_batches.append(input_batch)
-        target_batches.append(target_batch)
 
     return input_batches, target_batches
 
@@ -507,7 +476,7 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
     if not multistep:
         for graph in input_graphs_batch:
             for _, node_feature in graph.nodes(data=True):
-                in_control.append(graph.graph['features'][3:6:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
+                in_control.append(graph.graph['features'][3:])  # control input for the next time step, its a 9-tuple (flag, step,g,posx,posy,posz,velx,vely,velz)
 
                 node_feature = node_feature['features'][:-6]
                 node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
@@ -522,21 +491,21 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
                 in_image.append(rgb)
                 in_segxyz.append(seg_xyz)
 
-            for graph in target_graphs_batch:
-                for _, node_feature in graph.nodes(data=True):
-                    node_feature = node_feature['features'][:-6]
-                    node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                    seg_of_node_i = node_feature_reshaped[:, :, 3]
+        for graph in target_graphs_batch:
+            for _, node_feature in graph.nodes(data=True):
+                node_feature = node_feature['features'][:-6]
+                node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+                seg_of_node_i = node_feature_reshaped[:, :, 3]
 
-                    gt_label.append(seg_of_node_i)
+                gt_label.append(seg_of_node_i)
     else:
         for lst in input_graphs_batch:
             for i, graph in enumerate(lst):
                 for j, node_feature in graph.nodes(data=True):
                     in_control.append(graph.graph['features'][
-                                      3:6:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
+                                      3:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
 
-                    """ we need all conrols but only the input graph of the episode """
+                    """ we need all controls but only the input graph of the episode """
                     if i < 1:
                         node_feature = node_feature['features'][:-6]
                         node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
@@ -579,8 +548,6 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
     in_segxyz = np.array(in_segxyz)
     in_image = np.array(in_image)
     in_control = np.array(in_control)
-    #print("converting gt_label to bool array")
-    #gt_label = np.array(gt_label, dtype=np.bool)
     gt_label = np.array(gt_label)
 
 

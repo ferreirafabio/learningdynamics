@@ -42,10 +42,13 @@ class SingulationTrainerNew(BaseTrain):
         features = self.sess.run(self.next_element_train)
         features = convert_dict_to_list_subdicts(features, self.config.train_batch_size)
 
-        if self.config.n_predictions > 1:
+        if self.config.do_multi_step_prediction:
             multistep = True
         else:
             multistep = False
+
+        start_time = time.time()
+        last_log_time = start_time
 
         input_graphs_batch, target_graphs_batch = create_graphs(config=self.config,
                                                                     batch_data=features,
@@ -53,14 +56,14 @@ class SingulationTrainerNew(BaseTrain):
                                                                     batch_processing=True,
                                                                     multistep=multistep
                                                                     )
-        if multistep:
-            input_graphs_batch = input_graphs_batch[0]
-            target_graphs_batch = target_graphs_batch[0]
+
+        input_graphs_batch = input_graphs_batch[0]
+        target_graphs_batch = target_graphs_batch[0]
+
+        #input_graphs_batch = input_graphs_batch[0][0]
+        #target_graphs_batch = target_graphs_batch[0][0]
 
         in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch, multistep=multistep)
-
-        start_time = time.time()
-        last_log_time = start_time
 
         _, loss_img, out_label, in_rgb_seg_xyz = self.sess.run([self.model.train_op, self.model.loss_op, self.out_label_tf, self.in_rgb_seg_xyz], feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
                                                                                                                         self.gt_label_tf: gt_label, self.in_control_tf: in_control,
@@ -85,6 +88,7 @@ class SingulationTrainerNew(BaseTrain):
                           prefix + '_position_loss': loss_position,
                           prefix + '_edge_loss': loss_edge
                           }
+
         self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="train")
 
         return cur_batch_it
@@ -177,12 +181,14 @@ class SingulationTrainerNew(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
-        if self.config.n_predictions > 1:
+
+        if self.config.do_multi_step_prediction:
             multistep = True
-            start_idx = 0
-            end_idx = self.config.n_predictions
         else:
             multistep = False
+        start_idx = 0
+        end_idx = self.config.n_predictions
+
 
         for i in range(self.config.test_batch_size):
             input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,

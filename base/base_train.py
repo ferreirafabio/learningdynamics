@@ -23,7 +23,7 @@ class BaseTrain:
                 multistep = True
             else:
                 multistep = False
-            self.initialize_model(multistep=multistep)
+            self.initialize_model()
 
         self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         self.sess.run(self.init)
@@ -60,12 +60,12 @@ class BaseTrain:
         """
         raise NotImplementedError
 
-    def initialize_model(self, multistep=False):
+    def initialize_model(self):
         self.in_image_tf = tf.placeholder(tf.float32, [None, 120, 160, 3], 'in_image')
         self.in_segxyz_tf = tf.placeholder(tf.float32, [None, 120, 160, 4], 'in_xyzseg')
 
         self.gt_label_tf = tf.placeholder(tf.float32, [None, 120, 160], 'out_image')
-        self.in_control_tf = tf.placeholder(tf.float32, [None, 3], 'in_control')
+        self.in_control_tf = tf.placeholder(tf.float32, [None, 6], 'in_control')
         # todo:
         print("Todo: in_control is currently a 3d vector. Update to 6d vector as in GN")
 

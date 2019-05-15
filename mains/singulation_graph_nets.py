@@ -119,10 +119,6 @@ def main():
         print("--- Running METRIC COMPUTATION OVER TEST SET ---")
         trainer.compute_metrics_over_test_set()
     elif config.mode == "test_specific_exp_ids":
-        if config.n_predictions > 1:
-            multistep = True
-        else:
-            multistep = False
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
         trainer.test_specific_exp_ids()
     elif config.mode == "test_5_objects":
