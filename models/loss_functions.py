@@ -4,13 +4,27 @@ from utils.utils import get_correct_image_shape
 
 
 def create_loss_ops_new(config, gt_label_tf, out_image_tf):
-
     loss_total = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
                                                                          logits=out_image_tf))
     tf.losses.add_loss(loss_total)
 
     return loss_total
 
+
+def create_loss_ops_new_pred_rec(config, gt_label_tf, gt_seg_tf, out_image_rec_tf, out_image_tf):
+    predictions = out_image_tf
+    reconstructions = out_image_rec_tf
+
+    prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
+                                                                         logits=predictions))
+
+    reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_seg_tf, dtype=tf.int32),
+                                                                         logits=reconstructions))
+
+    tf.losses.add_loss(prediction_loss)
+    tf.losses.add_loss(reconstruction_loss)
+
+    return tf.reduce_mean([prediction_loss, reconstruction_loss])
 
 
 def create_loss_ops(config, target_op, output_ops):
