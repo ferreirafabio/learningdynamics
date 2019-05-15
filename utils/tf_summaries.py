@@ -46,7 +46,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
         """ multistep! """
         start_idx = start_end_idx[0]
         end_idx = start_end_idx[1]
-        lists_obj_segs = [obj_lst[:, start_idx:end_idx] for obj_lst in lists_obj_segs]
+        lists_obj_segs = [obj_lst[:, start_idx:end_idx+1] for obj_lst in lists_obj_segs]
 
     target_summaries_dict_rgb = {
     prefix + '_target_rgb_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i):
@@ -215,9 +215,20 @@ def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_
         images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,
         config=config)
 
+    set_to_zero = True
+
+    for k, v in predicted_summaries_dict_seg.items():
+        n_times = config.n_rollouts - np.shape(v)[0]
+        v_new = np.asarray([v[-1]] * n_times)
+        if set_to_zero:
+            v_new = np.zeros(shape=np.shape(v_new))
+
+        predicted_summaries_dict_seg[k] = np.concatenate([v, v_new])
+
+
     target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
     target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
-        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config, start_end_idx=start_end_idx)
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config, start_end_idx=None)
 
     summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
                              **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
