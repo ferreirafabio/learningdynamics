@@ -617,7 +617,7 @@ class SingulationTrainer(BaseTrain):
         #dir_name = "5_novel_objects"
 
         export_images = self.config.export_test_images
-        export_latent_data = False
+        export_latent_data = True
         process_all_nn_outputs = True
 
         thresholds_to_test = [0.5]

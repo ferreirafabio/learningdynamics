@@ -223,8 +223,8 @@ class SingulationTrainerNew(BaseTrain):
             losses_edge.append(loss_edge)
 
 
-            out_label[out_label >= 0.5] = 1.0
-            out_label[out_label < 0.5] = 0.0
+            out_label[out_label >= 0.1] = 1.0
+            out_label[out_label < 0.1] = 0.0
 
             outputs_total.append((out_label, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
 
