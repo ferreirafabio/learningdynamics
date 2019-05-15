@@ -145,13 +145,10 @@ class baseline_auto_predictor_multistep(BaseModel):
 
         """" transition MLP to next time step """
         latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-        #latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 1024, activation='relu')
-        #latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
-
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
         #physics_output = latent_next_step + latent_last_step
@@ -160,13 +157,16 @@ class baseline_auto_predictor_multistep(BaseModel):
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
+        # latent_img has shape (?, 512)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
+
         reconstruction = self.decoder(latent=latent_img, is_training=is_training)
 
         predictions = []
         in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
 
         for i in range(n_predictions):
+            # latent_img has shape (?, 512)
             latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i])
             img_decoded = self.decoder(latent=latent_img, is_training=is_training)
 
