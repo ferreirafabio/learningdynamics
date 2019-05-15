@@ -346,7 +346,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
             minimum_exp_leng = len(tupl_inp[0])
             """ we want at least n_prediction samples: """
             random_start_episode = random.randint(0, minimum_exp_leng-config.n_predictions)
-
+            #random_start_episode = 0
             """ also take n_prediction samples from input graphs because we need the control input from these: """
             input_graph = tupl_inp[0][random_start_episode:random_start_episode+config.n_predictions]
             target_graphs = tupl_targ[0][random_start_episode:random_start_episode+config.n_predictions]
@@ -472,6 +472,7 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
     gt_label = []
     in_segxyz = []
     in_control = []
+    #gt_label_rec = []
 
     if not multistep:
         for graph in input_graphs_batch:
@@ -505,7 +506,7 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
                     in_control.append(graph.graph['features'][
                                       3:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
 
-                    """ we need all controls but only the input graph of the episode """
+                    """ we need all controls but only the input graph of the episode (first element in >lst<)"""
                     if i < 1:
                         node_feature = node_feature['features'][:-6]
                         node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
@@ -519,6 +520,17 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
                         rgb = node_feature_reshaped[:, :, :3]
                         in_image.append(rgb)
                         in_segxyz.append(seg_xyz)
+        #""" for the reconstruction loss """
+        #for lst in input_graphs_batch:
+        #    for i, graph in enumerate(lst):
+        #        for j, node_feature in graph.nodes(data=True):
+
+                        #node_feature = node_feature['features'][:-6]
+                        #node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+                        #seg_of_node_j = node_feature_reshaped[:, :, 3]
+
+                        #gt_label_rec.append(seg_of_node_j)
+
 
         for lst in target_graphs_batch:
             for graph in lst:
@@ -549,7 +561,8 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
     in_image = np.array(in_image)
     in_control = np.array(in_control)
     gt_label = np.array(gt_label)
+    #gt_label_rec = np.array(gt_label_rec)
 
 
-    return in_segxyz, in_image, in_control, gt_label
+    return in_segxyz, in_image, in_control, gt_label#, gt_label_rec
 

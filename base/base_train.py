@@ -64,13 +64,13 @@ class BaseTrain:
         self.in_control_tf = tf.placeholder(tf.float32, [None, 6], 'in_control')
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
-        self.out_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
-        self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
-        self.model.loss_op = create_loss_ops_new(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
+        #self.out_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
+        #self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
+        #self.model.loss_op = create_loss_ops_new(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
 
-        #self.out_pred_rec_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
-        #self.out_label_tf = tf.nn.softmax(self.out_pred_rec_image_tf)[:, :, :, 1]
-        #self.model.loss_op = create_loss_ops_new_pred_rec(config=self.config, gt_label_tf=self.gt_label_tf, gt_label_tf_rec=self.in_segxyz_tf[:,:,:,0], out_image_tf=self.out_pred_rec_image_tf)
+        self.out_image_tf, self.out_image_rec_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
+        self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
+        self.model.loss_op = create_loss_ops_new_pred_rec(config=self.config, gt_label_tf=self.gt_label_tf, gt_seg_tf=self.in_segxyz_tf[:,:,:,0], out_image_rec_tf=self.out_image_rec_tf, out_image_tf=self.out_image_tf)
 
         self.model.train_op = self.model.optimizer.minimize(self.model.loss_op, global_step=self.model.global_step_tensor)
 

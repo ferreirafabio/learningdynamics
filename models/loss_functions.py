@@ -4,8 +4,6 @@ from utils.utils import get_correct_image_shape
 
 
 def create_loss_ops_new(config, gt_label_tf, out_image_tf):
-    predictions = out_image_tf[:, :, :, :2]
-    reconstructions = out_image_tf[:, :, :, 2:]
     loss_total = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
                                                                          logits=out_image_tf))
     tf.losses.add_loss(loss_total)
@@ -13,14 +11,14 @@ def create_loss_ops_new(config, gt_label_tf, out_image_tf):
     return loss_total
 
 
-def create_loss_ops_new_pred_rec(config, gt_label_tf, gt_label_tf_rec, out_image_tf):
-    predictions = out_image_tf[:, :, :, :2]
-    reconstructions = out_image_tf[:, :, :, 2:]
+def create_loss_ops_new_pred_rec(config, gt_label_tf, gt_seg_tf, out_image_rec_tf, out_image_tf):
+    predictions = out_image_tf
+    reconstructions = out_image_rec_tf
 
-    prediction_loss = 0.5* tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
+    prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
                                                                          logits=predictions))
 
-    reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf_rec, dtype=tf.int32),
+    reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_seg_tf, dtype=tf.int32),
                                                                          logits=reconstructions))
 
     tf.losses.add_loss(prediction_loss)

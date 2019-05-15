@@ -12,9 +12,9 @@ sys.path.append(BASE_DIR)
 
 model_dirs = os.path.join(os.path.dirname(os.path.abspath(__file__)),'./.')
 
-class baseline_auto_predictor_multistep(BaseModel):
-    def __init__(self, config, name="baseline_auto_predictor_multistep"):
-        super(baseline_auto_predictor_multistep, self).__init__(self)
+class baseline_auto_predictor_multistep_prediction_reconstruction(BaseModel):
+    def __init__(self, config, name="baseline_auto_predictor_multistep_prediction_reconstruction"):
+        super(baseline_auto_predictor_multistep_prediction_reconstruction, self).__init__(self)
         self.config = config
         # init the global step
         self.init_global_step()
@@ -162,6 +162,7 @@ class baseline_auto_predictor_multistep(BaseModel):
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
+        reconstruction = self.decoder(latent=latent_img, is_training=is_training)
 
         predictions = []
         in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
@@ -173,7 +174,7 @@ class baseline_auto_predictor_multistep(BaseModel):
             predictions.append(img_decoded)
 
         predictions = tf.concat(predictions, axis=0)
-        return predictions, in_rgb_segxyz
+        return predictions, reconstruction, in_rgb_segxyz
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
