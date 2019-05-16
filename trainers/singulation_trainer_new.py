@@ -231,8 +231,8 @@ class SingulationTrainerNew(BaseTrain):
             losses_position.append(loss_position)
             losses_edge.append(loss_edge)
 
-            out_predictions[out_predictions >= 0.1] = 1.0
-            out_predictions[out_predictions < 0.1] = 0.0
+            out_predictions[out_predictions >= 0.5] = 1.0
+            out_predictions[out_predictions < 0.5] = 0.0
 
             outputs_total.append((out_predictions, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
 
