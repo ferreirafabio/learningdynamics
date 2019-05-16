@@ -69,6 +69,7 @@ class baseline_auto_predictor_multistep(BaseModel):
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
+        x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         x = tflearn.layers.flatten(x)
@@ -159,11 +160,15 @@ class baseline_auto_predictor_multistep(BaseModel):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
         # latent_img has shape (?, 512)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
-
         reconstruction = self.decoder(latent=latent_img, is_training=is_training)
 
         predictions = []
         in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
+
+        # debug
+        debug_latent_img = []
+        debug_latent_img.append(latent_img)
+        debug_in_control = []
 
         for i in range(n_predictions):
             # latent_img has shape (?, 512)
@@ -172,8 +177,13 @@ class baseline_auto_predictor_multistep(BaseModel):
 
             predictions.append(img_decoded)
 
+            # debug
+            debug_latent_img.append(latent_img)
+            debug_in_control.append(in_control_T[i])
+
         predictions = tf.concat(predictions, axis=0)
-        return predictions, reconstruction, in_rgb_segxyz
+
+        return predictions, reconstruction, in_rgb_segxyz, debug_latent_img, debug_in_control
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):

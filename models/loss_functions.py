@@ -2,16 +2,16 @@ import tensorflow as tf
 from utils.utils import get_correct_image_shape
 
 
-def create_baseline_loss_ops(config, gt_label_tf, gt_seg_tf, out_image_rec_tf, out_image_tf, loss_type="prediction"):
+def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions, out_reconstructions, out_predictions, loss_type="prediction"):
     assert loss_type in ["prediction", "prediction_reconstruction"]
     if loss_type == "prediction_reconstruction":
-        predictions = out_image_tf
-        reconstructions = out_image_rec_tf
+        predictions = out_predictions
+        reconstructions = out_reconstructions
 
-        prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32),
+        prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32),
                                                                              logits=predictions))
 
-        reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_seg_tf, dtype=tf.int32),
+        reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_reconstructions, dtype=tf.int32),
                                                                              logits=reconstructions))
 
         tf.losses.add_loss(prediction_loss)
@@ -21,7 +21,8 @@ def create_baseline_loss_ops(config, gt_label_tf, gt_seg_tf, out_image_rec_tf, o
 
     elif loss_type == "prediction":
         loss_total = tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_label_tf, dtype=tf.int32), logits=out_image_tf))
+            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32), logits=out_predictions))
+
         tf.losses.add_loss(loss_total)
 
         return loss_total

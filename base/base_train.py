@@ -59,23 +59,30 @@ class BaseTrain:
     def initialize_model(self):
         self.in_image_tf = tf.placeholder(tf.float32, [None, 120, 160, 3], 'in_image')
         self.in_segxyz_tf = tf.placeholder(tf.float32, [None, 120, 160, 4], 'in_xyzseg')
-
-        self.gt_label_tf = tf.placeholder(tf.float32, [None, 120, 160], 'out_image')
         self.in_control_tf = tf.placeholder(tf.float32, [None, 6], 'in_control')
+
+        self.gt_predictions = tf.placeholder(tf.float32, [None, 120, 160], 'gt_predictions')
+
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
         #self.out_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
         #self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
         #self.model.loss_op = create_baseline_loss_ops(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
 
-        self.out_image_tf, self.out_image_rec_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
-        self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
+        self.out_predictions, self.out_reconstructions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
+            self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                in_segxyz=self.in_segxyz_tf,
+                                in_control=self.in_control_tf,
+                                is_training=self.is_training,
+                                n_predictions=self.config.n_predictions)
+
+        self.out_prediction_softmax = tf.nn.softmax(self.out_predictions)[:, :, :, 1]
 
         self.model.loss_op = create_baseline_loss_ops(config=self.config,
-                                                      gt_label_tf=self.gt_label_tf,
-                                                      gt_seg_tf=self.in_segxyz_tf[:, :, :, 0],
-                                                      out_image_rec_tf=self.out_image_rec_tf,
-                                                      out_image_tf=self.out_image_tf,
+                                                      gt_predictions=self.gt_predictions,
+                                                      gt_reconstructions=self.in_segxyz_tf[:, :, :, 0],
+                                                      out_reconstructions=self.out_reconstructions,
+                                                      out_predictions=self.out_predictions,
                                                       loss_type=self.config.loss_type)
 
         self.model.train_op = self.model.optimizer.minimize(self.model.loss_op, global_step=self.model.global_step_tensor)
