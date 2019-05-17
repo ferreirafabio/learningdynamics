@@ -132,10 +132,46 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         return x
 
-    def physics_predictor(self, latent, ctrl):
-        latent_last_step = latent
+    def physics_predictor(self, latent, ctrl, is_training):
+        latent_previous_step = latent
         """" interaction MLP """
         # todo: do interaction between objects here
+        dataset_name = self.config.tfrecords_dir
+
+        if "5_objects" in dataset_name:
+            n_objects = 5
+        else:
+            n_objects = 3
+
+        batch_size = self.config.train_batch_size
+
+        latent_batches = tf.split(latent, num_or_size_splits=batch_size, axis=0)
+
+        f_interact_sums = []
+
+        for i in range(batch_size):
+            objs_in_batch = tf.split(latent_batches[i], num_or_size_splits=n_objects, axis=0)
+            for j in range(n_objects):
+                for k in range(n_objects):
+                    if i != j:
+                        # shapes are (1, 512)
+                        pairwise_latent_a = objs_in_batch[i, :]
+                        pairwise_latent_b = objs_in_batch[j, :]
+
+                        # shape of pairwise_latent is (1, 1024)
+                        pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
+                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 512, activation='relu')
+                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+
+                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 512, activation='relu')
+                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+
+                        # shape (1, 512)
+                        f_interact_sums.append(pairwise_latent)
+
+        # shape (1, 512)
+        f_interact_sum = tf.reduce_sum(f_interact_sums, axis=1)
+        f_interact_sum = tf.tile(f_interact_sum, [tf.shape(latent)[0], 1])
 
         """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
@@ -144,17 +180,20 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
         latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
 
+        latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
+        latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
+
         """" transition MLP to next time step """
         latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        #physics_output = latent_next_step + latent_last_step
+        physics_output = latent_next_step + latent_previous_step + f_interact_sum
 
-        return latent_next_step
+        return physics_output
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
@@ -172,7 +211,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         for i in range(n_predictions):
             # latent_img has shape (?, 512)
-            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i])
+            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i], is_training=is_training)
             img_decoded = self.decoder(latent=latent_img, is_training=is_training)
 
             predictions.append(img_decoded)
