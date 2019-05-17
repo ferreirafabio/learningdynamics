@@ -3,6 +3,7 @@ from data_loader.data_generator import DataGenerator
 from trainers.singulation_trainer_predictor import SingulationTrainerPredictor
 from trainers.singulation_trainer import SingulationTrainer
 from trainers.singulation_trainer_predictor_extended import SingulationTrainerPredictorExtended
+from trainers.singulation_trainer_auto_encoding import SingulationTrainerAutoEncoder
 from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
@@ -106,6 +107,8 @@ def main():
         trainer = SingulationTrainerPredictorExtended(sess, model, train_data, test_data, config, logger, only_test=False)
     elif "predictor_" in config.model_zoo_file:
         trainer = SingulationTrainerPredictor(sess, model, train_data, test_data, config, logger, only_test=False)
+    elif "auto_encoder" in config.model_zoo_file:
+        trainer = SingulationTrainerAutoEncoder(sess, model, train_data, test_data, config, logger, only_test=False)
     else:
         trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
 
@@ -124,9 +127,6 @@ def main():
     elif config.mode == "test_specific_exp_ids":
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
         trainer.test_specific_exp_ids()
-    elif config.mode == "test_5_objects":
-        print("--- Running 5 object test mode ---")
-        trainer.test_5_objects()
     elif config.mode == "store_latent_vectors":
         print("--- Running store latent vectors mode ---")
         trainer.store_latent_vectors()

@@ -484,7 +484,7 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
     gt_label = []
     in_segxyz = []
     in_control = []
-    input_imgs = []
+    gt_label_rec = []
 
     if not multistep:
         for graph in input_graphs_batches:
@@ -494,6 +494,8 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
                 node_feature = node_feature['features'][:-6]
                 node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
                 seg_of_node = node_feature_reshaped[:, :, 3]
+                """ for auto-encoding we are interested in reconstructing the input """
+                gt_label_rec.append(seg_of_node)
 
                 """ we keep full rgb and depth, if masked, multiply by seg """
                 xyz = node_feature_reshaped[:, :, -3:]
@@ -511,6 +513,7 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
                 seg_of_node = node_feature_reshaped[:, :, 3]
 
                 gt_label.append(seg_of_node)
+
     else:
         """ we need only the images of the first graph of the episode """
         for batch in input_graphs_batches:
@@ -528,15 +531,14 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
                 in_image.append(rgb)
                 in_segxyz.append(seg_xyz)
 
-        """ just for debuggin reasons"""
+        """ for auto-encoding we are interested in reconstructing the input """
         for batch in input_graphs_batches:
             for graph in batch:
                 for _, node_feature in graph.nodes(data=True):
                     node_feature = node_feature['features'][:-6]
                     node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                    rgb = node_feature_reshaped[:, :, :3]
-                    input_imgs.append(rgb)
-
+                    seg = node_feature_reshaped[:, :, 3]
+                    gt_label_rec.append(seg)
 
         for prediction_i in range(config.n_predictions):
             for batch in input_graphs_batches:
@@ -574,9 +576,9 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
     in_image = np.array(in_image)
     in_control = np.array(in_control)
     gt_label = np.array(gt_label)
-    input_imgs = np.array(input_imgs)
+    gt_label_rec = np.array(gt_label_rec)
 
 
 
-    return in_segxyz, in_image, in_control, gt_label, input_imgs
+    return in_segxyz, in_image, in_control, gt_label, gt_label_rec
 

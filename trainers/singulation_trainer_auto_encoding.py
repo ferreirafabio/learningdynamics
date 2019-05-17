@@ -13,9 +13,9 @@ import csv
 import pandas as pd
 
 
-class SingulationTrainerPredictor(BaseTrain):
+class SingulationTrainerAutoEncoder(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger, only_test):
-        super(SingulationTrainerPredictor, self).__init__(sess, model, train_data, valid_data, config, logger, only_test)
+        super(SingulationTrainerAutoEncoder, self).__init__(sess, model, train_data, valid_data, config, logger, only_test)
         self.next_element_train = self.train_data.get_next_batch()
         self.next_element_test = self.test_data.get_next_batch()
 
@@ -54,26 +54,26 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                     batch_processing=True,
+                                                                    shuffle=False,
                                                                     multistep=multistep
                                                                     )
 
-        input_graphs_batches = input_graphs_batches[0]
-        target_graphs_batches = target_graphs_batches[0]
+        input_graphs_batches = input_graphs_batches[0][0]
+        target_graphs_batches = target_graphs_batches[0][0]
 
         """ gt_label_rec (taken from input graphs) is shifted by -1 compared to gt_label (taken from target graphs) """
-        in_segxyz, in_image, in_control, gt_label, gt_label_rec = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
+        in_segxyz, in_image, in_control, _, gt_reconstruction = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
 
-        _, loss_img, out_predictions, in_rgb_seg_xyz, dbg_latent_img, dbg_control = self.sess.run([self.model.train_op,
-                                                                                                  self.model.loss_op,
-                                                                                                  self.out_prediction_softmax,
-                                                                                                  self.in_rgb_seg_xyz,
-                                                                                                  self.debug_latent_img,
-                                                                                                  self.debug_in_control],
-                                                                                                  feed_dict={self.in_segxyz_tf: in_segxyz,
-                                                                                                             self.in_image_tf: in_image,
-                                                                                                             self.gt_predictions: gt_label,
-                                                                                                             self.in_control_tf: in_control,
-                                                                                                             self.is_training: True})
+        _, loss_img, out_reconstructions, in_rgb_seg_xyz, latent_feature_img = self.sess.run([self.model.train_op,
+                                                                          self.model.loss_op,
+                                                                          self.out_prediction_softmax,
+                                                                          self.in_rgb_seg_xyz,
+                                                                          self.latent_img],
+                                                                          feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                                     self.in_image_tf: in_image,
+                                                                                     self.gt_predictions: gt_reconstruction,  # this is intentional to maintain same names
+                                                                                     self.in_control_tf: in_control,  #  this is actually not used in auto-encoding
+                                                                                     self.is_training: True})
         loss_velocity = np.array(0.0)
         loss_position = np.array(0.0)
         loss_edge = np.array(0.0)
@@ -118,6 +118,7 @@ class SingulationTrainerPredictor(BaseTrain):
             except tf.errors.OutOfRangeError:
                 break
 
+
     def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
                    export_latent_data=True, output_results=True):
 
@@ -155,13 +156,13 @@ class SingulationTrainerPredictor(BaseTrain):
 
 
 
-            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
+            in_segxyz, in_image, in_control, _, gt_reconstructions = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
-            loss_img, out_predictions = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
+            loss_img, out_reconstructions, latent_img_feature = self.sess.run([self.model.loss_op, self.out_prediction_softmax, self.latent_img],
                                                 feed_dict={self.in_segxyz_tf: in_segxyz,
                                                               self.in_image_tf: in_image,
-                                                              self.gt_predictions: gt_label,
-                                                              self.in_control_tf: in_control,
+                                                              self.gt_predictions: gt_reconstructions,  # this is intentional to maintain same names
+                                                              self.in_control_tf: in_control,  # not actually used for auto-encoding
                                                               self.is_training: False})
 
             loss_velocity = np.array(0.0)
@@ -175,10 +176,10 @@ class SingulationTrainerPredictor(BaseTrain):
             losses_position.append(loss_position)
             losses_edge.append(loss_edge)
 
-            out_predictions[out_predictions >= 0.5] = 1.0
-            out_predictions[out_predictions < 0.5] = 0.0
+            out_reconstructions[out_reconstructions >= 0.5] = 1.0
+            out_reconstructions[out_reconstructions < 0.5] = 0.0
 
-            outputs_total.append((out_predictions, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
+            outputs_total.append((out_reconstructions, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
 
         the_time = time.time()
         elapsed_since_last_log = the_time - last_log_time

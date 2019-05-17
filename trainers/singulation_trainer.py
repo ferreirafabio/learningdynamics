@@ -299,53 +299,6 @@ class SingulationTrainer(BaseTrain):
             writer.writerow(["means over full set", " IoU: ", iou_test_set_mean, " Precision: ", prec_test_set_mean, " Recall: ", rec_test_set_mean, "F1: ", f1_test_set_mean])
             print("Done. mean IoU: {}, mean precision: {}, mean recall: {}, mean f1: {}".format(iou_test_set_mean, prec_test_set_mean, rec_test_set_mean, f1_test_set_mean))
 
-    def test_5_objects(self):
-        if not self.config.n_epochs == 1:
-            print("test mode 5 objects --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
-        if not self.config.n_rollouts == 50:
-            print("test mode 5 objects --> n_rollouts will be set to 50")
-            self.config.rollouts = 50
-        prefix = self.config.exp_name
-        print("Running 5 object test with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-        if self.config.do_multi_step_prediction:
-            sub_dir_name = "test_5_objects_multi_step_{}_iterations_trained".format(cur_batch_it)
-        else:
-            sub_dir_name = "test_5_novel_object_shapes_single_step_{}_iterations_trained".format(cur_batch_it)
-
-        while True:
-            try:
-                self.test_batch(prefix=prefix,
-                                export_images=self.config.export_test_images,
-                                initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                process_all_nn_outputs=True,
-                                sub_dir_name=sub_dir_name)
-            except tf.errors.OutOfRangeError:
-                break
-
-    def test_5_objects_multi_step(self):
-        # todo: adapt to multi steps
-        if not self.config.n_epochs == 1:
-            print("test mode 5 objects --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
-        if not self.config.n_rollouts == 50:
-            print("test mode 5 objects --> n_rollouts will be set to 50")
-            self.config.rollouts = 50
-        prefix = self.config.exp_name
-        print("Running 5 object test with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
-        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-        while True:
-            try:
-                self.test_batch(prefix=prefix,
-                                export_images=self.config.export_test_images,
-                                initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                process_all_nn_outputs=True,
-                                sub_dir_name="test_5_objects_multi_step_{}_iterations_trained".format(cur_batch_it))
-            except tf.errors.OutOfRangeError:
-                break
 
     def train_batch(self, prefix):
         losses = []

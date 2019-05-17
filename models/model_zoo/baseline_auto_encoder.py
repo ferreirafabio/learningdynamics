@@ -12,9 +12,9 @@ sys.path.append(BASE_DIR)
 
 model_dirs = os.path.join(os.path.dirname(os.path.abspath(__file__)),'./.')
 
-class baseline_auto_predictor_bn_tflearn(BaseModel):
-    def __init__(self, config, name="baseline_auto_predictor_bn_tflearn"):
-        super(baseline_auto_predictor_bn_tflearn, self).__init__(self)
+class baseline_auto_encoder(BaseModel):
+    def __init__(self, config, name="baseline_auto_encoder"):
+        super(baseline_auto_encoder, self).__init__(self)
         self.config = config
         # init the global step
         self.init_global_step()
@@ -69,7 +69,7 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
-        x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
+        x = tflearn.layers.conv.max_pool_2d(x, 2, 3)
 
         x = tflearn.layers.flatten(x)
 
@@ -132,12 +132,12 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True):
         ctrl = in_control
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        ctrl = tflearn.layers.normalization.batch_normalization(ctrl)
+        ctrl = tf.layers.batch_normalization(ctrl, training=is_training, momentum=0.9)
 
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        ctrl = tflearn.layers.normalization.batch_normalization(ctrl)
+        ctrl = tf.layers.batch_normalization(ctrl, training=is_training, momentum=0.9)
         ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        latent_ctrl = tflearn.layers.normalization.batch_normalization(ctrl)
+        latent_ctrl = tf.layers.batch_normalization(ctrl, training=is_training, momentum=0.9)
 
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
@@ -145,14 +145,12 @@ class baseline_auto_predictor_bn_tflearn(BaseModel):
         latent_img_ctrl = tf.concat([latent_img, latent_ctrl], axis=-1)
         latent_img_ctrl = tflearn.layers.core.fully_connected(latent_img_ctrl, 256, activation='relu')
 
-        latent_img_ctrl_2dim = latent_img_ctrl
-
         latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
         latent_img_ctrl = tf.expand_dims(latent_img_ctrl, axis=1)
 
-        score = self.decoder(latent=latent_img_ctrl, is_training=is_training)
+        reconstructions = self.decoder(latent=latent_img_ctrl, is_training=is_training)
 
-        return score, latent_img_ctrl_2dim
+        return reconstructions, in_rgb_segxyz, latent_img
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
