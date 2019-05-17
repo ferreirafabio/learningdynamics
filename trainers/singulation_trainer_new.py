@@ -77,7 +77,8 @@ class SingulationTrainerNew(BaseTrain):
                                                                                                              self.in_image_tf: in_image,
                                                                                                              self.gt_predictions: gt_label,
                                                                                                              self.in_control_tf: in_control,
-                                                                                                             self.is_training: True})
+                                                                                                             self.is_training: True,
+                                                                                                             self.batch_size: self.config.train_batch_size})
         loss_velocity = np.array(0.0)
         loss_position = np.array(0.0)
         loss_edge = np.array(0.0)
@@ -191,7 +192,6 @@ class SingulationTrainerNew(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
-
         if self.config.do_multi_step_prediction:
             multistep = True
         else:
@@ -199,28 +199,29 @@ class SingulationTrainerNew(BaseTrain):
         start_idx = 0
         end_idx = self.config.n_predictions
 
-
         for i in range(self.config.test_batch_size):
             input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                         batch_data=features[i],
                                                                         initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                        batch_processing=False,
-                                                                        return_only_unpadded=True,
+                                                                        batch_processing=False
                                                                         )
 
             if multistep:
                 input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
                 target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
 
-            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
+
+            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
             loss_img, out_predictions = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
                                                 feed_dict={self.in_segxyz_tf: in_segxyz,
                                                               self.in_image_tf: in_image,
                                                               self.gt_predictions: gt_label,
                                                               self.in_control_tf: in_control,
-                                                              self.is_training: False})
+                                                              self.is_training: False,
+                                                              self.batch_size: [1]})
+
             loss_velocity = np.array(0.0)
             loss_position = np.array(0.0)
             loss_edge = np.array(0.0)
@@ -260,7 +261,6 @@ class SingulationTrainerNew(BaseTrain):
                           prefix + '_position_loss': pos_batch_loss,
                           prefix + '_edge_loss': edge_batch_loss
                           }
-
 
         if outputs_total and output_results:
             for output in outputs_total:

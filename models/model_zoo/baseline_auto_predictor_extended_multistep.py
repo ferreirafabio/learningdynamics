@@ -70,7 +70,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
         x = tflearn.layers.normalization.batch_normalization(x)
-        x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
+        x = tflearn.layers.conv.max_pool_2d(x, 2, 3)
 
         x = tflearn.layers.flatten(x)
 
@@ -132,10 +132,24 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         return x
 
-    def physics_predictor(self, latent, ctrl, is_training):
+
+    def f_interact(self, latent_a, latent_b):
+        # shape of pairwise_latent is (1, 256)
+        # pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
+        pairwise_latent = latent_a + latent_b
+        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
+        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+
+        # shape of pairwise_latent is (1, 256)
+        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
+        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+
+        return pairwise_latent
+
+    def physics_predictor(self, latent, ctrl, batch_size):
         latent_previous_step = latent
+
         """" interaction MLP """
-        # todo: do interaction between objects here
         dataset_name = self.config.tfrecords_dir
 
         if "5_objects" in dataset_name:
@@ -143,35 +157,33 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         else:
             n_objects = 3
 
-        batch_size = self.config.train_batch_size
-
         latent_batches = tf.split(latent, num_or_size_splits=batch_size, axis=0)
 
-        f_interact_sums = []
+        f_interact_object_sums = []
+        f_interact_total = []
 
-        for i in range(batch_size):
+        for i in range(len(latent_batches)):
+            # yields list of n_objects tensors, e.g. [tensor_obj0, tensor_obj1, tensor_obj2]
             objs_in_batch = tf.split(latent_batches[i], num_or_size_splits=n_objects, axis=0)
             for j in range(n_objects):
                 for k in range(n_objects):
-                    if i != j:
-                        # shapes are (1, 512)
-                        pairwise_latent_a = objs_in_batch[i, :]
-                        pairwise_latent_b = objs_in_batch[j, :]
+                    if j != k:
+                        # shapes are (1, 256) per object
+                        pairwise_latent_a = objs_in_batch[j]
+                        pairwise_latent_b = objs_in_batch[k]
 
-                        # shape of pairwise_latent is (1, 1024)
-                        pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
-                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 512, activation='relu')
-                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+                        pairwise_latent = self.f_interact(latent_a=pairwise_latent_a, latent_b=pairwise_latent_b)
 
-                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 512, activation='relu')
-                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+                        f_interact_object_sums.append(pairwise_latent)
 
-                        # shape (1, 512)
-                        f_interact_sums.append(pairwise_latent)
+            # (n, 512) --> (1, 512), e.g. n=6 for 6 edges and 3 objects
+            f_interact_sum_per_batch = tf.reduce_sum(f_interact_object_sums, axis=0)
+            # (1, 512) --> (n_objects, 512)
+            f_interact_sum_per_batch = tf.tile(f_interact_sum_per_batch, [n_objects, 1])
+            f_interact_total.append(f_interact_sum_per_batch)
 
-        # shape (1, 512)
-        f_interact_sum = tf.reduce_sum(f_interact_sums, axis=1)
-        f_interact_sum = tf.tile(f_interact_sum, [tf.shape(latent)[0], 1])
+        # (batch_size, ) --> (batch_size * n_objects, 512)
+        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
 
         """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
@@ -185,19 +197,19 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         """" transition MLP to next time step """
         latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        physics_output = latent_next_step + latent_previous_step + f_interact_sum
+        physics_output = latent_next_step + latent_previous_step + f_interact_total
 
         return physics_output
 
-    def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
+    def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5, batch_size=None):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
-        # latent_img has shape (?, 512)
+        # latent_img has shape (?, 256)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
 
         predictions = []
@@ -210,8 +222,8 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         debug_in_control = []
 
         for i in range(n_predictions):
-            # latent_img has shape (?, 512)
-            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i], is_training=is_training)
+            # latent_img has shape (?, 256)
+            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i], batch_size=batch_size)
             img_decoded = self.decoder(latent=latent_img, is_training=is_training)
 
             predictions.append(img_decoded)
