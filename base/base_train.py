@@ -85,10 +85,19 @@ class BaseTrain:
 
         self.out_prediction_softmax = tf.nn.softmax(self.out_predictions)[:, :, :, 1]
 
-        self.model.loss_op = create_baseline_loss_ops(config=self.config,
-                                                      gt_predictions=self.gt_predictions,
-                                                      out_predictions=self.out_predictions,
-                                                      loss_type=self.config.loss_type)
+        if "encoding" in self.config.loss_type:
+            # todo:
+            self.model.loss_op = create_baseline_loss_ops(config=self.config,
+                                                          gt_predictions=self.gt_predictions,
+                                                          out_predictions=self.out_predictions,
+                                                          loss_type=self.config.loss_type)
+        else:
+            self.model.loss_op = create_baseline_loss_ops(config=self.config,
+                                                          gt_predictions=self.gt_predictions,
+                                                          out_predictions=self.out_predictions,
+                                                          gt_reconstructions=None,
+                                                          out_reconstructions=None,
+                                                          loss_type=self.config.loss_type)
 
         self.model.train_op = self.model.optimizer.minimize(self.model.loss_op, global_step=self.model.global_step_tensor)
 

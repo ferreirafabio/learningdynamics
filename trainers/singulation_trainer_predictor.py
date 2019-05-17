@@ -431,12 +431,12 @@ class SingulationTrainerPredictor(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        if "5_objects_50_rollouts" in self.config.tfrecords_dir:
-            exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
-            dir_name = "5_objects"
-        elif "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
+        if "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
             exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
             dir_name = "5_novel_objects"
+        elif "5_objects_50_rollouts" in self.config.tfrecords_dir:
+            exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+            dir_name = "5_objects"
         else:
             exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
             dir_name = "3_objects"

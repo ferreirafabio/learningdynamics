@@ -2,8 +2,8 @@ import tensorflow as tf
 from utils.utils import get_correct_image_shape
 
 
-def create_baseline_loss_ops(config, gt_predictions, out_predictions, loss_type="prediction"):
-    assert loss_type in ["prediction", "prediction_reconstruction"]
+def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions, out_predictions, out_reconstructions, loss_type="prediction"):
+    assert loss_type in ["prediction", "encoding"]
     #if loss_type == "prediction_reconstruction":
     #    predictions = out_predictions
     #    reconstructions = out_reconstructions
@@ -22,6 +22,15 @@ def create_baseline_loss_ops(config, gt_predictions, out_predictions, loss_type=
     if loss_type == "prediction":
         loss_total = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32), logits=out_predictions))
+
+        tf.losses.add_loss(loss_total)
+
+        return loss_total
+
+    elif loss_type == "encoding":
+        loss_total = tf.reduce_mean(
+            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_reconstructions, dtype=tf.int32),
+                                                           logits=out_reconstructions))
 
         tf.losses.add_loss(loss_total)
 
