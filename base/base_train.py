@@ -69,7 +69,7 @@ class BaseTrain:
         #self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
         #self.model.loss_op = create_baseline_loss_ops(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
 
-        self.out_predictions, self.out_reconstructions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
+        self.out_predictions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
             self.model.cnnmodel(in_rgb=self.in_image_tf,
                                 in_segxyz=self.in_segxyz_tf,
                                 in_control=self.in_control_tf,
@@ -80,8 +80,6 @@ class BaseTrain:
 
         self.model.loss_op = create_baseline_loss_ops(config=self.config,
                                                       gt_predictions=self.gt_predictions,
-                                                      gt_reconstructions=self.in_segxyz_tf[:, :, :, 0],
-                                                      out_reconstructions=self.out_reconstructions,
                                                       out_predictions=self.out_predictions,
                                                       loss_type=self.config.loss_type)
 

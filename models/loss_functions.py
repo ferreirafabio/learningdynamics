@@ -2,24 +2,24 @@ import tensorflow as tf
 from utils.utils import get_correct_image_shape
 
 
-def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions, out_reconstructions, out_predictions, loss_type="prediction"):
+def create_baseline_loss_ops(config, gt_predictions, out_predictions, loss_type="prediction"):
     assert loss_type in ["prediction", "prediction_reconstruction"]
-    if loss_type == "prediction_reconstruction":
-        predictions = out_predictions
-        reconstructions = out_reconstructions
+    #if loss_type == "prediction_reconstruction":
+    #    predictions = out_predictions
+    #    reconstructions = out_reconstructions
 
-        prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32),
-                                                                             logits=predictions))
+    #    prediction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32),
+    #                                                                         logits=predictions))
 
-        reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_reconstructions, dtype=tf.int32),
-                                                                             logits=reconstructions))
+        # reconstruction_loss = 0.5 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_reconstructions, dtype=tf.int32),
+        #                                                                      logits=reconstructions))
+        #
+        # tf.losses.add_loss(prediction_loss)
+        # tf.losses.add_loss(reconstruction_loss)
+        #
+        # return tf.reduce_mean([prediction_loss, reconstruction_loss])
 
-        tf.losses.add_loss(prediction_loss)
-        tf.losses.add_loss(reconstruction_loss)
-
-        return tf.reduce_mean([prediction_loss, reconstruction_loss])
-
-    elif loss_type == "prediction":
+    if loss_type == "prediction":
         loss_total = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32), logits=out_predictions))
 

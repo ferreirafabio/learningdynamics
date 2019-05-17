@@ -12,9 +12,9 @@ sys.path.append(BASE_DIR)
 
 model_dirs = os.path.join(os.path.dirname(os.path.abspath(__file__)),'./.')
 
-class baseline_auto_predictor_multistep(BaseModel):
-    def __init__(self, config, name="baseline_auto_predictor_multistep"):
-        super(baseline_auto_predictor_multistep, self).__init__(self)
+class baseline_auto_predictor_extended_multistep(BaseModel):
+    def __init__(self, config, name="baseline_auto_predictor_extended_multistep"):
+        super(baseline_auto_predictor_extended_multistep, self).__init__(self)
         self.config = config
         # init the global step
         self.init_global_step()
@@ -133,11 +133,12 @@ class baseline_auto_predictor_multistep(BaseModel):
         return x
 
     def physics_predictor(self, latent, ctrl):
+        latent_last_step = latent
+        """" interaction MLP """
+        # todo: do interaction between objects here
+
         """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
-
-        latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
         latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
 
         latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
@@ -147,6 +148,11 @@ class baseline_auto_predictor_multistep(BaseModel):
         latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
+
+        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu')
+        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
+
+        #physics_output = latent_next_step + latent_last_step
 
         return latent_next_step
 

@@ -467,79 +467,80 @@ def _sanity_check_pos_vel(input_graphs):
         assert not np.any(edge_feature['features'][-3:])
 
 
-def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, multistep=False):
+def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batches, multistep=False):
     in_image = []
     gt_label = []
     in_segxyz = []
     in_control = []
-    #gt_label_rec = []
+    input_imgs = []
 
     if not multistep:
-        for graph in input_graphs_batch:
+        for graph in input_graphs_batches:
             for _, node_feature in graph.nodes(data=True):
                 in_control.append(graph.graph['features'][3:])  # control input for the next time step, its a 9-tuple (flag, step,g,posx,posy,posz,velx,vely,velz)
 
                 node_feature = node_feature['features'][:-6]
                 node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                seg_of_node_i = node_feature_reshaped[:,:,3]
+                seg_of_node = node_feature_reshaped[:, :, 3]
 
                 """ we keep full rgb and depth, if masked, multiply by seg """
                 xyz = node_feature_reshaped[:, :, -3:]
-                seg = np.expand_dims(seg_of_node_i, axis=-1)
+                seg = np.expand_dims(seg_of_node, axis=-1)
                 seg_xyz = np.concatenate([seg, xyz], axis=-1)
 
                 rgb = node_feature_reshaped[:, :, :3]
                 in_image.append(rgb)
                 in_segxyz.append(seg_xyz)
 
-        for graph in target_graphs_batch:
+        for graph in target_graphs_batches:
             for _, node_feature in graph.nodes(data=True):
                 node_feature = node_feature['features'][:-6]
                 node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                seg_of_node_i = node_feature_reshaped[:, :, 3]
+                seg_of_node = node_feature_reshaped[:, :, 3]
 
-                gt_label.append(seg_of_node_i)
+                gt_label.append(seg_of_node)
     else:
-        for lst in input_graphs_batch:
-            for i, graph in enumerate(lst):
-                for j, node_feature in graph.nodes(data=True):
-                    in_control.append(graph.graph['features'][
-                                      3:])  # control input for the next time step, its a 9-tuple (step,g,posx,posy,posz,velx,vely,velz)
+        """ we need only the images of the first graph of the episode """
+        for batch in input_graphs_batches:
+            first_graph_of_batch = batch[0]
+            for _, node_feature in first_graph_of_batch.nodes(data=True):
+                node_feature = node_feature['features'][:-6]
+                node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+                seg_of_node = node_feature_reshaped[:, :, 3]
 
-                    """ we need all controls but only the input graph of the episode (first element in >lst<)"""
-                    if i < 1:
-                        node_feature = node_feature['features'][:-6]
-                        node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                        seg_of_node_j = node_feature_reshaped[:, :, 3]
+                xyz = node_feature_reshaped[:, :, -3:]
+                seg = np.expand_dims(seg_of_node, axis=-1)
+                seg_xyz = np.concatenate([seg, xyz], axis=-1)
 
-                        """ we keep full rgb and depth, if masked, multiply by seg """
-                        xyz = node_feature_reshaped[:, :, -3:]
-                        seg = np.expand_dims(seg_of_node_j, axis=-1)
-                        seg_xyz = np.concatenate([seg, xyz], axis=-1)
+                rgb = node_feature_reshaped[:, :, :3]
+                in_image.append(rgb)
+                in_segxyz.append(seg_xyz)
 
-                        rgb = node_feature_reshaped[:, :, :3]
-                        in_image.append(rgb)
-                        in_segxyz.append(seg_xyz)
-        #""" for the reconstruction loss """
-        #for lst in input_graphs_batch:
-        #    for i, graph in enumerate(lst):
-        #        for j, node_feature in graph.nodes(data=True):
-
-                        #node_feature = node_feature['features'][:-6]
-                        #node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                        #seg_of_node_j = node_feature_reshaped[:, :, 3]
-
-                        #gt_label_rec.append(seg_of_node_j)
-
-
-        for lst in target_graphs_batch:
-            for graph in lst:
-                for i, node_feature in graph.nodes(data=True):
+        """ just for debuggin reasons"""
+        for batch in input_graphs_batches:
+            for graph in batch:
+                for _, node_feature in graph.nodes(data=True):
                     node_feature = node_feature['features'][:-6]
                     node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
-                    seg_of_node_i = node_feature_reshaped[:, :, 3]
+                    rgb = node_feature_reshaped[:, :, :3]
+                    input_imgs.append(rgb)
 
-                    gt_label.append(seg_of_node_i)
+
+        for prediction_i in range(config.n_predictions):
+            for batch in input_graphs_batches:
+                graph = batch[prediction_i]
+                for _, node_feature in graph.nodes(data=True):
+                    in_control.append(graph.graph['features'][3:])
+
+        for prediction_i in range(config.n_predictions):
+            for batch in target_graphs_batches:
+                graph = batch[prediction_i]
+                for _, node_feature in graph.nodes(data=True):
+                    node_feature = node_feature['features'][:-6]
+                    node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])
+                    seg_of_node = node_feature_reshaped[:, :, 3]
+
+                    gt_label.append(seg_of_node)
 
 
     #import matplotlib
@@ -561,8 +562,9 @@ def networkx_graphs_to_images(config, input_graphs_batch, target_graphs_batch, m
     in_image = np.array(in_image)
     in_control = np.array(in_control)
     gt_label = np.array(gt_label)
-    #gt_label_rec = np.array(gt_label_rec)
+    input_imgs = np.array(input_imgs)
 
 
-    return in_segxyz, in_image, in_control, gt_label#, gt_label_rec
+
+    return in_segxyz, in_image, in_control, gt_label, input_imgs
 

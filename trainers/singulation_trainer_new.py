@@ -50,20 +50,21 @@ class SingulationTrainerNew(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
-        input_graphs_batch, target_graphs_batch = create_graphs(config=self.config,
+        input_graphs_batches, target_graphs_batches = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                     batch_processing=True,
                                                                     multistep=multistep
                                                                     )
 
-        input_graphs_batch = input_graphs_batch[0]
-        target_graphs_batch = target_graphs_batch[0]
+        input_graphs_batches = input_graphs_batches[0]
+        target_graphs_batches = target_graphs_batches[0]
 
         #input_graphs_batch = input_graphs_batch[0][0]
         #target_graphs_batch = target_graphs_batch[0][0]
 
-        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_batch, target_graphs_batch, multistep=multistep)
+        """ gt_label_rec (taken from input graphs) is shifted by -1 compared to gt_label (taken from target graphs) """
+        in_segxyz, in_image, in_control, gt_label, input_imgs = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
 
 
         _, loss_img, out_predictions, in_rgb_seg_xyz, dbg_latent_img, dbg_control = self.sess.run([self.model.train_op,
@@ -211,7 +212,7 @@ class SingulationTrainerNew(BaseTrain):
                 input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
                 target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
 
-            in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
+            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
 
             loss_img, out_predictions = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
