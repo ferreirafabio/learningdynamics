@@ -12,10 +12,9 @@ from models.singulation_graph import create_graphs, networkx_graphs_to_images
 import csv
 import pandas as pd
 
-
-class SingulationTrainerNew(BaseTrain):
+class SingulationTrainerPredictorExtended(BaseTrain):
     def __init__(self, sess, model, train_data, valid_data, config, logger, only_test):
-        super(SingulationTrainerNew, self).__init__(sess, model, train_data, valid_data, config, logger, only_test)
+        super(SingulationTrainerPredictorExtended, self).__init__(sess, model, train_data, valid_data, config, logger, only_test)
         self.next_element_train = self.train_data.get_next_batch()
         self.next_element_test = self.test_data.get_next_batch()
 
@@ -66,7 +65,6 @@ class SingulationTrainerNew(BaseTrain):
         """ gt_label_rec (taken from input graphs) is shifted by -1 compared to gt_label (taken from target graphs) """
         in_segxyz, in_image, in_control, gt_label, input_imgs = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
 
-
         _, loss_img, out_predictions, in_rgb_seg_xyz, dbg_latent_img, dbg_control = self.sess.run([self.model.train_op,
                                                                                                   self.model.loss_op,
                                                                                                   self.out_prediction_softmax,
@@ -78,7 +76,7 @@ class SingulationTrainerNew(BaseTrain):
                                                                                                              self.gt_predictions: gt_label,
                                                                                                              self.in_control_tf: in_control,
                                                                                                              self.is_training: True,
-                                                                                                             self.batch_size: self.config.train_batch_size})
+                                                                                                             self.batch_size: [1]*self.config.train_batch_size})
         loss_velocity = np.array(0.0)
         loss_position = np.array(0.0)
         loss_edge = np.array(0.0)
@@ -433,18 +431,21 @@ class SingulationTrainerNew(BaseTrain):
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        #exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
-        #dir_name = "3_objects"
-        #exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
-        #dir_name = "5_objects"
-        exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
-        dir_name = "5_novel_objects"
+        if "5_objects_50_rollouts" in self.config.tfrecords_dir:
+            exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+            dir_name = "5_objects"
+        elif "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
+            exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
+            dir_name = "5_novel_objects"
+        else:
+            exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
+            dir_name = "3_objects"
 
         process_all_nn_outputs = True
 
         thresholds_to_test = 0.5
 
-        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(dir_name, cur_batch_it, thresh)
+        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}".format(dir_name, cur_batch_it, thresholds_to_test)
         while True:
             try:
                 losses_total = []

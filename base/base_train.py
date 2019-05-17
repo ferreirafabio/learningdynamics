@@ -67,17 +67,21 @@ class BaseTrain:
 
         self.batch_size = tf.placeholder(tf.int32, [self.config.train_batch_size])
 
-        #self.out_image_tf, self.in_rgb_seg_xyz = self.model.cnnmodel(self.in_image_tf, self.in_segxyz_tf, self.in_control_tf, is_training=self.is_training, n_predictions=self.config.n_predictions)
-        #self.out_label_tf = tf.nn.softmax(self.out_image_tf)[:, :, :, 1]
-        #self.model.loss_op = create_baseline_loss_ops(config=self.config, gt_label_tf=self.gt_label_tf, out_image_tf=self.out_image_tf)
-
-        self.out_predictions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
-            self.model.cnnmodel(in_rgb=self.in_image_tf,
-                                in_segxyz=self.in_segxyz_tf,
-                                in_control=self.in_control_tf,
-                                is_training=self.is_training,
-                                n_predictions=self.config.n_predictions,
-                                batch_size=self.batch_size)
+        if "predictor_extended" in self.config.model_zoo_file:
+            self.out_predictions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
+                self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                    in_segxyz=self.in_segxyz_tf,
+                                    in_control=self.in_control_tf,
+                                    is_training=self.is_training,
+                                    n_predictions=self.config.n_predictions,
+                                    batch_size=self.batch_size)
+        else:
+            self.out_predictions, self.in_rgb_seg_xyz, self.debug_latent_img, self.debug_in_control = \
+                self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                    in_segxyz=self.in_segxyz_tf,
+                                    in_control=self.in_control_tf,
+                                    is_training=self.is_training,
+                                    n_predictions=self.config.n_predictions)
 
         self.out_prediction_softmax = tf.nn.softmax(self.out_predictions)[:, :, :, 1]
 

@@ -193,12 +193,8 @@ def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_
         unpad_exp_length = start_end_idx[1]+1
     else:
         unpad_exp_length = features[features_index]['unpadded_experiment_length']
-        start_end_idx = None
     n_objects = features[features_index]['n_manipulable_objects']
 
-    #images_rgb = np.split(in_image, n_objects)
-    #in_segxyz = np.split(in_segxyz, n_objects)
-    #images_depth = [obj[:, :, :, -3:] for obj in in_segxyz]
     images_depth = []  # not predicted
     images_rgb = []  # not predicted
     images_seg_times_split = np.split(out_label, unpad_exp_length-1)

@@ -1,7 +1,8 @@
 import tensorflow as tf
 from data_loader.data_generator import DataGenerator
-from trainers.singulation_trainer_new import SingulationTrainerNew
+from trainers.singulation_trainer_predictor import SingulationTrainerPredictor
 from trainers.singulation_trainer import SingulationTrainer
+from trainers.singulation_trainer_predictor_extended import SingulationTrainerPredictorExtended
 from utils.config import process_config
 from utils.dirs import create_dirs
 from utils.logger import Logger
@@ -101,8 +102,10 @@ def main():
         only_test = True
 
     # create trainer and pass all the previous components to it
-    if config.use_baseline_auto_predictor:
-        trainer = SingulationTrainerNew(sess, model, train_data, test_data, config, logger, only_test=False)
+    if "predictor_extended" in config.model_zoo_file:
+        trainer = SingulationTrainerPredictorExtended(sess, model, train_data, test_data, config, logger, only_test=False)
+    elif "predictor_" in config.model_zoo_file:
+        trainer = SingulationTrainerPredictor(sess, model, train_data, test_data, config, logger, only_test=False)
     else:
         trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
 

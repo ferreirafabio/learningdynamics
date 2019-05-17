@@ -301,7 +301,7 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
     plt.show()
 
 
-def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True, multistep=False, random_start_episode=True):
+def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     input_graph_lst, target_graph_lst = [], []
     for data in batch_data:
         input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
@@ -345,10 +345,10 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
         for tupl_inp, tupl_targ in zip(input_graph_lst, target_graph_lst):
             minimum_exp_leng = len(tupl_inp[0])
             """ we want at least n_prediction samples: """
-            if random_start_episode:
+            if start_episode is None:
                 random_start_episode_idx = random.randint(0, minimum_exp_leng-config.n_predictions)
             else:
-                random_start_episode_idx = 0
+                random_start_episode_idx = start_episode
             """ also take n_prediction samples from input graphs because we need the control input from these: """
             input_graph = tupl_inp[0][random_start_episode_idx:random_start_episode_idx+config.n_predictions]
             target_graphs = tupl_targ[0][random_start_episode_idx:random_start_episode_idx+config.n_predictions]
@@ -398,7 +398,7 @@ def ensure_batch_has_no_sample_with_same_exp_id(config, list):
     return input_batches, target_batches
 
 
-def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, random_start_episode=True):
+def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     if not batch_processing:
         assert not multistep, "multistep only implemented for batch processing"
         n_manipulable_objects = batch_data['n_manipulable_objects']
@@ -411,19 +411,19 @@ def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_p
                                                          shuffle=shuffle,
                                                          return_only_unpadded=return_only_unpadded,
                                                          multistep=multistep,
-                                                         random_start_episode=random_start_episode)
+                                                         start_episode=start_episode)
 
     return input_graphs, target_graphs
 
 
-def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, random_start_episode=True):
+def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     input_graphs, target_graphs = create_singulation_graphs(config, batch_data,
                                                             initial_pos_vel_known=initial_pos_vel_known,
                                                             batch_processing=batch_processing,
                                                             shuffle=shuffle,
                                                             return_only_unpadded=return_only_unpadded,
                                                             multistep=multistep,
-                                                            random_start_episode = random_start_episode)
+                                                            start_episode=start_episode)
 
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
