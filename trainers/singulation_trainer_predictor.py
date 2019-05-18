@@ -443,7 +443,9 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                 start_episode=start_episode
                                                                                 )
 
-                    if multistep and not reset_after_n_predictions:
+                    #if reset_after_n_predictions:
+                    #    for i in range(0, len())
+                    if multistep:
                         input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
                         target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
 
