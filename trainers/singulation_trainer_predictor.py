@@ -386,7 +386,7 @@ class SingulationTrainerPredictor(BaseTrain):
             dir_name = "3_objects"
 
         """ set this to true if full episodes should be predicted with the multistep model, i.e. after every 
-        n_predictions, the prediction input will be reset to the actual ground truth """
+        n_predictions, the model input will be reset to the actual ground truth """
         reset_after_n_predictions = True
 
         start_idx = 0
@@ -397,8 +397,8 @@ class SingulationTrainerPredictor(BaseTrain):
             dir_suffix = "show_pred_from_start"
             start_episode = 0
         elif self.config.n_predictions > 1 and reset_after_n_predictions:
-            multistep = False  # required by generate_and_export_image_dicts() to produce full prediction output in .gif
-            dir_suffix = "reset_pred_after_n_predictions"
+            multistep = True
+            dir_suffix = "reset_model_input_after_{}_predictions".format(self.config.n_predictions)
             start_episode = None
         else:
             multistep = False
@@ -462,6 +462,7 @@ class SingulationTrainerPredictor(BaseTrain):
                         """ if the length of an episode cannot be evenly divided by n_predictions, remove out the last elements """
                         n_prediction_chunks_target = [chunk for chunk in n_prediction_chunks_target if len(chunk) == n_predictions]
                         n_prediction_chunks_input = [chunk for chunk in n_prediction_chunks_input if len(chunk) == n_predictions]
+                        end_idx = len(n_prediction_chunks_target) * n_predictions
 
                         out_label_lst = []
                         in_segxyz_lst = []
@@ -506,7 +507,7 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                      np.concatenate(in_segxyz_lst, axis=0), \
                                                                      np.concatenate(in_image_lst, axis=0), \
                                                                      np.concatenate(in_control_lst, axis=0)
-                        end_idx = features[i]
+
                         outputs_total.append((out_label, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
 
 
