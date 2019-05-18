@@ -388,7 +388,7 @@ class SingulationTrainerPredictor(BaseTrain):
         process_all_nn_outputs = True
         thresholds_to_test = 0.5
 
-        reset_after_n_predictions = False
+        reset_after_n_predictions = True
         start_idx = 0
         end_idx = self.config.n_predictions
 
@@ -443,7 +443,7 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                 start_episode=start_episode
                                                                                 )
 
-                    if multistep:
+                    if multistep and not reset_after_n_predictions:
                         input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
                         target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
 
