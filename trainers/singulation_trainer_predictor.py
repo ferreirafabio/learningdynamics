@@ -385,10 +385,10 @@ class SingulationTrainerPredictor(BaseTrain):
             exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
             dir_name = "3_objects"
 
-        process_all_nn_outputs = True
-        thresholds_to_test = 0.5
-
+        """ set this to true if full episodes should be predicted with the multistep model, i.e. after every 
+        n_predictions, the prediction input will be reset to the actual ground truth """
         reset_after_n_predictions = True
+
         start_idx = 0
         end_idx = self.config.n_predictions
 
@@ -397,7 +397,7 @@ class SingulationTrainerPredictor(BaseTrain):
             dir_suffix = "show_pred_from_start"
             start_episode = 0
         elif self.config.n_predictions > 1 and reset_after_n_predictions:
-            multistep = True
+            multistep = False  # required by generate_and_export_image_dicts() to produce full prediction output in .gif
             dir_suffix = "reset_pred_after_n_predictions"
             start_episode = None
         else:
@@ -405,7 +405,7 @@ class SingulationTrainerPredictor(BaseTrain):
             dir_suffix = ""
             start_episode = 0
 
-        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}_mode_{}".format(dir_name, cur_batch_it, thresholds_to_test, dir_suffix)
+        sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}_mode_{}".format(dir_name, cur_batch_it, 0.5, dir_suffix)
         while True:
             try:
                 losses_total = []
@@ -443,47 +443,109 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                 start_episode=start_episode
                                                                                 )
 
-                    #if reset_after_n_predictions:
-                    #    for i in range(0, len())
-                    if multistep:
-                        input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
-                        target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
+                    if reset_after_n_predictions:
+                        """ this section is used for producing the output for an entire episode, meaning that the model 
+                        is asked to re-predict after n_prediction steps up until the entire episode is covered 
+                        (with potential crop in the end if episode length/n_predictions is odd) """
+                        assert len(input_graphs_all_exp) == len(target_graphs_all_exp)
+                        n_prediction_chunks_target = []
+                        n_prediction_chunks_input = []
+                        n_predictions = self.config.n_predictions
 
-                    in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config,
-                                                                                             input_graphs_all_exp,
-                                                                                             target_graphs_all_exp,
-                                                                                             multistep=multistep)
+                        for j in range(0, len(target_graphs_all_exp), n_predictions):
+                            chunk = target_graphs_all_exp[j:j + n_predictions]
+                            n_prediction_chunks_target.append(chunk)
+
+                            chunk = input_graphs_all_exp[j:j + n_predictions]
+                            n_prediction_chunks_input.append(chunk)
+
+                        """ if the length of an episode cannot be evenly divided by n_predictions, remove out the last elements """
+                        n_prediction_chunks_target = [chunk for chunk in n_prediction_chunks_target if len(chunk) == n_predictions]
+                        n_prediction_chunks_input = [chunk for chunk in n_prediction_chunks_input if len(chunk) == n_predictions]
+
+                        out_label_lst = []
+                        in_segxyz_lst = []
+                        in_image_lst = []
+                        in_control_lst = []
+
+                        for lst_inp, lst_targ in zip(n_prediction_chunks_input, n_prediction_chunks_target):
+                            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config,
+                                                                                                     [lst_inp],
+                                                                                                     [lst_targ],
+                                                                                                     multistep=True)
 
 
-                    loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
-                                                        feed_dict={self.in_segxyz_tf: in_segxyz,
-                                                                   self.in_image_tf: in_image,
-                                                                   self.gt_predictions: gt_label,
-                                                                   self.in_control_tf: in_control,
-                                                                   self.is_training: True})
-                    loss_velocity = np.array(0.0)
-                    loss_position = np.array(0.0)
-                    loss_edge = np.array(0.0)
-                    loss_total = loss_img + loss_position + loss_edge + loss_velocity
 
-                    losses_total.append(loss_total)
-                    losses_img.append(loss_img)
-                    losses_velocity.append(loss_velocity)
-                    losses_position.append(loss_position)
-                    losses_edge.append(loss_edge)
+                            loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
+                                                                feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                           self.in_image_tf: in_image,
+                                                                           self.gt_predictions: gt_label,
+                                                                           self.in_control_tf: in_control,
+                                                                           self.is_training: True})
 
-                    out_label[out_label >= 0.5] = 1.0
-                    out_label[out_label < 0.5] = 0.0
+                            out_label[out_label >= 0.5] = 1.0
+                            out_label[out_label < 0.5] = 0.0
 
-                    outputs_total.append((out_label, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
+                            loss_velocity = np.array(0.0)
+                            loss_position = np.array(0.0)
+                            loss_edge = np.array(0.0)
+                            loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                            losses_total.append(loss_total)
+                            losses_img.append(loss_img)
+                            losses_velocity.append(loss_velocity)
+                            losses_position.append(loss_position)
+                            losses_edge.append(loss_edge)
+
+                            out_label_lst.append(out_label)
+                            in_segxyz_lst.append(in_segxyz)
+                            in_image_lst.append(in_image)
+                            in_control_lst.append(in_control)
+
+                        out_label, in_segxyz, in_image, in_control = np.concatenate(out_label_lst, axis=0), \
+                                                                     np.concatenate(in_segxyz_lst, axis=0), \
+                                                                     np.concatenate(in_image_lst, axis=0), \
+                                                                     np.concatenate(in_control_lst, axis=0)
+                        end_idx = features[i]
+                        outputs_total.append((out_label, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
+
+
+                    else:
+                        if multistep:
+                            input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
+                            target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
+
+                        in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config,
+                                                                                                 input_graphs_all_exp,
+                                                                                                 target_graphs_all_exp,
+                                                                                                 multistep=multistep)
+
+
+                        loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
+                                                            feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                       self.in_image_tf: in_image,
+                                                                       self.gt_predictions: gt_label,
+                                                                       self.in_control_tf: in_control,
+                                                                       self.is_training: True})
+                        loss_velocity = np.array(0.0)
+                        loss_position = np.array(0.0)
+                        loss_edge = np.array(0.0)
+                        loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                        losses_total.append(loss_total)
+                        losses_img.append(loss_img)
+                        losses_velocity.append(loss_velocity)
+                        losses_position.append(loss_position)
+                        losses_edge.append(loss_edge)
+
+                        out_label[out_label >= 0.5] = 1.0
+                        out_label[out_label < 0.5] = 0.0
+
+                        outputs_total.append((out_label, in_segxyz, in_image, in_control, i, (start_idx, end_idx)))
 
                 the_time = time.time()
                 elapsed_since_last_log = the_time - last_log_time
                 cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
-
-                if not process_all_nn_outputs:
-                    """ due to brevity, just use last output """
-                    outputs_total = [outputs_total[-1]]
 
                 batch_loss = np.mean(losses_total)
                 img_batch_loss = np.mean(losses_img)
