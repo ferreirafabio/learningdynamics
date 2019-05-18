@@ -386,7 +386,8 @@ class SingulationTrainerPredictor(BaseTrain):
             dir_name = "3_objects"
 
         """ set this to true if full episodes should be predicted with the multistep model, i.e. after every 
-        n_predictions, the model input will be reset to the actual ground truth """
+        n_predictions, the model input will be reset to the actual ground truth to allow to fully observe the 
+        predictions for an entire episode"""
         reset_after_n_predictions = True
 
         start_idx = 0
@@ -459,7 +460,8 @@ class SingulationTrainerPredictor(BaseTrain):
                             chunk = input_graphs_all_exp[j:j + n_predictions]
                             n_prediction_chunks_input.append(chunk)
 
-                        """ if the length of an episode cannot be evenly divided by n_predictions, remove out the last elements """
+                        """ if the length of an episode cannot be evenly divided by n_predictions, remove the last 
+                        odd list. end_idx ensures the array split is correctly handled later"""
                         n_prediction_chunks_target = [chunk for chunk in n_prediction_chunks_target if len(chunk) == n_predictions]
                         n_prediction_chunks_input = [chunk for chunk in n_prediction_chunks_input if len(chunk) == n_predictions]
                         end_idx = len(n_prediction_chunks_target) * n_predictions
