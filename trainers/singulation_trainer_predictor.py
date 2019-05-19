@@ -586,10 +586,11 @@ class SingulationTrainerPredictor(BaseTrain):
 
                         writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id])
 
-                        prec_score_list_test_set.append(prec_traj_mean)
-                        rec_score_list_test_set.append(rec_traj_mean)
-                        f1_score_list_test_set.append(f1_traj_mean)
-                        iou_list_test_set.append(iou_traj_mean)
+                        if not(np.isnan(iou_traj_mean) or np.isnan(prec_traj_mean) or np.isnan(rec_traj_mean) or np.isnan(f1_traj_mean)):
+                            prec_score_list_test_set.append(prec_traj_mean)
+                            rec_score_list_test_set.append(rec_traj_mean)
+                            f1_score_list_test_set.append(f1_traj_mean)
+                            iou_list_test_set.append(iou_traj_mean)
 
                     csv_file.flush()
                 except tf.errors.OutOfRangeError:
