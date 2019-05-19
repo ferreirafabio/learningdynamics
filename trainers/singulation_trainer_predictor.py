@@ -418,7 +418,7 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                     )
                         out_label_lst = []
                         in_seg_lst = []
-                        exp_id = []
+                        exp_id = features[i]['experiment_id']
                         n_objects = features[i]['n_manipulable_objects']
 
                         if test_single_step:
@@ -459,7 +459,6 @@ class SingulationTrainerPredictor(BaseTrain):
 
                                 in_seg_lst.append(in_segxyz[:,:,:,0])
                                 out_label_lst.append(out_label)
-                                exp_id.append(features[i]['experiment_id'])
 
                         else:
                             """ this section is used for producing the output for an entire episode, meaning that the model 
@@ -490,6 +489,7 @@ class SingulationTrainerPredictor(BaseTrain):
                             #number_removed_chunks = (len(n_prediction_chunks_target) - len(n_prediction_chunks_target_after_filtering))
                             #print("number of removed chunks (of up to 2 (2 step prediction) or 5 (5 step prediction) frames): ", number_removed_chunks)
 
+
                             for lst_inp, lst_targ in zip(n_prediction_chunks_input_after_filtering, n_prediction_chunks_target_after_filtering):
                                 in_segxyz, in_image, in_control, gt_label, gt_label_rec = networkx_graphs_to_images(self.config,
                                                                                                          [lst_inp],
@@ -519,7 +519,7 @@ class SingulationTrainerPredictor(BaseTrain):
                                 losses_position.append(loss_position)
                                 losses_distance.append(loss_edge)
 
-                                exp_id.append(features[i]['experiment_id'])
+
 
                                 """ in multistep prediction, in_segxyz only contains the first image, therefore use 
                                 gt_label_rec that contains all ground truth input images. Also split the model output 
@@ -581,7 +581,10 @@ class SingulationTrainerPredictor(BaseTrain):
                         rec_traj_mean = np.mean(rec_scores)
                         f1_traj_mean = np.mean(f1_scores)
 
-                        writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id[0]])
+                        if exp_id is None:
+                            print("shapes pred_experiment and true experiment: ", np.shape(pred_experiment), np.shape(true_experiment))
+
+                        writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id])
 
                         prec_score_list_test_set.append(prec_traj_mean)
                         rec_score_list_test_set.append(rec_traj_mean)
