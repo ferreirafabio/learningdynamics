@@ -532,8 +532,9 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
                 in_segxyz.append(seg_xyz)
 
         """ for auto-encoding we are interested in reconstructing the input """
-        for batch in input_graphs_batches:
-            for graph in batch:
+        for prediction_i in range(config.n_predictions):
+            for batch in input_graphs_batches:
+                graph = batch[prediction_i]
                 for _, node_feature in graph.nodes(data=True):
                     node_feature = node_feature['features'][:-6]
                     node_feature_reshaped = np.reshape(node_feature, [120, 160, 7])

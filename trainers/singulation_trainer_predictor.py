@@ -377,7 +377,7 @@ class SingulationTrainerPredictor(BaseTrain):
             self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
-        test_single_step = True
+        test_single_step = False
 
         if test_single_step:
             mode_txt = "single_step_tested"
@@ -416,6 +416,10 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                     return_only_unpadded=True,
                                                                                     start_episode=0
                                                                                     )
+                        out_label_lst = []
+                        in_seg_lst = []
+                        exp_id = []
+                        n_objects = features[i]['n_manipulable_objects']
 
                         if test_single_step:
                             """ create >episode-length< long pairs of input and target as lists to run single prediction steps """
@@ -423,13 +427,6 @@ class SingulationTrainerPredictor(BaseTrain):
                             assert self.config.n_predictions == 1, 'set n_predictions to 1 if single_step is to be tested and re-initialize model'
                             single_step_prediction_chunks_input = [[input_graph] for input_graph in input_graphs_all_exp]
                             single_step_prediction_chunks_target = [[target_graph] for target_graph in target_graphs_all_exp]
-
-                            out_label_lst = []
-                            in_seg_lst = []
-                            exp_id_lst = []
-
-                            exp_id_lst.append(features[i]['experiment_id'])
-                            n_objects = features[i]['n_manipulable_objects']
 
                             for lst_inp, lst_targ in zip(single_step_prediction_chunks_input, single_step_prediction_chunks_target):
                                 in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config,
@@ -462,6 +459,78 @@ class SingulationTrainerPredictor(BaseTrain):
 
                                 in_seg_lst.append(in_segxyz[:,:,:,0])
                                 out_label_lst.append(out_label)
+                                exp_id.append(features[i]['experiment_id'])
+
+                        else:
+                            """ this section is used for producing the output for an entire episode, meaning that the model 
+                            is asked to re-predict after n_prediction steps up until the entire episode is covered 
+                            (with potential crop in the end if episode length/n_predictions is odd) """
+                            assert len(input_graphs_all_exp) == len(target_graphs_all_exp)
+                            assert self.config.n_predictions > 1, 'set n_predictions > 1 if multi_step is to be tested and re-initialize model'
+                            n_prediction_chunks_target = []
+                            n_prediction_chunks_input = []
+                            n_predictions = self.config.n_predictions
+
+                            for j in range(0, len(target_graphs_all_exp), n_predictions):
+                                chunk = target_graphs_all_exp[j:j + n_predictions]
+                                n_prediction_chunks_target.append(chunk)
+
+                                chunk = input_graphs_all_exp[j:j + n_predictions]
+                                n_prediction_chunks_input.append(chunk)
+
+                            """ if the length of an episode cannot be evenly divided by n_predictions, remove the last 
+                            odd list. end_idx ensures the array split is correctly handled later"""
+                            assert all(len(inp_lst) == len(targ_lst) for inp_lst, targ_lst in
+                                       zip(n_prediction_chunks_input, n_prediction_chunks_target)), \
+                                "input and target lists are not equal after fragmenting them into episode length/n_predictions parts"
+
+                            n_prediction_chunks_target_after_filtering = [chunk for chunk in n_prediction_chunks_target if len(chunk) == n_predictions]
+                            n_prediction_chunks_input_after_filtering = [chunk for chunk in n_prediction_chunks_input if len(chunk) == n_predictions]
+
+                            number_removed_frames = (len(n_prediction_chunks_target) - len(n_prediction_chunks_target_after_filtering)) * n_predictions
+                            #print("number of removed frames: ", number_removed_frames)
+
+                            for lst_inp, lst_targ in zip(n_prediction_chunks_input_after_filtering, n_prediction_chunks_target_after_filtering):
+                                in_segxyz, in_image, in_control, gt_label, gt_label_rec = networkx_graphs_to_images(self.config,
+                                                                                                         [lst_inp],
+                                                                                                         [lst_targ],
+                                                                                                         multistep=True)
+
+                                loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
+                                                                    feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                               self.in_image_tf: in_image,
+                                                                               self.gt_predictions: gt_label,
+                                                                               self.in_control_tf: in_control,
+                                                                               self.is_training: True})
+
+                                out_label[out_label >= 0.5] = 1.0
+                                out_label[out_label < 0.5] = 0.0
+
+                                loss_velocity = np.array(0.0)
+                                loss_position = np.array(0.0)
+                                loss_edge = np.array(0.0)
+                                loss_iou = 0.0
+                                loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                                losses_total.append(loss_total)
+                                losses_img.append(loss_img)
+                                losses_iou.append(loss_iou)
+                                losses_velocity.append(loss_velocity)
+                                losses_position.append(loss_position)
+                                losses_distance.append(loss_edge)
+
+                                exp_id.append(features[i]['experiment_id'])
+
+                                """ in multistep prediction, in_segxyz only contains the first image, therefore use 
+                                gt_label_rec that contains all ground truth input images. Also split the model output 
+                                by number of predictions since the model is set-up to append predictions along the 
+                                first dimension batch-wise, i.e. ([batch1, batch2]) while both batches each have shape 
+                                (5, 120, 160) for 5 objects. This results in total shape (10, 120, 160) and requires a 
+                                split for example: 2 predictions, 5 objects: (10, 120, 160) --> [(5, 120, 160), (5, 120, 160)] """
+                                gt_label_rec_split = np.split(gt_label_rec, n_predictions, axis=0)
+                                out_label_split = np.split(out_label, n_predictions, axis=0)
+                                in_seg_lst = in_seg_lst + gt_label_rec_split
+                                out_label_lst = out_label_lst + out_label_split
 
                         out_label_entire_trajectory, in_seg_entire_trajectory = [], []
 
@@ -476,7 +545,7 @@ class SingulationTrainerPredictor(BaseTrain):
 
                         outputs_total.append(out_label_entire_trajectory)
                         targets_total.append(in_seg_entire_trajectory)
-                        exp_id_total.append(exp_id_lst)
+                        exp_id_total.append(exp_id)
 
                     the_time = time.time()
                     elapsed_since_last_log = the_time - last_log_time
@@ -752,7 +821,6 @@ class SingulationTrainerPredictor(BaseTrain):
             else:
                 print("continue")
                 continue
-
 
     def store_latent_vectors(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
