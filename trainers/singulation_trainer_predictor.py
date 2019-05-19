@@ -377,6 +377,11 @@ class SingulationTrainerPredictor(BaseTrain):
             self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
+        """ this variable is used to distinguish between 1-step and n-step predictions. Setting it to True or False will call different functions:
+         a) when set to False: the function uses "in_segxyz" as the ground truth data, the inputs don't have to be processed 
+         (e.g. splitting them into episode_length/n_predictions chunks)
+         b) when set to True: the function uses "gt_label_rec" as the gt data, inputs are split into chunks and fragments 
+         (if not even dividable) are dismissed"""
         test_single_step = False
 
         if test_single_step:
