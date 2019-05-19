@@ -487,7 +487,7 @@ class SingulationTrainerPredictor(BaseTrain):
                             n_prediction_chunks_target_after_filtering = [chunk for chunk in n_prediction_chunks_target if len(chunk) == n_predictions]
                             n_prediction_chunks_input_after_filtering = [chunk for chunk in n_prediction_chunks_input if len(chunk) == n_predictions]
 
-                            number_removed_frames = (len(n_prediction_chunks_target) - len(n_prediction_chunks_target_after_filtering)) * n_predictions
+                            #number_removed_frames = (len(n_prediction_chunks_target) - len(n_prediction_chunks_target_after_filtering)) * n_predictions
                             #print("number of removed frames: ", number_removed_frames)
 
                             for lst_inp, lst_targ in zip(n_prediction_chunks_input_after_filtering, n_prediction_chunks_target_after_filtering):
