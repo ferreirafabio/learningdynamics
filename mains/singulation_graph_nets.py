@@ -99,7 +99,6 @@ def main():
     if config.mode.startswith("train"):
         only_test = False
     else:
-        print(" --- only initializing test graph --- ")
         only_test = True
 
     # create trainer and pass all the previous components to it
@@ -111,6 +110,7 @@ def main():
         trainer = SingulationTrainerAutoEncoder(sess, model, train_data, test_data, config, logger, only_test=False)
     else:
         trainer = SingulationTrainer(sess, model, train_data, test_data, config, logger, only_test=only_test)
+        print(" --- only initializing test graph --- ")
 
     # load model if exists
     model.load(trainer.sess)
@@ -124,6 +124,9 @@ def main():
     elif config.mode == "compute_metrics_over_test_set":
         print("--- Running METRIC COMPUTATION OVER TEST SET ---")
         trainer.compute_metrics_over_test_set()
+    elif config.mode == "compute_metrics_over_test_set_multistep":
+        print("--- Running METRIC COMPUTATION OVER TEST SET (MULTISTEP) ---")
+        trainer.compute_metrics_over_test_set_multistep()
     elif config.mode == "test_specific_exp_ids":
         print("--- Running SPECIFIC EXP ID'S TEST MODE ---")
         trainer.test_specific_exp_ids()

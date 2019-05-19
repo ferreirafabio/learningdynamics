@@ -255,15 +255,16 @@ class SingulationTrainerPredictor(BaseTrain):
                         input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
                                                                                     batch_data=features[i],
                                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
-                                                                                    batch_processing=False
-
+                                                                                    batch_processing=False,
+                                                                                    return_only_unpadded=True,
+                                                                                    start_episode=0
                                                                                     )
                         output_i, target_i, exp_id_i = [], [], []
 
-                        input_graphs_all_exp = [input_graphs_all_exp]
-                        target_graphs_all_exp = [target_graphs_all_exp]
+                        #input_graphs_all_exp = [input_graphs_all_exp]
+                        #target_graphs_all_exp = [target_graphs_all_exp]
 
-                        in_segxyz, in_image, in_control, gt_label = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp)
+                        in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp)
 
                         loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
                                                             feed_dict={self.in_segxyz_tf: in_segxyz,
@@ -367,6 +368,177 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                                 rec_test_set_mean,
                                                                                                 f1_test_set_mean))
 
+    def compute_metrics_over_test_set_multistep(self):
+        if not self.config.n_epochs == 1:
+            print("test mode --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+        prefix = self.config.exp_name
+        print("Computing IoU, Precision, Recall and F1 score over full test set".format(
+            self.config.initial_pos_vel_known))
+        cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
+
+        test_single_step = True
+
+        if test_single_step:
+            mode_txt = "single_step_tested"
+        else:
+            mode_txt = "multi_step_tested"
+
+        iou_list_test_set = []
+        prec_score_list_test_set = []
+        rec_score_list_test_set = []
+        f1_score_list_test_set = []
+        sub_dir_name = "metric_multistep_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
+
+        dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
+        dataset_name = os.path.basename(self.config.tfrecords_dir)
+        csv_name = "{}_dataset_{}.csv".format(mode_txt, dataset_name)
+
+        with open(os.path.join(dir_path, csv_name), 'w') as csv_file:
+            writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n', )
+            writer.writerow(["(metrics averaged over n shapes and full trajectory) mean IoU", "mean precision", "mean recall", "mean f1 over n shapes", "exp_id"])
+            while True:
+                try:
+                    losses_total, losses_img, losses_iou, losses_velocity, losses_position = [], [], [], [], []
+                    losses_distance, outputs_total, targets_total, exp_id_total = [], [], [], []
+
+                    features = self.sess.run(self.next_element_test)
+                    features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
+
+                    start_time = time.time()
+                    last_log_time = start_time
+
+                    for i in range(self.config.test_batch_size):
+                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                                                                                    batch_data=features[i],
+                                                                                    initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                    batch_processing=False,
+                                                                                    return_only_unpadded=True,
+                                                                                    start_episode=0
+                                                                                    )
+
+                        if test_single_step:
+                            """ create >episode-length< long pairs of input and target as lists to run single prediction steps """
+                            assert len(input_graphs_all_exp) == len(target_graphs_all_exp)
+                            assert self.config.n_predictions == 1, 'set n_predictions to 1 if single_step is to be tested and re-initialize model'
+                            single_step_prediction_chunks_input = [[input_graph] for input_graph in input_graphs_all_exp]
+                            single_step_prediction_chunks_target = [[target_graph] for target_graph in target_graphs_all_exp]
+
+                            out_label_lst = []
+                            in_seg_lst = []
+                            exp_id_lst = []
+
+                            exp_id_lst.append(features[i]['experiment_id'])
+                            n_objects = features[i]['n_manipulable_objects']
+
+                            for lst_inp, lst_targ in zip(single_step_prediction_chunks_input, single_step_prediction_chunks_target):
+                                in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config,
+                                                                                                         [lst_inp],
+                                                                                                         [lst_targ],
+                                                                                                         multistep=True)
+
+                                loss_img, out_label = self.sess.run([self.model.loss_op, self.out_prediction_softmax],
+                                                                    feed_dict={self.in_segxyz_tf: in_segxyz,
+                                                                               self.in_image_tf: in_image,
+                                                                               self.gt_predictions: gt_label,
+                                                                               self.in_control_tf: in_control,
+                                                                               self.is_training: True})
+
+                                out_label[out_label >= 0.5] = 1.0
+                                out_label[out_label < 0.5] = 0.0
+
+                                loss_velocity = np.array(0.0)
+                                loss_position = np.array(0.0)
+                                loss_edge = np.array(0.0)
+                                loss_iou = 0.0
+                                loss_total = loss_img + loss_position + loss_edge + loss_velocity
+
+                                losses_total.append(loss_total)
+                                losses_img.append(loss_img)
+                                losses_iou.append(loss_iou)
+                                losses_velocity.append(loss_velocity)
+                                losses_position.append(loss_position)
+                                losses_distance.append(loss_edge)
+
+                                in_seg_lst.append(in_segxyz[:,:,:,0])
+                                out_label_lst.append(out_label)
+
+                        out_label_entire_trajectory, in_seg_entire_trajectory = [], []
+
+                        for n in range(n_objects):
+                            out_obj_lst = []
+                            in_obj_lst = []
+                            for time_step_out, time_step_in in zip(out_label_lst, in_seg_lst):
+                                out_obj_lst.append(time_step_out[n])
+                                in_obj_lst.append(time_step_in[n])
+                            out_label_entire_trajectory.append(np.array(out_obj_lst))
+                            in_seg_entire_trajectory.append(np.array(in_obj_lst))
+
+                        outputs_total.append(out_label_entire_trajectory)
+                        targets_total.append(in_seg_entire_trajectory)
+                        exp_id_total.append(exp_id_lst)
+
+                    the_time = time.time()
+                    elapsed_since_last_log = the_time - last_log_time
+                    batch_loss, img_batch_loss, iou_batch_loss = np.mean(losses_total), np.mean(losses_img), np.mean(losses_iou)
+                    vel_batch_loss, pos_batch_loss, dis_batch_loss = np.mean(losses_velocity), np.mean(losses_position), np.mean(losses_distance)
+                    print('total test batch loss: {:<8.6f} | img loss: {:<8.6f} | iou loss: {:<8.6f} | vel loss: {:<8.6f} | pos loss {:<8.6f} | edge loss {:<8.6f} time(s): {:<10.2f}'.format(
+                            batch_loss, img_batch_loss, iou_batch_loss, vel_batch_loss, pos_batch_loss, dis_batch_loss,
+                            elapsed_since_last_log))
+
+                    for pred_experiment, true_experiment, exp_id in zip(outputs_total, targets_total, exp_id_total):
+                        iou_scores = []
+                        prec_scores = []
+                        rec_scores = []
+                        f1_scores = []
+
+                        # switch (n_objects, exp_len,...) to (exp_len, n_objects) since IoU computed per time step
+                        pred_experiment = np.swapaxes(pred_experiment, 0, 1)
+                        true_experiment = np.swapaxes(true_experiment, 0, 1)
+
+                        for pred, true in zip(pred_experiment, true_experiment):
+                            iou = compute_iou(pred=pred, true=true)
+                            mean_obj_prec_score, idx_obj_min_prec, idx_obj_max_prec = compute_precision(pred=pred, true=true)
+                            mean_obj_rec_score, idx_obj_min_rec, idx_obj_max_rec = compute_recall(pred=pred, true=true)
+                            mean_obj_f1_score, idx_obj_min_f1, idx_obj_max_f1 = compute_f1(pred=pred, true=true)
+
+                            iou_scores.append(iou)
+                            prec_scores.append(mean_obj_prec_score)
+                            rec_scores.append(mean_obj_rec_score)
+                            f1_scores.append(mean_obj_f1_score)
+
+                        iou_traj_mean = np.mean(iou_scores)
+                        prec_traj_mean = np.mean(prec_scores)
+                        rec_traj_mean = np.mean(rec_scores)
+                        f1_traj_mean = np.mean(f1_scores)
+
+                        writer.writerow([iou_traj_mean, prec_traj_mean, rec_traj_mean, f1_traj_mean, exp_id[0]])
+
+                        prec_score_list_test_set.append(prec_traj_mean)
+                        rec_score_list_test_set.append(rec_traj_mean)
+                        f1_score_list_test_set.append(f1_traj_mean)
+                        iou_list_test_set.append(iou_traj_mean)
+
+                    csv_file.flush()
+                except tf.errors.OutOfRangeError:
+                    break
+
+            iou_test_set_mean = np.mean(iou_list_test_set)
+            prec_test_set_mean = np.mean(prec_score_list_test_set)
+            rec_test_set_mean = np.mean(rec_score_list_test_set)
+            f1_test_set_mean = np.mean(f1_score_list_test_set)
+
+            writer.writerow(["means over full set", " IoU: ", iou_test_set_mean, " Precision: ", prec_test_set_mean, " Recall: ", rec_test_set_mean, "F1: ", f1_test_set_mean])
+            if test_single_step:
+                mode = "(model trained multi-step but tested single-step)"
+            else:
+                mode = "(model trained & tested multi-step)"
+
+            print("Done. mean IoU {}: {}, mean precision: {}, mean recall: {}, mean f1: {}".format(mode, iou_test_set_mean,
+                                                                                                prec_test_set_mean,
+                                                                                                rec_test_set_mean,
+                                                                                                f1_test_set_mean))
+
     def test_specific_exp_ids(self):
         if not self.config.n_epochs == 1:
             print("test mode for specific exp ids --> n_epochs will be set to 1")
@@ -397,14 +569,17 @@ class SingulationTrainerPredictor(BaseTrain):
             multistep = True
             dir_suffix = "show_pred_from_start"
             start_episode = 0
+            pad_ground_truth_to_exp_len = False
         elif self.config.n_predictions > 1 and reset_after_n_predictions:
             multistep = True
             dir_suffix = "reset_model_input_after_{}_predictions".format(self.config.n_predictions)
             start_episode = None
+            pad_ground_truth_to_exp_len = False
         else:
             multistep = False
             dir_suffix = ""
             start_episode = 0
+            pad_ground_truth_to_exp_len = True
 
         sub_dir_name = "test_{}_specific_exp_ids_{}_iterations_trained_sigmoid_threshold_{}_mode_{}".format(dir_name, cur_batch_it, 0.5, dir_suffix)
         while True:
@@ -565,8 +740,12 @@ class SingulationTrainerPredictor(BaseTrain):
                     for output in outputs_total:
                         generate_and_export_image_dicts(output=output, features=features,
                                                                     config=self.config,
-                                                                    prefix=prefix, cur_batch_it=cur_batch_it,
-                                                                    dir_name=sub_dir_name, reduce_dict=True, multistep=multistep)
+                                                                    prefix=prefix,
+                                                                    cur_batch_it=cur_batch_it,
+                                                                    dir_name=sub_dir_name,
+                                                                    reduce_dict=True,
+                                                                    multistep=multistep,
+                                                                    pad_ground_truth_to_exp_len=pad_ground_truth_to_exp_len)
 
             except tf.errors.OutOfRangeError:
                 break

@@ -12,7 +12,7 @@ from utils.math_ops import normalize_df
 
 
 
-def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it, config):
+def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix, features, features_index, cur_batch_it, config, pad_ground_truth_to_exp_len=True):
     predicted_summaries_dict_seg = {}
     predicted_summaries_dict_depth = {}
     predicted_summaries_dict_rgb = {}
@@ -32,10 +32,20 @@ def create_predicted_summary_dicts(images_seg, images_depth, images_rgb, prefix,
         prefix + '_predicted_rgb_exp_id_{}_batch_{}_object_{}'.format(int(features[features_index]['experiment_id']), cur_batch_it, i):
             obj for i, obj in enumerate(images_rgb)}
 
+
+    if not pad_ground_truth_to_exp_len:
+        unpadded_exp_len = features[features_index]["unpadded_experiment_length"]
+        all_dicts = [predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb]
+
+        for dct in all_dicts:
+            for k, v in dct.items():
+                dct[k] = v[:unpadded_exp_len]
+
     return predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb
 
 
-def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, config, start_end_idx=None):
+def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, config, start_end_idx=None,
+                                pad_ground_truth_to_exp_len=True):
     ''' get the ground truth images for comparison, [-3:] means 'get the last three manipulable objects '''
     n_manipulable_objects = features[features_index]['n_manipulable_objects']
     # shape [exp_length, n_objects, w, h, c] --> shape [n_objects, exp_length, w, h, c] --> split in n_objects lists -->
@@ -47,6 +57,7 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
         start_idx = start_end_idx[0]
         end_idx = start_end_idx[1]
         lists_obj_segs = [obj_lst[:, start_idx:end_idx+1] for obj_lst in lists_obj_segs]
+
 
     target_summaries_dict_rgb = {
     prefix + '_target_rgb_exp_id_{}_batch_{}_object_{}'.format(features[features_index]['experiment_id'], cur_batch_it, i):
@@ -71,6 +82,18 @@ def create_target_summary_dicts(prefix, features, features_index, cur_batch_it, 
     target_summaries_dict_global_depth = {
         prefix + '_target_global_depth_exp_id_{}_batch_{}'.format(features[features_index]['experiment_id'], cur_batch_it):
             features[features_index]['depth']}
+
+    """ this flag controls whether episodes should be filled up with the last ground truth image to padded episode 
+        length (usually 15 or 50)"""
+    if not pad_ground_truth_to_exp_len:
+        unpadded_exp_len = features[features_index]["unpadded_experiment_length"]
+        all_dicts = [target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth,
+                     target_summaries_dict_global_img, target_summaries_dict_global_seg, target_summaries_dict_global_depth]
+
+        for dct in all_dicts:
+            for k, v in dct.items():
+                dct[k] = v[:unpadded_exp_len+1]
+
 
     return target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
            target_summaries_dict_global_seg, target_summaries_dict_global_depth
@@ -187,7 +210,9 @@ def create_latent_data_df(config, output_for_summary, gt_features, unpad_exp_len
     return df, df_normalized
 
 
-def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_it, dir_name, reduce_dict=True, output_selection=['seg', 'rgb', 'depth'], multistep=False):
+def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_it, dir_name, reduce_dict=True,
+                                    output_selection=['seg', 'rgb', 'depth'], multistep=False, pad_ground_truth_to_exp_len=True):
+
     out_label, in_segxyz, in_image, in_control, features_index, start_end_idx = output
     if multistep:
         unpad_exp_length = start_end_idx[1]+1
@@ -209,22 +234,24 @@ def generate_and_export_image_dicts(output, features, config, prefix, cur_batch_
 
     predicted_summaries_dict_seg, predicted_summaries_dict_depth, predicted_summaries_dict_rgb = create_predicted_summary_dicts(
         images_seg, images_depth, images_rgb, prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it,
-        config=config)
+        config=config, pad_ground_truth_to_exp_len=pad_ground_truth_to_exp_len)
 
     set_to_zero = True
 
-    for k, v in predicted_summaries_dict_seg.items():
-        n_times = config.n_rollouts - np.shape(v)[0]
-        v_new = np.asarray([v[-1]] * n_times)
-        if set_to_zero:
-            v_new = np.zeros(shape=np.shape(v_new))
+    if pad_ground_truth_to_exp_len:
+        for k, v in predicted_summaries_dict_seg.items():
+            n_times = config.n_rollouts - np.shape(v)[0]
+            v_new = np.asarray([v[-1]] * n_times)
+            if set_to_zero:
+                v_new = np.zeros(shape=np.shape(v_new))
 
-        predicted_summaries_dict_seg[k] = np.concatenate([v, v_new])
+            predicted_summaries_dict_seg[k] = np.concatenate([v, v_new])
 
 
     target_summaries_dict_rgb, target_summaries_dict_seg, target_summaries_dict_depth, target_summaries_dict_global_img, \
     target_summaries_dict_global_seg, target_summaries_dict_global_depth = create_target_summary_dicts(
-        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config, start_end_idx=None)
+        prefix=prefix, features=features, features_index=features_index, cur_batch_it=cur_batch_it, config=config,
+        start_end_idx=None, pad_ground_truth_to_exp_len=pad_ground_truth_to_exp_len)
 
     summaries_dict_images = {**predicted_summaries_dict_rgb, **predicted_summaries_dict_seg, **predicted_summaries_dict_depth,
                              **target_summaries_dict_rgb, **target_summaries_dict_seg, **target_summaries_dict_depth,
