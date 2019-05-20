@@ -173,7 +173,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
                                                                        self.is_training: True})
 
                         encoder_outputs.append(encoder_output)
-                    print("saved encoder vector number {} under {}".format(iterator, os.path.join(dir_path, str(exp_id)))
+                    print("saved encoder vector number {} under {}".format(iterator, os.path.join(dir_path, str(exp_id))))
                     np.savez_compressed(os.path.join(dir_path, str(exp_id)), encoder_outputs=encoder_outputs, exp_id=exp_id)
 
             except tf.errors.OutOfRangeError:
