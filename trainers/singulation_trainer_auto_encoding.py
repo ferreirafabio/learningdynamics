@@ -143,7 +143,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
         dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/", dir_name), sub_dir_name)
         #dir_path, _ = create_dir(os.path.join("../experiments/"), dir_name)
         #dir_path, _ = create_dir(os.path.join("../experiments/", dir_name), sub_dir_name)
-
+        iterator = 0
         while True:
             try:
                 features = self.sess.run(next_element)
@@ -157,7 +157,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
 
                     encoder_outputs = []
                     exp_id = features[i]['experiment_id']
-
+                    iterator = iterator + 1
 
 
                     assert len(input_graphs_all_exp) == len(target_graphs_all_exp)
@@ -173,7 +173,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
                                                                        self.is_training: True})
 
                         encoder_outputs.append(encoder_output)
-
+                    print("saved encoder vector number {} under {}".format(iterator, os.path.join(dir_path, str(exp_id)))
                     np.savez_compressed(os.path.join(dir_path, str(exp_id)), encoder_outputs=encoder_outputs, exp_id=exp_id)
 
             except tf.errors.OutOfRangeError:
