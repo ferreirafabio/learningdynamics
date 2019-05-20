@@ -83,6 +83,11 @@ class BaseTrain:
                                     in_control=self.in_control_tf,
                                     is_training=self.is_training,
                                     n_predictions=self.config.n_predictions)
+        elif "baseline_auto_encoder" in self.config.model_zoo_file:
+            self.out_predictions, self.in_rgb_seg_xyz, self.encoder_outputs = self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                                                                                      in_segxyz=self.in_segxyz_tf,
+                                                                                                      in_control=self.in_control_tf,
+                                                                                                      is_training=self.is_training)
         else:
             self.out_predictions, self.in_rgb_seg_xyz = self.model.cnnmodel(in_rgb=self.in_image_tf,
                                                                             in_segxyz=self.in_segxyz_tf,

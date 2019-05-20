@@ -133,6 +133,9 @@ def main():
     elif config.mode == "store_latent_vectors":
         print("--- Running store latent vectors mode ---")
         trainer.store_latent_vectors()
+    elif config.mode == "save_encoder_vectors":
+        print("--- Running SAVE ENCODER VECTORS ---")
+        trainer.save_encoder_vectors()
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
         trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,

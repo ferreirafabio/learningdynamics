@@ -6,7 +6,6 @@ from base.base_train import BaseTrain
 from utils.conversions import convert_dict_to_list_subdicts
 from utils.tf_summaries import generate_and_export_image_dicts
 from utils.math_ops import compute_iou, compute_precision, compute_recall, compute_f1
-from utils.utils import extract_input_and_output
 from utils.io import create_dir
 from models.singulation_graph import create_graphs, networkx_graphs_to_images
 import csv
@@ -119,6 +118,69 @@ class SingulationTrainerAutoEncoder(BaseTrain):
                 break
 
 
+    def save_encoder_vectors(self, train=True):
+        if not self.config.n_epochs == 1:
+            print("test mode for specific exp ids --> n_epochs will be set to 1")
+            self.config.n_epochs = 1
+
+        if "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
+            dir_name = "auto_encoding_features_5_objects_50_rollouts_novel"
+        elif "5_objects_50_rollouts" in self.config.tfrecords_dir:
+            dir_name = "auto_encoding_features_5_objects_50_rollouts"
+        else:
+            dir_name = "auto_encoding_features_3_objects_15_rollouts"
+
+        if train:
+            next_element = self.next_element_train
+            sub_dir_name = "train"
+            batch_size = self.config.train_batch_size
+        else:
+            next_element = self.next_element_test
+            sub_dir_name = "test"
+            batch_size = self.config.test_batch_size
+
+        #dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/"), dir_name)
+        # dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/", dir_name), sub_dir_name)
+        dir_path, _ = create_dir(os.path.join("../experiments/"), dir_name)
+        dir_path, _ = create_dir(os.path.join("../experiments/", dir_name), sub_dir_name)
+
+        while True:
+            try:
+                features = self.sess.run(next_element)
+                features = convert_dict_to_list_subdicts(features, batch_size)
+
+                for i in range(len(features)):
+                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features[i],
+                                                                                initial_pos_vel_known=self.config.initial_pos_vel_known,
+                                                                                batch_processing=False, return_only_unpadded=True,
+                                                                                start_episode=0)
+
+                    encoder_outputs = []
+                    exp_id = features[i]['experiment_id']
+
+
+
+                    assert len(input_graphs_all_exp) == len(target_graphs_all_exp)
+                    single_step_prediction_chunks_input = [[input_graph] for input_graph in input_graphs_all_exp]
+                    single_step_prediction_chunks_target = [[target_graph] for target_graph in target_graphs_all_exp]
+
+                    for lst_inp, lst_targ in zip(single_step_prediction_chunks_input, single_step_prediction_chunks_target):
+                        in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, [lst_inp], [lst_targ], multistep=True)
+
+                        in_images, out_reconstructions, encoder_output = self.sess.run([self.in_rgb_seg_xyz, self.out_prediction_softmax, self.encoder_outputs],
+                                                            feed_dict={self.in_segxyz_tf: in_segxyz, self.in_image_tf: in_image,
+                                                                       self.gt_predictions: gt_label, self.in_control_tf: in_control,
+                                                                       self.is_training: True})
+
+                        encoder_outputs.append(encoder_output)
+
+                    np.savez_compressed(os.path.join(dir_path, str(exp_id)), encoder_outputs=encoder_outputs, exp_id=exp_id)
+
+            except tf.errors.OutOfRangeError:
+                break
+
+
+
     def test_batch(self, prefix, initial_pos_vel_known, export_images=False, process_all_nn_outputs=False, sub_dir_name=None,
                    export_latent_data=True, output_results=True):
 
@@ -217,7 +279,6 @@ class SingulationTrainerAutoEncoder(BaseTrain):
         self.logger.summarize(cur_batch_it, summaries_dict=summaries_dict, summarizer="test")
 
         return batch_loss, img_batch_loss, vel_batch_loss, pos_batch_loss, edge_batch_loss, cur_batch_it
-
 
     def compute_metrics_over_test_set(self):
         if not self.config.n_epochs == 1:
@@ -507,7 +568,6 @@ class SingulationTrainerAutoEncoder(BaseTrain):
             else:
                 print("continue")
                 continue
-
 
     def store_latent_vectors(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
