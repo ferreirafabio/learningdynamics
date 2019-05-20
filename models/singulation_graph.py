@@ -67,6 +67,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     gripper_as_global = config.gripper_as_global
     data_offset_manipulable_objects = config.data_offset_manipulable_objects
     experiment_length = features['experiment_length']
+    experiment_id = features['experiment_id']
 
     """ handles the testing cycles when a different number of rollouts shall be predicted than seen in training """
     if config.n_rollouts is not experiment_length:
@@ -263,7 +264,7 @@ def graph_to_input_and_targets_single_experiment(config, graph, features, initia
     """ check if the gripper pos+vel in the input graph are values from the next time step """
     assert (input_graphs[0].graph['features'] == target_graphs[0].graph['features']).all()
 
-    return input_graphs, target_graphs
+    return input_graphs, target_graphs, experiment_id
 
 
 def get_graph_tuple(graph_nx):
@@ -303,14 +304,15 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
 
 def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     input_graph_lst, target_graph_lst = [], []
+    random_episode_idx_starts = {}
     for data in batch_data:
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
+        input_graphs, target_graphs, exp_id = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
         if not shuffle:
             input_graph_lst.append(input_graphs)
             target_graph_lst.append(target_graphs)
         else:
-            input_graph_lst.append((input_graphs, data['experiment_id']))
-            target_graph_lst.append((target_graphs, data['experiment_id']))
+            input_graph_lst.append((input_graphs, exp_id))
+            target_graph_lst.append((target_graphs, exp_id))
 
     if not shuffle:
         input_graph_lst = list(input_graph_lst)
@@ -343,14 +345,16 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
         targ_ids = []
 
         for tupl_inp, tupl_targ in zip(input_graph_lst, target_graph_lst):
-            minimum_exp_leng = len(tupl_inp[0])
+            minimum_exp_leng = len(tupl_inp[0])-1
             """ we want at least n_prediction samples: """
             if start_episode is None:
                 random_start_episode_idx = random.randint(0, minimum_exp_leng-config.n_predictions)
+                random_episode_idx_starts[tupl_inp[1]] = random_start_episode_idx
             else:
                 random_start_episode_idx = start_episode
             """ also take n_prediction samples from input graphs because we need the control input from these: """
             input_graph = tupl_inp[0][random_start_episode_idx:random_start_episode_idx+config.n_predictions]
+            # targets are shifted by one, i.e. same indexing rule as for input graphs applies here
             target_graphs = tupl_targ[0][random_start_episode_idx:random_start_episode_idx+config.n_predictions]
 
             """ just a sanity check"""
@@ -365,7 +369,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
         input_batches = [input_batches]
         target_batches = [target_batches]
 
-    return input_batches, target_batches
+    return input_batches, target_batches, random_episode_idx_starts
 
 
 def ensure_batch_has_no_sample_with_same_exp_id(config, list):
@@ -399,25 +403,27 @@ def ensure_batch_has_no_sample_with_same_exp_id(config, list):
 
 
 def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
+
     if not batch_processing:
         assert not multistep, "multistep only implemented for batch processing"
         n_manipulable_objects = batch_data['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects)
-        input_graphs, target_graphs = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
+        input_graphs, target_graphs, _ = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
+        random_episode_idx_starts = {batch_data["experiment_id"]: 0}
     else:
         n_manipulable_objects = batch_data[0]['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects)
-        input_graphs, target_graphs = create_graph_batch(config, graph, batch_data, initial_pos_vel_known,
+        input_graphs, target_graphs, random_episode_idx_starts = create_graph_batch(config, graph, batch_data, initial_pos_vel_known,
                                                          shuffle=shuffle,
                                                          return_only_unpadded=return_only_unpadded,
                                                          multistep=multistep,
                                                          start_episode=start_episode)
 
-    return input_graphs, target_graphs
+    return input_graphs, target_graphs, random_episode_idx_starts
 
 
 def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=True, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data,
+    input_graphs, target_graphs, random_episode_idx_starts = create_singulation_graphs(config, batch_data,
                                                             initial_pos_vel_known=initial_pos_vel_known,
                                                             batch_processing=batch_processing,
                                                             shuffle=shuffle,
@@ -428,13 +434,13 @@ def create_graphs(config, batch_data, initial_pos_vel_known, batch_processing=Tr
     if not initial_pos_vel_known:
         _sanity_check_pos_vel(input_graphs)
 
-    return input_graphs, target_graphs
+    return input_graphs, target_graphs, random_episode_idx_starts
 
 
 def create_placeholders(config, batch_data, batch_processing=True):
     """ if gripper_as_global = False, this function will still return 3 values (input_ph, target_ph, input_ctrl_ph) but the last will
     (input_ctrl_ph) will be None, caller needs to check this """
-    input_graphs, target_graphs = create_singulation_graphs(config, batch_data, initial_pos_vel_known=config.initial_pos_vel_known, batch_processing=batch_processing)
+    input_graphs, target_graphs, _ = create_singulation_graphs(config, batch_data, initial_pos_vel_known=config.initial_pos_vel_known, batch_processing=batch_processing)
 
     if batch_processing:
         """ in this case we get a list of chunk lists (each representing a full batch)"""

@@ -68,6 +68,9 @@ def main():
         if not hasattr(config, 'edges_carry_segmentation_data'):
             config.edges_carry_segmentation_data = False
 
+        if not hasattr(config, 'use_f_interact'):
+            config.use_f_interact = True
+
         if config.normalize_data:
             print("-- using normalized data as input --")
         else:
@@ -135,7 +138,7 @@ def main():
         trainer.store_latent_vectors()
     elif config.mode == "save_encoder_vectors":
         print("--- Running SAVE ENCODER VECTORS ---")
-        trainer.save_encoder_vectors()
+        trainer.save_encoder_vectors(train=False)
     elif config.mode == "test_statistics":
         print("--- Running STATISTICAL TEST MODE ---")
         trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,

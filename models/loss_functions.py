@@ -2,8 +2,12 @@ import tensorflow as tf
 from utils.utils import get_correct_image_shape
 
 
-def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions, out_predictions, out_reconstructions, loss_type="prediction"):
-    assert loss_type in ["prediction", "auto_encoding"]
+def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions,
+                             out_predictions, out_reconstructions,
+                             gt_latent_vectors, out_latent_vectors,
+                             loss_type="prediction"):
+
+    assert loss_type in ["prediction", "auto_encoding", "prediction_perception_loss"]
     #if loss_type == "prediction_reconstruction":
     #    predictions = out_predictions
     #    reconstructions = out_reconstructions
@@ -26,6 +30,20 @@ def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions, out_pre
         tf.losses.add_loss(loss_total)
 
         return loss_total
+
+    elif loss_type == "prediction_perception_loss":
+        loss_segmentation = 0.5 * tf.reduce_mean(
+            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_predictions, dtype=tf.int32),
+                                                           logits=out_predictions))
+
+        loss_perception = 0.5 * tf.reduce_mean(tf.losses.mean_squared_error(labels=gt_latent_vectors,
+                                                           predictions=out_latent_vectors))
+
+        tf.losses.add_loss(loss_segmentation)
+        tf.losses.add_loss(loss_perception)
+
+        return tf.reduce_mean(loss_segmentation + loss_perception), tf.reduce_mean(loss_segmentation), tf.reduce_mean(loss_perception)
+
 
     elif loss_type == "auto_encoding":
         loss_total = tf.reduce_mean(

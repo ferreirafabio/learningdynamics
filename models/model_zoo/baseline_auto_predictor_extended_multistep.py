@@ -133,22 +133,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         return x
 
 
-    def f_interact(self, latent_a, latent_b):
-        # shape of pairwise_latent is (1, 256)
-        # pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
-        pairwise_latent = latent_a + latent_b
-        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
-        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
-
-        # shape of pairwise_latent is (1, 256)
-        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
-        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
-
-        return pairwise_latent
-
-    def physics_predictor(self, latent, ctrl, batch_size):
-        latent_previous_step = latent
-
+    def f_interact(self, latent):
         """" interaction MLP """
         dataset_name = self.config.tfrecords_dir
 
@@ -172,7 +157,18 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
                         pairwise_latent_a = objs_in_batch[j]
                         pairwise_latent_b = objs_in_batch[k]
 
-                        pairwise_latent = self.f_interact(latent_a=pairwise_latent_a, latent_b=pairwise_latent_b)
+                        # (batch_size, ) --> (batch_size * n_objects, 512)
+                        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
+                        # shape of pairwise_latent is (1, 256)
+                        # pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
+                        pairwise_latent = latent_a + latent_b
+
+                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
+                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+
+                        # shape of pairwise_latent is (1, 256)
+                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
+                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
 
                         f_interact_object_sums.append(pairwise_latent)
 
@@ -182,8 +178,10 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
             f_interact_sum_per_batch = tf.tile(f_interact_sum_per_batch, [n_objects, 1])
             f_interact_total.append(f_interact_sum_per_batch)
 
-        # (batch_size, ) --> (batch_size * n_objects, 512)
-        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
+        return f_interact_total
+
+    def physics_predictor(self, latent, ctrl):
+        latent_previous_step = latent
 
         """ control MLP """
         latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
@@ -203,11 +201,15 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
-        physics_output = latent_next_step + latent_previous_step + f_interact_total
+        if self.config.use_f_interact:
+            f_interact_total = self.f_interact(latent)
+            physics_output = latent_next_step + latent_previous_step + f_interact_total
+        else:
+            physics_output = latent_next_step + latent_previous_step
 
         return physics_output
 
-    def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5, batch_size=None):
+    def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
         # latent_img has shape (?, 256)
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
@@ -217,24 +219,25 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
 
         # debug
-        debug_latent_img = []
-        debug_latent_img.append(latent_img)
+        out_latent_vectors = []
+        out_latent_vectors.append(latent_img)
         debug_in_control = []
 
         for i in range(n_predictions):
             # latent_img has shape (?, 256)
-            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i], batch_size=batch_size)
+            latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i])
             img_decoded = self.decoder(latent=latent_img, is_training=is_training)
 
             predictions.append(img_decoded)
 
             # debug
-            debug_latent_img.append(latent_img)
+            out_latent_vectors.append(latent_img)
             debug_in_control.append(in_control_T[i])
 
         predictions = tf.concat(predictions, axis=0)
+        out_latent_vectors = tf.concat(out_latent_vectors, axis=0)
 
-        return predictions, in_rgb_segxyz, debug_latent_img, debug_in_control
+        return predictions, in_rgb_segxyz, out_latent_vectors, debug_in_control
 
     # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):

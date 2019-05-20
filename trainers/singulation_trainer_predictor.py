@@ -50,7 +50,7 @@ class SingulationTrainerPredictor(BaseTrain):
         start_time = time.time()
         last_log_time = start_time
 
-        input_graphs_batches, target_graphs_batches = create_graphs(config=self.config,
+        input_graphs_batches, target_graphs_batches, _ = create_graphs(config=self.config,
                                                                     batch_data=features,
                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                     batch_processing=True,
@@ -143,7 +143,7 @@ class SingulationTrainerPredictor(BaseTrain):
         end_idx = self.config.n_predictions
 
         for i in range(self.config.test_batch_size):
-            input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+            input_graphs_all_exp, target_graphs_all_exp, _ = create_graphs(config=self.config,
                                                                         batch_data=features[i],
                                                                         initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                         batch_processing=False
@@ -252,7 +252,7 @@ class SingulationTrainerPredictor(BaseTrain):
                     last_log_time = start_time
 
                     for i in range(self.config.test_batch_size):
-                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                        input_graphs_all_exp, target_graphs_all_exp, _ = create_graphs(config=self.config,
                                                                                     batch_data=features[i],
                                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                     batch_processing=False,
@@ -414,7 +414,7 @@ class SingulationTrainerPredictor(BaseTrain):
                     last_log_time = start_time
 
                     for i in range(self.config.test_batch_size):
-                        input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                        input_graphs_all_exp, target_graphs_all_exp, _ = create_graphs(config=self.config,
                                                                                     batch_data=features[i],
                                                                                     initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                     batch_processing=False,
@@ -689,7 +689,7 @@ class SingulationTrainerPredictor(BaseTrain):
                 last_log_time = start_time
 
                 for i in range(len(features)):
-                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config,
+                    input_graphs_all_exp, target_graphs_all_exp, _ = create_graphs(config=self.config,
                                                                                 batch_data=features[i],
                                                                                 initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                 batch_processing=False,
@@ -851,7 +851,7 @@ class SingulationTrainerPredictor(BaseTrain):
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
                 for i in range(len(features)):
-                    input_graphs_all_exp, target_graphs_all_exp = create_graphs(config=self.config, batch_data=features[i],
+                    input_graphs_all_exp, target_graphs_all_exp, _ = create_graphs(config=self.config, batch_data=features[i],
                                                                                 initial_pos_vel_known=self.config.initial_pos_vel_known,
                                                                                 batch_processing=False)
 
