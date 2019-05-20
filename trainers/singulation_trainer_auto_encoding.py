@@ -139,10 +139,10 @@ class SingulationTrainerAutoEncoder(BaseTrain):
             sub_dir_name = "test"
             batch_size = self.config.test_batch_size
 
-        #dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/"), dir_name)
-        # dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/", dir_name), sub_dir_name)
-        dir_path, _ = create_dir(os.path.join("../experiments/"), dir_name)
-        dir_path, _ = create_dir(os.path.join("../experiments/", dir_name), sub_dir_name)
+        dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/"), dir_name)
+        dir_path, _ = create_dir(os.path.join("/scr2/fabiof/data/", dir_name), sub_dir_name)
+        #dir_path, _ = create_dir(os.path.join("../experiments/"), dir_name)
+        #dir_path, _ = create_dir(os.path.join("../experiments/", dir_name), sub_dir_name)
 
         while True:
             try:
