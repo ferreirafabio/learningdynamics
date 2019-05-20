@@ -423,34 +423,38 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     if train:
         mode = "train"
     else:
-        mode = "test"  # todo: add try except
+        mode = "test"
 
     latent_encoder_vectors_input = []
     latent_encoder_vectors_targets = []
 
-    for exp_id, start_idx in random_episode_idx_starts.items():
-        vector = np.load(os.path.join(config.perception_features_dir, mode, str(exp_id) + ".npz"))
-        """ not-indexed vectors have shape (experiment_length, n_objects, 256) """
-        vector = vector["encoder_outputs"]  # has attributes "encoder_outputs" and "exp_id"
-        """ vectors have shape(n_predictions, n_objects, 256) """
-        latent_encoder_vectors_input.append(vector[start_idx])
-        latent_encoder_vectors_targets.append(vector[start_idx+1:start_idx+1+config.n_predictions])
+    try:
+        for exp_id, start_idx in random_episode_idx_starts.items():
+            vector = np.load(os.path.join(config.perception_features_dir, mode, str(exp_id) + ".npz"))
+            """ not-indexed vectors have shape (experiment_length, n_objects, 256) """
+            vector = vector["encoder_outputs"]  # has attributes "encoder_outputs" and "exp_id"
+            """ vectors have shape(n_predictions, n_objects, 256) """
+            latent_encoder_vectors_input.append(vector[start_idx])
+            latent_encoder_vectors_targets.append(vector[start_idx+1:start_idx+1+config.n_predictions])
 
-    if batch_processing:
-        n_objects = np.shape(latent_encoder_vectors_input)[1]
-        latent_encoder_vectors_inputs2 = []
-        latent_encoder_vectors_targets2 = []
+        if batch_processing:
+            n_objects = np.shape(latent_encoder_vectors_input)[1]
+            latent_encoder_vectors_inputs2 = []
+            latent_encoder_vectors_targets2 = []
 
-        for prediction_i in range(config.n_predictions):
-            for experiment in latent_encoder_vectors_targets:
-                experiment_at_prediction_i = experiment[prediction_i]
+            for prediction_i in range(config.n_predictions):
+                for experiment in latent_encoder_vectors_targets:
+                    experiment_at_prediction_i = experiment[prediction_i]
+                    for i in range(n_objects):
+                        latent_encoder_vectors_targets2.append(experiment_at_prediction_i[i])
+
+            for experiment in latent_encoder_vectors_input:
                 for i in range(n_objects):
-                    latent_encoder_vectors_targets2.append(experiment_at_prediction_i[i])
+                    latent_encoder_vectors_inputs2.append(experiment[i])
 
-        for experiment in latent_encoder_vectors_input:
-            for i in range(n_objects):
-                latent_encoder_vectors_inputs2.append(experiment[i])
+            return np.array(latent_encoder_vectors_inputs2), np.array(latent_encoder_vectors_targets2)
 
-        return np.array(latent_encoder_vectors_inputs2), np.array(latent_encoder_vectors_targets2)
+        return latent_encoder_vectors_input, latent_encoder_vectors_targets
 
-    return latent_encoder_vectors_input, latent_encoder_vectors_targets
+    except:
+        return [], []
