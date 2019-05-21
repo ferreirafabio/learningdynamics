@@ -429,7 +429,9 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     latent_encoder_vectors_targets = []
 
     try:
-        for exp_id, start_idx in random_episode_idx_starts.items():
+        for tpl in random_episode_idx_starts:
+            exp_id = tpl[0]
+            start_idx = tpl[1]
             vector = np.load(os.path.join(config.perception_features_dir, mode, str(exp_id) + ".npz"))
             """ not-indexed vectors have shape (experiment_length, n_objects, 256) """
             vector = vector["encoder_outputs"]  # has attributes "encoder_outputs" and "exp_id"

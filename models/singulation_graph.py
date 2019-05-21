@@ -304,8 +304,7 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
 
 def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     input_graph_lst, target_graph_lst = [], []
-
-    random_episode_idx_starts = collections.OrderedDict()
+    random_episode_idx_starts = []
     for data in batch_data:
         input_graphs, target_graphs, exp_id = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
         if not shuffle:
@@ -350,7 +349,8 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
             """ we want at least n_prediction samples: """
             if start_episode is None:
                 random_start_episode_idx = random.randint(0, minimum_exp_leng-config.n_predictions)
-                random_episode_idx_starts[tupl_inp[1]] = random_start_episode_idx
+                exp_id = tupl_inp[1]
+                random_episode_idx_starts.append((exp_id, random_start_episode_idx))
             else:
                 random_start_episode_idx = start_episode
             """ also take n_prediction samples from input graphs because we need the control input from these: """
@@ -410,7 +410,7 @@ def create_singulation_graphs(config, batch_data, initial_pos_vel_known, batch_p
         n_manipulable_objects = batch_data['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects)
         input_graphs, target_graphs, _ = graph_to_input_and_targets_single_experiment(config, graph, batch_data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
-        random_episode_idx_starts = {batch_data["experiment_id"]: 0}
+        random_episode_idx_starts = [(batch_data["experiment_id"], 0)]
     else:
         n_manipulable_objects = batch_data[0]['n_manipulable_objects']
         graph = generate_singulation_graph(config, n_manipulable_objects)
