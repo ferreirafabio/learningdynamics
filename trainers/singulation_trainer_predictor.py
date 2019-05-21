@@ -378,14 +378,14 @@ class SingulationTrainerPredictor(BaseTrain):
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         """ this variable is used to distinguish between 1-step and n-step predictions. Setting it to True or False will call different functions:
-         a) when set to True: the function uses "gt_label_rec" as the gt data, inputs are split into episode_length/n_prediction -chunks and fragments 
+         a) when set to False: the function uses "gt_label_rec" as the gt data, inputs are split into episode_length/n_prediction -chunks and fragments 
          (if they cannot be evenly divided) will be dismissed, e.g. episode_length 14 with n_predictions=5 will result in two 5-length chunks
 
-         b) when set to False: in this mode, the model only predicts 1-steps. The function uses "in_segxyz" as the ground truth data, 
+         b) when set to True: in this mode, the model only predicts 1-steps. The function uses "in_segxyz" as the ground truth data, 
          the inputs don't have to be processed (e.g. splitting them into episode_length/n_predictions chunks) because after one step, 
          the model is reset to ground truth
           """
-        test_single_step = True
+        test_single_step = False
         if test_single_step:
             mode_txt = "single_step_tested"
         else:
