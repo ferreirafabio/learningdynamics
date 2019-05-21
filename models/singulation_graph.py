@@ -7,7 +7,6 @@ from itertools import product
 from graph_nets import utils_tf, utils_np
 from utils.utils import chunks, get_correct_image_shape
 import random
-import collections
 
 def generate_singulation_graph(config, n_manipulable_objects):
     gripper_as_global = config.gripper_as_global
