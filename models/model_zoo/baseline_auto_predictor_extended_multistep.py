@@ -199,13 +199,12 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-        #latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)  # todo: remove this
 
         if self.config.use_f_interact:
             f_interact_total = self.f_interact(latent)
             physics_output = latent_next_step + latent_previous_step + f_interact_total
         else:
-            physics_output = latent_next_step# + latent_previous_step
+            physics_output = latent_next_step
 
         return physics_output
 
