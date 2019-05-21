@@ -161,7 +161,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
                         f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
                         # shape of pairwise_latent is (1, 256)
                         # pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
-                        pairwise_latent = latent_a + latent_b
+                        pairwise_latent = pairwise_latent_a + pairwise_latent_b
 
                         pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
                         pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
@@ -199,13 +199,13 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
 
         latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
+        #latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)  # todo: remove this
 
         if self.config.use_f_interact:
             f_interact_total = self.f_interact(latent)
             physics_output = latent_next_step + latent_previous_step + f_interact_total
         else:
-            physics_output = latent_next_step + latent_previous_step
+            physics_output = latent_next_step# + latent_previous_step
 
         return physics_output
 
@@ -215,13 +215,12 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
 
         predictions = []
+        out_latent_vectors = []
+        # debug
+        debug_in_control = []
 
         in_control_T = tf.split(in_control, num_or_size_splits=n_predictions)
-
-        # debug
-        out_latent_vectors = []
         out_latent_vectors.append(latent_img)
-        debug_in_control = []
 
         for i in range(n_predictions):
             # latent_img has shape (?, 256)
@@ -239,7 +238,6 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         return predictions, in_rgb_segxyz, out_latent_vectors, debug_in_control
 
-    # save function that saves the checkpoint in the path defined in the config file
     def save(self, sess):
         print("Saving model...")
         self.saver.save(sess, self.config.checkpoint_dir, self.cur_batch_tensor)

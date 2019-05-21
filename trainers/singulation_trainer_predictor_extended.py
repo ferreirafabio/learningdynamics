@@ -18,6 +18,8 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         self.next_element_train = self.train_data.get_next_batch()
         self.next_element_test = self.test_data.get_next_batch()
 
+        assert os.path.isdir(self.config.perception_features_dir), "{} is not a valid path".format(self.config.perception_features_dir)
+
     def train_epoch(self):
         prefix = self.config.exp_name
         print("Running {}".format(prefix))
@@ -64,7 +66,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
 
         gt_encoder_output, gt_mlp_output = get_encoding_vectors(config=self.config, random_episode_idx_starts=random_episode_idx_starts, train=True)
 
-        if not gt_encoder_output or not gt_mlp_output:
+        if len(gt_encoder_output) == 0 or len( gt_mlp_output) == 0:
             print("at least one .npz file not found, move on")
             cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
             return cur_batch_it
@@ -167,7 +169,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
 
             gt_encoder_output, gt_mlp_output = get_encoding_vectors(config=self.config, random_episode_idx_starts=random_episode_idx_starts, train=False)
 
-            if not gt_encoder_output or not gt_mlp_output:
+            if len(gt_encoder_output) == 0 or len(gt_mlp_output) == 0:
                 print("at least one .npz file not found, move on")
                 return
 
@@ -498,9 +500,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                                                                                                 f1_test_set_mean))
 
     def test_specific_exp_ids(self):
-        if not self.config.n_epochs == 1:
-            print("test mode for specific exp ids --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
+        assert self.config.n_epochs == 1, "test mode for specific exp ids --> n_epochs must be set to 1"
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)

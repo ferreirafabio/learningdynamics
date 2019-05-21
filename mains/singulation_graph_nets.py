@@ -76,7 +76,6 @@ def main():
         else:
             print("-- using unnormalized data as input --")
 
-
         model_class = locate("models.model_zoo." + config.model_zoo_file + "." + config.model_zoo_file)
 
     except Exception as e:
