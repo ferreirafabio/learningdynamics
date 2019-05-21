@@ -61,10 +61,12 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         input_graphs_batches = input_graphs_batches[0]
         target_graphs_batches = target_graphs_batches[0]
 
+        exp_ids = [feat["experiment_id"] for feat in features]
+
         """ gt_label_rec (taken from input graphs) is shifted by -1 compared to gt_label (taken from target graphs) """
         in_segxyz, in_image, in_control, gt_label, gt_label_rec = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
 
-        gt_encoder_output, gt_mlp_output = get_encoding_vectors(config=self.config, random_episode_idx_starts=random_episode_idx_starts, train=True)
+        gt_encoder_output, gt_mlp_output = get_encoding_vectors(config=self.config, random_episode_idx_starts=random_episode_idx_starts, train=True, exp_ids=exp_ids)
 
         if len(gt_encoder_output) == 0 or len( gt_mlp_output) == 0:
             print("at least one .npz file not found, move on")

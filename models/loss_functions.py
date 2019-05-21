@@ -44,7 +44,6 @@ def create_baseline_loss_ops(config, gt_predictions, gt_reconstructions,
 
         return tf.reduce_mean(loss_segmentation + loss_perception), tf.reduce_mean(loss_segmentation), tf.reduce_mean(loss_perception)
 
-
     elif loss_type == "auto_encoding":
         loss_total = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(gt_reconstructions, dtype=tf.int32),

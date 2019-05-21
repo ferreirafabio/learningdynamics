@@ -51,7 +51,7 @@ def main():
 
         if not hasattr(config, 'conv_layer_instance_norm'):
             config.conv_layer_instance_norm = True
-            print("convolution layers are normalized with instance norm")
+            print("convolution layers are normalized with instance or batch norm")
 
         if not hasattr(config, 'use_baseline_auto_predictor'):
             config.use_baseline_auto_predictor = False
@@ -138,10 +138,7 @@ def main():
     elif config.mode == "save_encoder_vectors":
         print("--- Running SAVE ENCODER VECTORS ---")
         trainer.save_encoder_vectors(train=False)
-    elif config.mode == "test_statistics":
-        print("--- Running STATISTICAL TEST MODE ---")
-        trainer.test_statistics(prefix=config.exp_name, initial_pos_vel_known=config.initial_pos_vel_known,
-                                export_latent_data=False, sub_dir_name="test_stats")
+
 
 if __name__ == '__main__':
     main()

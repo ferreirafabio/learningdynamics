@@ -204,7 +204,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
             f_interact_total = self.f_interact(latent)
             physics_output = latent_next_step + latent_previous_step + f_interact_total
         else:
-            physics_output = latent_next_step
+            physics_output = latent_next_step + latent_previous_step
 
         return physics_output
 
