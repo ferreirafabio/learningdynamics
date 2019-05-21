@@ -419,7 +419,7 @@ def create_latent_images(df, features, features_index, dir_path, config, prefix,
     return image_dict
 
 
-def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_processing=True, exp_ids=None):
+def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_processing=True):
     if train:
         mode = "train"
     else:
@@ -428,7 +428,7 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     latent_encoder_vectors_input = []
     latent_encoder_vectors_targets = []
 
-    assert all([True for k in random_episode_idx_starts.keys() if k in exp_ids]), "experiment ids from features deviate from the ones pulled from graphs"
+    #assert all([True for k in random_episode_idx_starts.keys() if k in exp_ids]), "experiment ids from features deviate from the ones pulled from graphs"
 
     try:
         for exp_id, start_idx in random_episode_idx_starts.items():
