@@ -428,8 +428,6 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     latent_encoder_vectors_input = []
     latent_encoder_vectors_targets = []
 
-    #assert all([True for k in random_episode_idx_starts.keys() if k in exp_ids]), "experiment ids from features deviate from the ones pulled from graphs"
-
     try:
         for exp_id, start_idx in random_episode_idx_starts.items():
             vector = np.load(os.path.join(config.perception_features_dir, mode, str(exp_id) + ".npz"))

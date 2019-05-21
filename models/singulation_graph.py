@@ -7,7 +7,7 @@ from itertools import product
 from graph_nets import utils_tf, utils_np
 from utils.utils import chunks, get_correct_image_shape
 import random
-
+import collections
 
 def generate_singulation_graph(config, n_manipulable_objects):
     gripper_as_global = config.gripper_as_global
@@ -304,7 +304,8 @@ def print_graph_with_node_and_edge_labels(graph_nx, label_keyword="features"):
 
 def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle=True, return_only_unpadded=True, multistep=False, start_episode=None):
     input_graph_lst, target_graph_lst = [], []
-    random_episode_idx_starts = {}
+
+    random_episode_idx_starts = collections.OrderedDict()
     for data in batch_data:
         input_graphs, target_graphs, exp_id = graph_to_input_and_targets_single_experiment(config, graph, data, initial_pos_vel_known, return_only_unpadded=return_only_unpadded)
         if not shuffle:
