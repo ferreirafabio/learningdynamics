@@ -266,13 +266,13 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         if test_single_step:
             mode_txt = "single_step_tested"
         else:
-            mode_txt = "multi_step_tested"
+            mode_txt = "{}_step_tested".format(self.config.n_predictions)
 
         iou_list_test_set = []
         prec_score_list_test_set = []
         rec_score_list_test_set = []
         f1_score_list_test_set = []
-        sub_dir_name = "metric_multistep_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
+        sub_dir_name = "metric_multistep_models_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
 
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
         dataset_name = os.path.basename(self.config.tfrecords_dir)
