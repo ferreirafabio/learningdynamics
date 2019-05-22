@@ -164,6 +164,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                                                                         )
 
             if multistep:
+                """ for gt_reconstruction we also need all input graphs """
                 input_graphs_all_exp = [input_graphs_all_exp[start_idx:end_idx]]
                 target_graphs_all_exp = [target_graphs_all_exp[start_idx:end_idx]]
 
@@ -174,6 +175,15 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                 return
 
             gt_latent = np.concatenate([gt_encoder_output, gt_mlp_output])
+            """ this is required because f_interact requires a dynamic split in the batch size of the latent vector 
+            which is not implemented --> instead, we assume the same batch size for train and test are the same, 
+            requiring the test batch to pad up to length of train """
+            if self.config.use_f_interact:
+                input_graphs_all_exp = [input_graphs_all_exp[0] for _ in range(self.config.train_batch_size)]
+                target_graphs_all_exp = [target_graphs_all_exp[0] for _ in range(self.config.train_batch_size)]
+
+                gt_latent = [gt_latent for i in range(self.config.train_batch_size)]
+                gt_latent = np.concatenate(gt_latent, axis=0)
 
             in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
@@ -186,6 +196,17 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                                                                                   self.in_control_tf: in_control,
                                                                                   self.gt_latent_vectors: gt_latent,
                                                                                   self.is_training: False})
+
+            if self.config.use_f_interact:
+                pred_splits = np.split(out_predictions, self.config.n_predictions)
+                preds = []
+                n_objects = features[i]['n_manipulable_objects']
+                """ pred has shape (n_objects*train_batch_size, 120, 160) --> get first batch, i.e. :n_objects"""
+                for pred in pred_splits:
+                    preds.append(pred[:n_objects])
+
+                out_predictions = np.concatenate(preds, axis=0)
+
 
             loss_velocity = np.array(0.0)
             loss_position = np.array(0.0)
@@ -245,9 +266,9 @@ class SingulationTrainerPredictorExtended(BaseTrain):
 
 
     def compute_metrics_over_test_set_multistep(self):
-        if not self.config.n_epochs == 1:
-            print("test mode --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
+        assert self.config.n_epochs == 1, "test mode --> n_epochs must be set to 1"
+
+
         prefix = self.config.exp_name
         print("Computing IoU, Precision, Recall and F1 score over full test set".format(
             self.config.initial_pos_vel_known))

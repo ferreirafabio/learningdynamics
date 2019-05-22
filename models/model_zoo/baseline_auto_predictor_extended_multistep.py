@@ -142,7 +142,11 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         else:
             n_objects = 3
 
-        latent_batches = tf.split(latent, num_or_size_splits=batch_size, axis=0)
+        """ for testing, the train and batch size can just be set to 1. During training, even if test_batch_size is > 1, we process it in a for loop with batch size 1 which is
+        why in this case we need to pad the test batch size in the test_batch cycle (but not in all other validation cycles, in which the batch sizes can all be set to 1)"""
+        #assert self.config.train_batch_size == self.config.test_batch_size, "when using f_interact it is required to set train and test batch size to the same value"
+
+        latent_batches = tf.split(latent, num_or_size_splits=self.config.train_batch_size, axis=0)
 
         f_interact_object_sums = []
         f_interact_total = []
@@ -157,11 +161,10 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
                         pairwise_latent_a = objs_in_batch[j]
                         pairwise_latent_b = objs_in_batch[k]
 
-                        # (batch_size, ) --> (batch_size * n_objects, 512)
-                        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
+                        # shape of pairwise_latent is (1, 512)
+                        pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
                         # shape of pairwise_latent is (1, 256)
-                        # pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
-                        pairwise_latent = pairwise_latent_a + pairwise_latent_b
+                        #pairwise_latent = pairwise_latent_a + pairwise_latent_b
 
                         pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
                         pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
@@ -172,11 +175,14 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
                         f_interact_object_sums.append(pairwise_latent)
 
-            # (n, 512) --> (1, 512), e.g. n=6 for 6 edges and 3 objects
+            # (n, 512) --> (1, 512), e.g. n=6 for 6 edges (3 objects)
             f_interact_sum_per_batch = tf.reduce_sum(f_interact_object_sums, axis=0)
             # (1, 512) --> (n_objects, 512)
             f_interact_sum_per_batch = tf.tile(f_interact_sum_per_batch, [n_objects, 1])
             f_interact_total.append(f_interact_sum_per_batch)
+
+        # (batch_size, ) --> (batch_size * n_objects, 512)
+        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
 
         return f_interact_total
 
