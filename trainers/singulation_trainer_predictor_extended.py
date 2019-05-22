@@ -275,22 +275,25 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         """ this variable is used to distinguish between 1-step and n-step predictions. Setting it to True or False will call different functions:
-         a) when set to False: the function uses "in_segxyz" as the ground truth data, the inputs don't have to be processed 
-         (e.g. splitting them into episode_length/n_predictions chunks)
-         b) when set to True: the function uses "gt_label_rec" as the gt data, inputs are split into chunks and fragments 
-         (if not even dividable) are dismissed"""
+         a) when set to False: the function uses "gt_label_rec" as the gt data, inputs are split into episode_length/n_prediction -chunks and fragments 
+         (if they cannot be evenly divided) will be dismissed, e.g. episode_length 14 with n_predictions=5 will result in two 5-length chunks
+         
+         b) when set to True: in this mode, the model only predicts 1-steps. The function uses "in_segxyz" as the ground truth data, 
+         the inputs don't have to be processed (e.g. splitting them into episode_length/n_predictions chunks) because after one step, 
+         the model is reset to ground truth
+          """
         test_single_step = False
 
         if test_single_step:
             mode_txt = "single_step_tested"
         else:
-            mode_txt = "multi_step_tested"
+            mode_txt = "{}_step_tested".format(self.config.n_predictions)
 
         iou_list_test_set = []
         prec_score_list_test_set = []
         rec_score_list_test_set = []
         f1_score_list_test_set = []
-        sub_dir_name = "metric_multistep_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
+        sub_dir_name = "metric_multistep_models_computation_over_full_test_set_{}_iterations_trained".format(cur_batch_it)
 
         dir_path, _ = create_dir(os.path.join("../experiments", prefix), sub_dir_name)
         dataset_name = os.path.basename(self.config.tfrecords_dir)
