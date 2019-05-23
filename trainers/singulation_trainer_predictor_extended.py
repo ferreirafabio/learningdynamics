@@ -268,7 +268,6 @@ class SingulationTrainerPredictorExtended(BaseTrain):
     def compute_metrics_over_test_set_multistep(self):
         assert self.config.n_epochs == 1, "test mode --> n_epochs must be set to 1"
 
-
         prefix = self.config.exp_name
         print("Computing IoU, Precision, Recall and F1 score over full test set".format(
             self.config.initial_pos_vel_known))

@@ -16,10 +16,7 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
     def __init__(self, config, name="baseline_auto_predictor_extended_multistep"):
         super(baseline_auto_predictor_extended_multistep, self).__init__(self)
         self.config = config
-        # init the global step
-        self.init_global_step()
-        # init the epoch counter
-        self.init_cur_epoch()
+
         # init the batch counter
         self.init_batch_step()
 
@@ -78,60 +75,71 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
     def decoder(self, latent, is_training):
 
-        latent = tf.expand_dims(latent, axis=1)
-        latent = tf.expand_dims(latent, axis=1)
+        with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
+            latent = tf.expand_dims(latent, axis=1)
+            latent = tf.expand_dims(latent, axis=1)
 
-        x = latent
+            x = latent
 
-        """ Layer 1 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[2, 2], nb_filter=256, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', padding='valid')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 1 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[2, 2], nb_filter=256, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', padding='valid', name='decoder_transpose_1')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_1')
 
-        """ Layer 2 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[4, 4], nb_filter=256, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 2 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[4, 4], nb_filter=256, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_2')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_2')
 
-        """ Layer 3 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[7, 10], filter_size=4, strides=[1, 2], activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 3 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[7, 10], filter_size=4, strides=[1, 2], activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid", name='decoder_transpose_3')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_3')
 
-        """ Layer 4 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid")
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 4 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid", name='decoder_transpose_4')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_4')
 
-        """ Layer 5 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=256, filter_size=2, strides=1,  activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 5 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=256, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_5')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_5')
 
-        """ Layer 6 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=128, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 6 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[15, 20], nb_filter=128, filter_size=2, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_6')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_6')
 
-        """ Layer 7 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 7 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=2, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_7')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_7')
 
-        """ Layer 8 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 8 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[30, 40], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_8')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_8')
 
-        """ Layer 9 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=2, activation='relu',  weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 9 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=2, activation='relu',  weight_decay=1e-5, regularizer='L2', name='decoder_transpose_9')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_9')
 
-        """ Layer 10 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 10 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[60, 80], nb_filter=128, filter_size=3, strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_10')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_10')
 
-        """ Layer 11 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=128, filter_size=3, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
+            """ Layer 11 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=128, filter_size=3, strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_11')
+            x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_11')
 
-        """ Layer 12 """
-        x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2')
+            """ Layer 12 """
+            x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2', name='decoder_transpose_12')
 
-        return x
+            return x
 
+    def interact_mlp(self, pairwise_latent):
+        with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
+            pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu', name='f_interact_mlp_fc_1')
+            pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent, name='f_interact_mlp_bn_1')
+
+            # shape of pairwise_latent is (1, 256)
+            pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu', name='f_interact_mlp_fc_2')
+            pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent, name='f_interact_mlp_bn_2')
+
+        return pairwise_latent
 
     def f_interact(self, latent):
         """" interaction MLP """
@@ -144,79 +152,74 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
 
         """ for testing, the train and batch size can just be set to 1. During training, even if test_batch_size is > 1, we process it in a for loop with batch size 1 which is
         why in this case we need to pad the test batch size in the test_batch cycle (but not in all other validation cycles, in which the batch sizes can all be set to 1)"""
-        #assert self.config.train_batch_size == self.config.test_batch_size, "when using f_interact it is required to set train and test batch size to the same value"
 
-        latent_batches = tf.split(latent, num_or_size_splits=self.config.train_batch_size, axis=0)
+        # shape (n_objects*batch_size, 256) --> (batch_size, n_objects, 256)
+        latent_batch = tf.split(latent, num_or_size_splits=self.config.train_batch_size, axis=0)
 
         f_interact_object_sums = []
         f_interact_total = []
 
-        for i in range(len(latent_batches)):
-            # yields list of n_objects tensors, e.g. [tensor_obj0, tensor_obj1, tensor_obj2]
-            objs_in_batch = tf.split(latent_batches[i], num_or_size_splits=n_objects, axis=0)
+        for object_batch in latent_batch:
             for j in range(n_objects):
                 for k in range(n_objects):
                     if j != k:
-                        # shapes are (1, 256) per object
-                        pairwise_latent_a = objs_in_batch[j]
-                        pairwise_latent_b = objs_in_batch[k]
+                        pairwise_latent_a = object_batch[j]
+                        pairwise_latent_b = object_batch[k]
+
+                        pairwise_latent_a = tf.expand_dims(pairwise_latent_a, axis=0)
+                        pairwise_latent_b = tf.expand_dims(pairwise_latent_b, axis=0)
 
                         # shape of pairwise_latent is (1, 512)
                         pairwise_latent = tf.concat([pairwise_latent_a, pairwise_latent_b], axis=1)
                         # shape of pairwise_latent is (1, 256)
-                        #pairwise_latent = pairwise_latent_a + pairwise_latent_b
-
-                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
-                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
-
-                        # shape of pairwise_latent is (1, 256)
-                        pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 256, activation='relu')
-                        pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent)
+                        # pairwise_latent = pairwise_latent_a + pairwise_latent_b
+                        pairwise_latent = self.interact_mlp(pairwise_latent)
 
                         f_interact_object_sums.append(pairwise_latent)
 
-            # (n, 512) --> (1, 512), e.g. n=6 for 6 edges (3 objects)
+            # (n, 256) --> (1, 256), e.g. n=6 for 6 edges (3 objects)
             f_interact_sum_per_batch = tf.reduce_sum(f_interact_object_sums, axis=0)
-            # (1, 512) --> (n_objects, 512)
+            # (1, 256) --> (n_objects, 256)
             f_interact_sum_per_batch = tf.tile(f_interact_sum_per_batch, [n_objects, 1])
             f_interact_total.append(f_interact_sum_per_batch)
 
-        # (batch_size, ) --> (batch_size * n_objects, 512)
-        f_interact_total = tf.reshape(f_interact_total, [len(latent_batches) * n_objects, 256])
+        # ((batch_size), n_objects, 256) --> (batch_size * n_objects, 256)
+        f_interact_total = tf.reshape(f_interact_total, [len(f_interact_total) * n_objects, 256])
 
         return f_interact_total
 
     def physics_predictor(self, latent, ctrl):
-        latent_previous_step = latent
+        with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
+            latent_previous_step = latent
 
-        """ control MLP """
-        latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu')
-        latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
+            """ control MLP """
+            latent_ctrl = tflearn.layers.core.fully_connected(ctrl, 32, activation='relu', name='ctrl_mlp_fc_1')
+            latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl, name='ctrl_mlp_bn_1')
 
-        latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
-        latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
+            latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu', name='ctrl_mlp_fc_2')
+            latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl, name='ctrl_mlp_bn_2')
 
-        latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu')
-        latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl)
+            latent_ctrl = tflearn.layers.core.fully_connected(latent_ctrl, 32, activation='relu', name="ctrl_mlp_fc_3")
+            latent_ctrl = tflearn.layers.normalization.batch_normalization(latent_ctrl, name='ctrl_mlp_bn_3')
 
-        """" transition MLP to next time step """
-        latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
-        latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step)
+            """" transition MLP to next time step """
+            latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
+            latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu', name='f_trans_mlp_fc_1')
+            latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step, name='f_trans_mlp_bn_1')
 
-        latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu')
+            latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu', name='f_trans_mlp_fc_2')
 
-        if self.config.use_f_interact:
-            f_interact_total = self.f_interact(latent)
-            physics_output = latent_next_step + latent_previous_step + f_interact_total
-        else:
-            physics_output = latent_next_step + latent_previous_step
+            if self.config.use_f_interact:
+                f_interact_total = self.f_interact(latent)
+                physics_output = latent_next_step + latent_previous_step + f_interact_total
+            else:
+                physics_output = latent_next_step + latent_previous_step
 
-        return physics_output
+            return physics_output
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
-        # latent_img has shape (?, 256)
+        # latent_img has shape (?, 256), e.g. (3*10, 256) 3: n_objects, 10: batch size
         latent_img = self.encoder(in_rgbsegxyz=in_rgb_segxyz, is_training=is_training)
 
         predictions = []
@@ -228,10 +231,9 @@ class baseline_auto_predictor_extended_multistep(BaseModel):
         out_latent_vectors.append(latent_img)
 
         for i in range(n_predictions):
-            # latent_img has shape (?, 256)
+            # latent_img has shape (?, 256), e.g. (3*10,256) (same as above but here the latent_img is evolving over time)
             latent_img = self.physics_predictor(latent=latent_img, ctrl=in_control_T[i])
             img_decoded = self.decoder(latent=latent_img, is_training=is_training)
-
             predictions.append(img_decoded)
 
             # debug

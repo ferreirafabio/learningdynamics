@@ -65,7 +65,6 @@ class BaseTrain:
 
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
-        #self.batch_size = tf.placeholder(tf.int32, [self.config.train_batch_size])
 
         if "predictor_extended" in self.config.model_zoo_file:
             self.gt_latent_vectors = tf.placeholder(tf.float32, [None, 256], 'gt_encoding_vectors')

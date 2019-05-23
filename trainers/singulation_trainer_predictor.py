@@ -67,7 +67,7 @@ class SingulationTrainerPredictor(BaseTrain):
                                                                                                   self.model.loss_op,
                                                                                                   self.out_prediction_softmax,
                                                                                                   self.in_rgb_seg_xyz,
-                                                                                                  self.debug_latent_img,
+                                                                                                  self.out_latent_vectors,
                                                                                                   self.debug_in_control],
                                                                                                   feed_dict={self.in_segxyz_tf: in_segxyz,
                                                                                                              self.in_image_tf: in_image,
