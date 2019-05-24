@@ -69,7 +69,7 @@ def main():
             config.edges_carry_segmentation_data = False
 
         if not hasattr(config, 'use_f_interact'):
-            config.use_f_interact = True
+            config.use_f_interact = False
 
         if config.normalize_data:
             print("-- using normalized data as input --")

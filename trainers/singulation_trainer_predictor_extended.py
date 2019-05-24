@@ -268,6 +268,12 @@ class SingulationTrainerPredictorExtended(BaseTrain):
     def compute_metrics_over_test_set_multistep(self):
         assert self.config.n_epochs == 1, "test mode --> n_epochs must be set to 1"
 
+        if self.config.model_zoo_file == "baseline_auto_predictor_extended_multistep" \
+                and self.config.use_f_interact and not (self.config.train_batch_size == 1 and self.config.test_batch_size == 1):
+            print("--- when use_f_interact is True, train and test batch size need to be 1 since f_interact uses train"
+                  "batch_size to split the latent vector for the computation of pairwise object interactions")
+            return
+
         prefix = self.config.exp_name
         print("Computing IoU, Precision, Recall and F1 score over full test set".format(
             self.config.initial_pos_vel_known))
@@ -524,6 +530,12 @@ class SingulationTrainerPredictorExtended(BaseTrain):
 
     def test_specific_exp_ids(self):
         assert self.config.n_epochs == 1, "test mode for specific exp ids --> n_epochs must be set to 1"
+        if self.config.model_zoo_file == "baseline_auto_predictor_extended_multistep" \
+                and self.config.use_f_interact and not (self.config.train_batch_size == 1 and self.config.test_batch_size == 1):
+            print("--- when use_f_interact is True, train and test batch size need to be 1 since f_interact uses train"
+                  "batch_size to split the latent vector for the computation of pairwise object interactions")
+            return
+
         prefix = self.config.exp_name
         print("Running tests with initial_pos_vel_known={}".format(self.config.initial_pos_vel_known))
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
