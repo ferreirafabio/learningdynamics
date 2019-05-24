@@ -1,6 +1,6 @@
 {
   "_comment": "modes: compute_metrics_over_test_set, test_specific_exp_ids, train_test, test",  
-  "exp_name": "extended_baseline_auto_predictor_2_step_prediction_no_f_interact",
+  "exp_name": "extended_baseline_auto_predictor_2_step_prediction_f_interact",
   "learning_rate": 0.0001,
   "max_checkpoints_to_keep": 200,
   "model_save_step_interval": 500,
@@ -17,7 +17,7 @@
   "do_multi_step_prediction": true, 
   "test_batch_size": 5,
   "test_interval": 400,
-  "tfrecords_dir": "/scr-ssd/fabiof/tfrecords_15_rollouts_padded",
+  "tfrecords_dir": "/scr-ssd/fabiof/tfrecords_3_objects_15_rollouts_padded",
   "train_batch_size": 10,
   "use_tfrecord_compression": true, 
   "mode": "train_test", 
