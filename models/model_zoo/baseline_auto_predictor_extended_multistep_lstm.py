@@ -66,7 +66,6 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
-        x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 3)
 
         x = tflearn.layers.flatten(x)
