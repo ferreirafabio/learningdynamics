@@ -232,10 +232,10 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
 
         cell_series = [tf.contrib.rnn.LSTMBlockCell(num_units=n) for n in [256, 256, 256]]
         lstm = tf.contrib.rnn.MultiRNNCell(cell_series, state_is_tuple=True)
-        latent_img_predictions, states = tf.nn.dynamic_rnn(lstm, inputs=input_padded, dtype=tf.float32)
+        latent_img_predictions, _ = tf.nn.dynamic_rnn(lstm, inputs=input_padded, dtype=tf.float32)
 
         with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
-            predictions = [self.decoder(latent=states[i], is_training=is_training) for i in range(n_predictions)]
+            predictions = [self.decoder(latent=latent_img_predictions[:, i], is_training=is_training) for i in range(n_predictions)]
 
         predictions = tf.concat(predictions, axis=0)
         out_latent_vectors = tf.concat(out_latent_vectors, axis=0)
