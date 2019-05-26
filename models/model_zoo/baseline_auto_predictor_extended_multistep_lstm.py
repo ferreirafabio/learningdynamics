@@ -221,7 +221,7 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
         in_control_T = in_control_T[1:]
 
         # set the other inputs for the remaining n_prediction-1 steps, i.e. use zeros for the latent img and add control input to every input
-        zero_padding = tf.zeros([tf.shape(in_control_T)[0], 1, 256])
+        zero_padding = tf.zeros([tf.shape(latent_ctrl)[0], 1, 256])
 
         input_padded = [tf.concat([zero_padding, tf.expand_dims(in_ctrl_t, axis=1)], axis=2) for in_ctrl_t in in_control_T]
         input_padded = tf.reshape(input_padded, [-1, n_predictions-1, 288])
