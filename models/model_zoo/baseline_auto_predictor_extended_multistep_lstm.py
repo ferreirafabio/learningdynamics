@@ -212,7 +212,6 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
 
 
         """ LSTM physics predictor """
-
         in_control_T = tf.split(latent_ctrl, num_or_size_splits=n_predictions)
 
         # set the initial state and remove first control
@@ -221,12 +220,11 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
 
         in_control_T = in_control_T[1:]
 
-        # todo: add
-        zero_padding = tf.zeros([tf.shape(in_control_T)[0], 256])
-        #zero_padding = tf.tile(zero_padding, [tf.shape(latent_ctrl)[0], 1])
-        input_padded = [tf.concat([zero_padding, in_ctrl_t], axis=1) for in_ctrl_t in in_control_T]
-        input_padded = tf.reshape(input_padded, [-1, n_predictions-1, 288])
+        # set the other inputs for the remaining n_prediction-1 steps, i.e. use zeros for the latent img and add control input to every input
+        zero_padding = tf.zeros([tf.shape(in_control_T)[0], 1, 256])
 
+        input_padded = [tf.concat([zero_padding, tf.expand_dims(in_ctrl_t, axis=1)], axis=2) for in_ctrl_t in in_control_T]
+        input_padded = tf.reshape(input_padded, [-1, n_predictions-1, 288])
         input_padded = tf.concat([latent_img, input_padded], axis=1)
 
         cell_series = [tf.contrib.rnn.LSTMBlockCell(num_units=n) for n in [256, 256, 256]]
