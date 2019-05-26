@@ -218,22 +218,24 @@ class baseline_auto_predictor_extended_multistep_lstm(BaseModel):
         latent_img = tf.concat([latent_img, in_control_T[0]], axis=1)
         latent_img = tf.reshape(latent_img, [-1, 1, 288])
 
-        # todo: make applicable for n_predictions == 1
-        in_control_T = in_control_T[1:]
+        if n_predictions > 1:
+            in_control_T = in_control_T[1:]
 
-        # set the other inputs for the remaining n_prediction-1 steps, i.e. use zeros for the latent img and add control input to every input
-        zero_padding = tf.zeros([tf.shape(in_control_T[0])[0], 1, 256])
+            # set the other inputs for the remaining n_prediction-1 steps, i.e. use zeros for the latent img and add control input to every input
+            zero_padding = tf.zeros([tf.shape(in_control_T[0])[0], 1, 256])
 
-        input_padded = [tf.concat([zero_padding, tf.expand_dims(in_ctrl_t, axis=1)], axis=2) for in_ctrl_t in in_control_T]
-        input_padded = tf.reshape(input_padded, [-1, n_predictions-1, 288])
-        input_padded = tf.concat([latent_img, input_padded], axis=1)
+            input_padded = [tf.concat([zero_padding, tf.expand_dims(in_ctrl_t, axis=1)], axis=2) for in_ctrl_t in in_control_T]
+            input_padded = tf.reshape(input_padded, [-1, n_predictions-1, 288])
+            input_padded = tf.concat([latent_img, input_padded], axis=1)
+        else:
+            input_padded = latent_img
 
         cell_series = [tf.contrib.rnn.LSTMBlockCell(num_units=n) for n in [256, 256, 256]]
         lstm = tf.contrib.rnn.MultiRNNCell(cell_series, state_is_tuple=True)
-        latent_img_predictions, _ = tf.nn.dynamic_rnn(lstm, inputs=input_padded, dtype=tf.float32)
+        latent_img_predictions, states = tf.nn.dynamic_rnn(lstm, inputs=input_padded, dtype=tf.float32)
 
         with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
-            predictions = [self.decoder(latent=latent_img_predictions[:, i], is_training=is_training) for i in range(n_predictions)]
+            predictions = [self.decoder(latent=states[i], is_training=is_training) for i in range(n_predictions)]
 
         predictions = tf.concat(predictions, axis=0)
         out_latent_vectors = tf.concat(out_latent_vectors, axis=0)
