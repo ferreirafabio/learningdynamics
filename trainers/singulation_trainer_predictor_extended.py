@@ -18,7 +18,8 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         self.next_element_train = self.train_data.get_next_batch()
         self.next_element_test = self.test_data.get_next_batch()
 
-        assert os.path.isdir(self.config.perception_features_dir), "{} is not a valid path".format(self.config.perception_features_dir)
+        if self.config.use_f_interact:
+            assert os.path.isdir(self.config.perception_features_dir), "{} is not a valid path".format(self.config.perception_features_dir)
 
     def train_epoch(self):
         prefix = self.config.exp_name
