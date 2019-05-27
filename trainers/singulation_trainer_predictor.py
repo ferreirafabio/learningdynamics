@@ -389,7 +389,7 @@ class SingulationTrainerPredictor(BaseTrain):
         if test_single_step:
             mode_txt = "single_step_tested"
         else:
-            mode_txt = "multi_step_tested"
+            mode_txt = "{}_step_tested".format(self.config.n_predictions)
 
         iou_list_test_set = []
         prec_score_list_test_set = []
