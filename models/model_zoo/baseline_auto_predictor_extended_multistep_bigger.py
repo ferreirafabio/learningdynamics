@@ -52,7 +52,7 @@ class baseline_auto_predictor_extended_multistep_bigger(BaseModel):
         x = tflearn.layers.conv.max_pool_2d(x, 2, 2)
 
         """ Layer 7 """
-        x = tflearn.layers.conv.conv_2d(x, 512, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_7")
+        x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=1, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_7")
         x = tflearn.layers.normalization.batch_normalization(x)
 
         """ Layer 8 """
@@ -66,6 +66,7 @@ class baseline_auto_predictor_extended_multistep_bigger(BaseModel):
 
         """ Layer 10 """
         x = tflearn.layers.conv.conv_2d(x, 256, (3, 3), strides=2, activation='relu', weight_decay=1e-5, regularizer='L2', scope="conv1_10")
+        #x = tflearn.layers.normalization.batch_normalization(x)
         x = tflearn.layers.conv.max_pool_2d(x, 2, 3)
 
         x = tflearn.layers.flatten(x)
@@ -93,7 +94,7 @@ class baseline_auto_predictor_extended_multistep_bigger(BaseModel):
             x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_3')
 
             """ Layer 4 """
-            x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=512, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid", name='decoder_transpose_4')
+            x = tflearn.layers.conv.conv_2d_transpose(x, nb_filter=256, output_shape=[15, 20], filter_size=[3, 2], strides=2,  activation='relu', weight_decay=1e-5, regularizer='L2', padding="valid", name='decoder_transpose_4')
             x = tflearn.layers.normalization.batch_normalization(x, name='decoder_bn_4')
 
             """ Layer 5 """
@@ -131,7 +132,7 @@ class baseline_auto_predictor_extended_multistep_bigger(BaseModel):
 
     def interact_mlp(self, pairwise_latent):
         with tf.variable_scope("auto_predictor_multistep_extended", reuse=tf.AUTO_REUSE):
-            pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 1024, activation='relu', name='f_interact_mlp_fc_1')
+            pairwise_latent = tflearn.layers.core.fully_connected(pairwise_latent, 512, activation='relu', name='f_interact_mlp_fc_1')
             pairwise_latent = tflearn.layers.normalization.batch_normalization(pairwise_latent, name='f_interact_mlp_bn_1')
 
             # shape of pairwise_latent is (1, 256)
@@ -202,7 +203,7 @@ class baseline_auto_predictor_extended_multistep_bigger(BaseModel):
 
             """" transition MLP to next time step """
             latent_next_step = tf.concat([latent, latent_ctrl], axis=-1)
-            latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 1024, activation='relu', name='f_trans_mlp_fc_1')
+            latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 512, activation='relu', name='f_trans_mlp_fc_1')
             latent_next_step = tflearn.layers.normalization.batch_normalization(latent_next_step, name='f_trans_mlp_bn_1')
 
             latent_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu', name='f_trans_mlp_fc_2')
