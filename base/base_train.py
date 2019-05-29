@@ -76,6 +76,17 @@ class BaseTrain:
                                     is_training=self.is_training,
                                     n_predictions=self.config.n_predictions)
 
+        elif "baseline_auto_predictor_extended_multistep_position" in self.config.model_zoo_file:
+            self.gt_latent_vectors = tf.placeholder(tf.float32, [None, 256], 'gt_encoding_vectors')
+            self.gt_objpos_vectors = tf.placeholder(tf.float32, [None, 3], 'gt_objpos_vectors')
+
+            self.out_predictions, self.in_rgb_seg_xyz, self.out_latent_vectors, self.debug_in_control, self.out_objpos_vectors = \
+                self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                    in_segxyz=self.in_segxyz_tf,
+                                    in_control=self.in_control_tf,
+                                    is_training=self.is_training,
+                                    n_predictions=self.config.n_predictions)
+
         elif "baseline_auto_predictor_multistep" in self.config.model_zoo_file:
             self.out_predictions, self.in_rgb_seg_xyz, self.out_latent_vectors, self.debug_in_control = \
                 self.model.cnnmodel(in_rgb=self.in_image_tf,
@@ -105,6 +116,18 @@ class BaseTrain:
                                                           out_reconstructions=self.out_predictions,
                                                           gt_latent_vectors=None,
                                                           out_latent_vectors=None,
+                                                          loss_type=self.config.loss_type)
+
+        elif "prediction_perception_objpos_loss" in self.config.loss_type:
+            self.model.loss_op, self.model.img_loss, self.model.perception_loss, self.model.objpos_loss = create_baseline_loss_ops(config=self.config,
+                                                          gt_predictions=self.gt_predictions,
+                                                          out_predictions=self.out_predictions,
+                                                          gt_reconstructions=None,
+                                                          out_reconstructions=None,
+                                                          gt_latent_vectors=self.gt_latent_vectors,
+                                                          out_latent_vectors=self.out_latent_vectors,
+                                                          gt_objpos_vectors = self.gt_objpos_vectors,
+                                                          out_objpos_vectors = self.out_objpos_vectors,
                                                           loss_type=self.config.loss_type)
 
         elif "prediction_perception_loss" in self.config.loss_type:
