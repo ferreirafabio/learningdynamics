@@ -65,18 +65,7 @@ class BaseTrain:
 
         self.is_training = tf.placeholder(tf.bool, shape=(), name="is_training")
 
-
-        if "predictor_extended" in self.config.model_zoo_file:
-            self.gt_latent_vectors = tf.placeholder(tf.float32, [None, 256], 'gt_encoding_vectors')
-
-            self.out_predictions, self.in_rgb_seg_xyz, self.out_latent_vectors, self.debug_in_control = \
-                self.model.cnnmodel(in_rgb=self.in_image_tf,
-                                    in_segxyz=self.in_segxyz_tf,
-                                    in_control=self.in_control_tf,
-                                    is_training=self.is_training,
-                                    n_predictions=self.config.n_predictions)
-
-        elif "baseline_auto_predictor_extended_multistep_position" in self.config.model_zoo_file:
+        if "baseline_auto_predictor_extended_multistep_position" in self.config.model_zoo_file:
             self.gt_latent_vectors = tf.placeholder(tf.float32, [None, 256], 'gt_encoding_vectors')
             self.gt_objpos_vectors = tf.placeholder(tf.float32, [None, 3], 'gt_objpos_vectors')
 
@@ -86,6 +75,18 @@ class BaseTrain:
                                     in_control=self.in_control_tf,
                                     is_training=self.is_training,
                                     n_predictions=self.config.n_predictions)
+
+        elif "predictor_extended" in self.config.model_zoo_file:
+            self.gt_latent_vectors = tf.placeholder(tf.float32, [None, 256], 'gt_encoding_vectors')
+
+            self.out_predictions, self.in_rgb_seg_xyz, self.out_latent_vectors, self.debug_in_control = \
+                self.model.cnnmodel(in_rgb=self.in_image_tf,
+                                    in_segxyz=self.in_segxyz_tf,
+                                    in_control=self.in_control_tf,
+                                    is_training=self.is_training,
+                                    n_predictions=self.config.n_predictions)
+
+
 
         elif "baseline_auto_predictor_multistep" in self.config.model_zoo_file:
             self.out_predictions, self.in_rgb_seg_xyz, self.out_latent_vectors, self.debug_in_control = \
