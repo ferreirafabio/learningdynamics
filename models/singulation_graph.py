@@ -485,7 +485,7 @@ def _sanity_check_pos_vel(input_graphs):
         assert not np.any(edge_feature['features'][-3:])
 
 
-def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batches, multistep=False):
+def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batches, multistep=False, get_objpos=False):
     in_image = []
     gt_label = []
     in_segxyz = []
@@ -562,6 +562,24 @@ def networkx_graphs_to_images(config, input_graphs_batches, target_graphs_batche
                     seg_of_node = node_feature_reshaped[:, :, 3]
 
                     gt_label.append(seg_of_node)
+
+        if get_objpos:
+            gt_obj_pos = []
+            for prediction_i in range(config.n_predictions):
+                for batch in target_graphs_batches:
+                    graph = batch[prediction_i]
+                    for _, node_feature in graph.nodes(data=True):
+                        obj_pos = node_feature['features'][-3:]
+                        gt_obj_pos.append(obj_pos)
+
+            in_segxyz = np.array(in_segxyz)
+            in_image = np.array(in_image)
+            in_control = np.array(in_control)
+            gt_label = np.array(gt_label)
+            gt_label_rec = np.array(gt_label_rec)
+            gt_obj_pos = np.array(gt_obj_pos)
+            return in_segxyz, in_image, in_control, gt_label, gt_label_rec, gt_obj_pos
+
 
 
     #import matplotlib

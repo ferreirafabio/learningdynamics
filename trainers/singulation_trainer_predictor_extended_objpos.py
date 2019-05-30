@@ -63,7 +63,7 @@ class SingulationTrainerPredictorExtendedObjPosition(BaseTrain):
         target_graphs_batches = target_graphs_batches[0]
 
         """ gt_label_rec (taken from input graphs) is shifted by -1 compared to gt_label (taken from target graphs) """
-        in_segxyz, in_image, in_control, gt_label, gt_label_rec = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep)
+        in_segxyz, in_image, in_control, gt_label, gt_label_rec, gt_obj_pos = networkx_graphs_to_images(self.config, input_graphs_batches, target_graphs_batches, multistep=multistep, get_objpos=True)
 
         gt_encoder_output, gt_mlp_output = get_encoding_vectors(config=self.config, random_episode_idx_starts=random_episode_idx_starts, train=True)
 
@@ -86,6 +86,7 @@ class SingulationTrainerPredictorExtendedObjPosition(BaseTrain):
                                                                                                              self.gt_predictions: gt_label,
                                                                                                              self.in_control_tf: in_control,
                                                                                                              self.gt_latent_vectors: gt_latent,
+                                                                                                             self.gt_objpos_vectors: gt_obj_pos,
                                                                                                              self.is_training: True})
         loss_velocity = np.array(0.0)
         loss_position = loss_pos
@@ -186,7 +187,7 @@ class SingulationTrainerPredictorExtendedObjPosition(BaseTrain):
                 gt_latent = [gt_latent for i in range(self.config.train_batch_size)]
                 gt_latent = np.concatenate(gt_latent, axis=0)
 
-            in_segxyz, in_image, in_control, gt_label, _ = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
+            in_segxyz, in_image, in_control, gt_label, _, gt_obj_pos = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep, get_objpos=True)
 
             loss_img, loss_perception, loss_pos, out_predictions = self.sess.run([self.model.img_loss,
                                                                         self.model.perception_loss,

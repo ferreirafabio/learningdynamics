@@ -215,12 +215,12 @@ class baseline_auto_predictor_extended_multistep_position(BaseModel):
             else:
                 physics_output = latent_next_step + latent_previous_step
 
-            obj_next_step = tflearn.layers.core.fully_connected(physics_output, 256, activation='relu', name='f_objpos_mlp_fc_1')
-            obj_next_step = tflearn.layers.normalization.batch_normalization(obj_next_step, name='f_objpos_mlp_bn_1')
+            objpos_next_step = tflearn.layers.core.fully_connected(latent_next_step, 256, activation='relu', name='f_objpos_mlp_fc_1')
+            objpos_next_step = tflearn.layers.normalization.batch_normalization(objpos_next_step, name='f_objpos_mlp_bn_1')
 
-            obj_next_step = tflearn.layers.core.fully_connected(obj_next_step, 3, activation='linear', name='f_objpos_mlp_fc_2')
+            objpos_next_step = tflearn.layers.core.fully_connected(objpos_next_step, 3, activation='linear', name='f_objpos_mlp_fc_2')
 
-            return physics_output, obj_next_step
+            return physics_output, objpos_next_step
 
     def cnnmodel(self, in_rgb, in_segxyz, in_control=None, is_training=True, n_predictions=5):
         in_rgb_segxyz = tf.concat([in_rgb, in_segxyz], axis=-1)
@@ -250,6 +250,7 @@ class baseline_auto_predictor_extended_multistep_position(BaseModel):
 
         predictions = tf.concat(predictions, axis=0)
         out_latent_vectors = tf.concat(out_latent_vectors, axis=0)
+        out_pos = tf.concat(out_pos, axis=0)
 
         return predictions, in_rgb_segxyz, out_latent_vectors, debug_in_control, out_pos
 

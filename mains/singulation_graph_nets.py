@@ -105,7 +105,7 @@ def main():
         only_test = True
 
     # create trainer and pass all the previous components to it
-    if "SingulationTrainerPredictorExtendedObjPosition" in config.model_zoo_file:
+    if "baseline_auto_predictor_extended_multistep_position" in config.model_zoo_file:
         trainer = SingulationTrainerPredictorExtendedObjPosition(sess, model, train_data, test_data, config, logger, only_test=False)
     elif "predictor_extended" in config.model_zoo_file:
         trainer = SingulationTrainerPredictorExtended(sess, model, train_data, test_data, config, logger, only_test=False)
