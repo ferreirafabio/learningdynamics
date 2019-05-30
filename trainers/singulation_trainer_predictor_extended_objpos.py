@@ -198,6 +198,7 @@ class SingulationTrainerPredictorExtendedObjPosition(BaseTrain):
                                                                                   self.gt_predictions: gt_label,
                                                                                   self.in_control_tf: in_control,
                                                                                   self.gt_latent_vectors: gt_latent,
+                                                                                  self.gt_objpos_vectors: gt_obj_pos,
                                                                                   self.is_training: False})
 
             if self.config.use_f_interact:
