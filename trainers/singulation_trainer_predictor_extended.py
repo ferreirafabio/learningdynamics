@@ -549,6 +549,8 @@ class SingulationTrainerPredictorExtended(BaseTrain):
             dir_name = "5_objects"
         else:
             exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
+            #exp_ids_to_export = [9896, 7140, 12844, 15693, 3770, 13327, 8437, 314, 1428, 402, 5355, 9303, 8474, 78] # train ids
+            #dir_name = "3_objects_TRAINSET"
             dir_name = "3_objects"
 
         """ set this to true if full episodes should be predicted with the multistep model, i.e. after every 
@@ -585,7 +587,8 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                 losses_edge = []
                 outputs_total = []
 
-                features = self.sess.run(self.next_element_test)
+                print("------------------ chante train to test ---------------------")
+                features = self.sess.run(self.next_element_train) # todo: change back to test
 
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
