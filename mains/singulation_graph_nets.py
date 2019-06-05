@@ -71,6 +71,8 @@ def main():
 
         if not hasattr(config, 'use_f_interact'):
             config.use_f_interact = False
+        if not hasattr(config, "use_latent_motion_vectors"):
+            config.use_latent_motion_vectors = False
 
         if config.normalize_data:
             print("-- using normalized data as input --")

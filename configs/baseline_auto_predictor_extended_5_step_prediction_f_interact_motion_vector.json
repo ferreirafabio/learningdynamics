@@ -36,5 +36,6 @@
   "use_baseline_auto_predictor": true, 
   "n_predictions": 5,
   "perception_features_dir": "/scr2/fabiof/data/auto_encoding_features_3_objects_15_rollouts",
-  "use_f_interact": true
+  "use_f_interact": true,
+  "use_latent_motion_vectors": true
 }

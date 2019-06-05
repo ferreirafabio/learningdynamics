@@ -425,6 +425,11 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     else:
         mode = "test"
 
+    if config.motion_vectors:
+        motion_vectors = True
+    else:
+        motion_vectors = False
+
     latent_encoder_vectors_input = []
     latent_encoder_vectors_targets = []
 
@@ -437,8 +442,21 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
             vector = vector["encoder_outputs"]  # has attributes "encoder_outputs" and "exp_id"
             """ vectors have shape(n_predictions, n_objects, 256) """
             latent_encoder_vectors_input.append(vector[start_idx])
-            latent_encoder_vectors_targets.append(vector[start_idx+1:start_idx+1+config.n_predictions])
+            if motion_vectors:
+                vectors = vector[start_idx+1:start_idx + 1 + config.n_predictions]
+                vec_lst = []
+                for i, vec in enumerate(vectors):
+                    if i == 0:
+                        vector_diff = vec - vector[start_idx]
+                    else:
+                        vector_diff = vec - vec_prev
 
+                    vec_prev = vec
+                    vec_lst.append(vector_diff)
+
+                latent_encoder_vectors_targets.append(np.asarray(vec_lst))
+            else:
+                latent_encoder_vectors_targets.append(vector[start_idx+1:start_idx+1+config.n_predictions])
         if batch_processing:
             n_objects = np.shape(latent_encoder_vectors_input)[1]
             latent_encoder_vectors_inputs2 = []
