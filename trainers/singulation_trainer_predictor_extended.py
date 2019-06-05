@@ -587,7 +587,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                 losses_edge = []
                 outputs_total = []
 
-                features = self.sess.run(self.next_element_train) # todo: change back to test
+                features = self.sess.run(self.next_element_test)
 
                 features = convert_dict_to_list_subdicts(features, self.config.test_batch_size)
 
