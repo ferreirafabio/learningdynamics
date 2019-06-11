@@ -288,7 +288,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
          the inputs don't have to be processed (e.g. splitting them into episode_length/n_predictions chunks) because after one step, 
          the model is reset to ground truth
           """
-        test_single_step = Falset
+        test_single_step = False
 
         if test_single_step:
             mode_txt = "single_step_tested"
