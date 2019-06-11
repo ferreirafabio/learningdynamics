@@ -124,7 +124,6 @@ class baseline_auto_encoder(BaseModel):
 
         """ Layer 12 """
         x = tflearn.layers.conv.conv_2d_transpose(x, output_shape=[120, 160], nb_filter=2, filter_size=3, strides=1, activation='linear', weight_decay=1e-5, regularizer='L2')
-        x = tflearn.layers.normalization.batch_normalization(x)
 
         return x
 

@@ -323,7 +323,7 @@ def create_graph_batch(config, graph, batch_data, initial_pos_vel_known, shuffle
         #input_graph_lst = [graph for lst in input_graph_lst for graph in lst]
         #target_graph_lst = [graph for lst in target_graph_lst for graph in lst]
 
-        return input_graph_lst, target_graph_lst
+        return input_graph_lst, target_graph_lst, 0
 
     if not multistep:
         "flatten lists"

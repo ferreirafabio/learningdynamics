@@ -71,8 +71,12 @@ def main():
 
         if not hasattr(config, 'use_f_interact'):
             config.use_f_interact = False
+
         if not hasattr(config, "use_latent_motion_vectors"):
             config.use_latent_motion_vectors = False
+
+        if not hasattr(config, "motion_vectors"):
+            config.motion_vectors = False
 
         if config.normalize_data:
             print("-- using normalized data as input --")
@@ -142,7 +146,7 @@ def main():
         trainer.store_latent_vectors()
     elif config.mode == "save_encoder_vectors":
         print("--- Running SAVE ENCODER VECTORS ---")
-        trainer.save_encoder_vectors(train=False)
+        trainer.save_encoder_vectors(train=True)
 
 
 if __name__ == '__main__':

@@ -67,7 +67,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
                                                                           self.model.loss_op,
                                                                           self.out_prediction_softmax,
                                                                           self.in_rgb_seg_xyz,
-                                                                          self.latent_img],
+                                                                          self.encoder_outputs],
                                                                           feed_dict={self.in_segxyz_tf: in_segxyz,
                                                                                      self.in_image_tf: in_image,
                                                                                      self.gt_predictions: gt_reconstruction,  # this is intentional to maintain same names
@@ -119,16 +119,15 @@ class SingulationTrainerAutoEncoder(BaseTrain):
 
 
     def save_encoder_vectors(self, train=True):
-        if not self.config.n_epochs == 1:
-            print("test mode for specific exp ids --> n_epochs will be set to 1")
-            self.config.n_epochs = 1
+        assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
 
         if "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
             dir_name = "auto_encoding_features_5_objects_50_rollouts_novel"
         elif "5_objects_50_rollouts" in self.config.tfrecords_dir:
             dir_name = "auto_encoding_features_5_objects_50_rollouts"
         else:
-            dir_name = "auto_encoding_features_3_objects_15_rollouts"
+            #dir_name = "auto_encoding_features_3_objects_15_rollouts"
+            dir_name = "auto_encoding_features_2_cubes_dataset_50_rollouts"
 
         if train:
             next_element = self.next_element_train
@@ -220,7 +219,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
 
             in_segxyz, in_image, in_control, _, gt_reconstructions = networkx_graphs_to_images(self.config, input_graphs_all_exp, target_graphs_all_exp, multistep=multistep)
 
-            loss_img, out_reconstructions, latent_img_feature = self.sess.run([self.model.loss_op, self.out_prediction_softmax, self.latent_img],
+            loss_img, out_reconstructions, latent_img_feature = self.sess.run([self.model.loss_op, self.out_prediction_softmax, self.encoder_outputs],
                                                 feed_dict={self.in_segxyz_tf: in_segxyz,
                                                               self.in_image_tf: in_image,
                                                               self.gt_predictions: gt_reconstructions,  # this is intentional to maintain same names
@@ -569,6 +568,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
                 print("continue")
                 continue
 
+    save_encoder_vectors
     def store_latent_vectors(self):
         assert self.config.n_epochs == 1, "set n_epochs to 1 for test mode"
         assert self.config.test_batch_size == 1, "set test_batch_size to 1 for test mode"

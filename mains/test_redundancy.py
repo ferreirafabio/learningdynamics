@@ -36,12 +36,14 @@ def main():
     test_data = DataGenerator(config, sess, train=False)
     next_element_test = test_data.get_next_batch()
     next_element_train = train_data.get_next_batch()
-    with open('test_ids_5_object_dataset.txt', "a+") as text_file:
+    with open('test_ids_2_cubes_dataset.txt', "a+") as text_file:
         while True:
             try:
                 features_test = sess.run(next_element_test)
                 print("test id:", features_test["experiment_id"])
-                text_file.write(str(features_test["experiment_id"]) + "\n")
+                for id in features_test["experiment_id"]:
+                    text_file.write(str(id) + "\n")
+                    #text_file.write(str(features_test["experiment_id"]) + "\n")
                 # while True:
                 #     try:
                 #         #features_train = sess.run(next_element_train)

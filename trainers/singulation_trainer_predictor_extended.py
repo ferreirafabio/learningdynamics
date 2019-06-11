@@ -176,9 +176,9 @@ class SingulationTrainerPredictorExtended(BaseTrain):
                 return
 
             gt_latent = np.concatenate([gt_encoder_output, gt_mlp_output])
-            """ this is required because f_interact requires a dynamic split in the batch size of the latent vector 
-            which is not implemented --> instead, we assume the same batch size for train and test are the same, 
-            requiring the test batch to pad up to length of train """
+            """ below implementation is correct! this is required because f_interact requires a dynamic split in 
+            the batch size of the latent vector which is not implemented --> instead, we assume the batch size for 
+            train and test are the same, requiring the test batch to pad up to length of a train batch"""
             if self.config.use_f_interact:
                 input_graphs_all_exp = [input_graphs_all_exp[0] for _ in range(self.config.train_batch_size)]
                 target_graphs_all_exp = [target_graphs_all_exp[0] for _ in range(self.config.train_batch_size)]
@@ -288,7 +288,7 @@ class SingulationTrainerPredictorExtended(BaseTrain):
          the inputs don't have to be processed (e.g. splitting them into episode_length/n_predictions chunks) because after one step, 
          the model is reset to ground truth
           """
-        test_single_step = False
+        test_single_step = Falset
 
         if test_single_step:
             mode_txt = "single_step_tested"
@@ -542,11 +542,20 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         cur_batch_it = self.model.cur_batch_tensor.eval(self.sess)
 
         if "5_objects_50_rollouts_padded_novel" in self.config.tfrecords_dir:
-            exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
-            dir_name = "5_novel_objects"
+            exp_ids_to_export = [1899, 1045, 1790, 1472,  980, 2080, 1464,  985,  141, 2521, 2643, 735, 620, 1667, 62]
+            #exp_ids_to_export = [10, 1206, 880, 1189, 1087, 2261, 194, 1799]  # big 5 object novel shapes dataset
+            dir_name = "5_novel_objects_more"
+            #dir_name = "5_novel_objects"
         elif "5_objects_50_rollouts" in self.config.tfrecords_dir:
             exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
             dir_name = "5_objects"
+        elif "2_cubes" in self.config.tfrecords_dir:
+            path = "/scr2/fabiof/repos/GNforInteraction/mains/test_ids_2_cubes_dataset.txt"
+            with open(path) as f:
+                exp_ids_to_export = [int(x) for line in f for x in line.split()]    
+            print(exp_ids_to_export)
+            #exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
+            dir_name = "2_cubes"
         else:
             exp_ids_to_export = [13873, 3621, 8575, 439, 2439, 1630, 14526, 4377, 15364, 6874, 11031, 8962]  # big 3 object dataset
             #exp_ids_to_export = [9896, 7140, 12844, 15693, 3770, 13327, 8437, 314, 1428, 402, 5355, 9303, 8474, 78] # train ids

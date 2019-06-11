@@ -425,7 +425,7 @@ def get_encoding_vectors(config, random_episode_idx_starts, train=True, batch_pr
     else:
         mode = "test"
 
-    if config.motion_vectors:
+    if config.use_latent_motion_vectors:
         motion_vectors = True
     else:
         motion_vectors = False
