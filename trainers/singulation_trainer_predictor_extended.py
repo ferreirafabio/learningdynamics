@@ -549,8 +549,8 @@ class SingulationTrainerPredictorExtended(BaseTrain):
         elif "5_objects_50_rollouts" in self.config.tfrecords_dir:
             exp_ids_to_export = [2815, 608, 1691, 49, 1834, 1340, 2596, 2843, 306]  # big 5 object dataset
             dir_name = "5_objects"
-        elif "2_cubes" in self.config.tfrecords_dir:
-            path = "/scr2/fabiof/repos/GNforInteraction/mains/test_ids_2_cubes_dataset.txt"
+        elif "2_bigger_cubes" in self.config.tfrecords_dir:
+            path = "/scr2/fabiof/repos/GNforInteraction/mains/test_ids_2_bigger_cubes_dataset.txt"
             with open(path) as f:
                 exp_ids_to_export = [int(x) for line in f for x in line.split()]    
             print(exp_ids_to_export)

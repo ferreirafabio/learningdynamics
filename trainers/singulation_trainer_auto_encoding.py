@@ -127,7 +127,7 @@ class SingulationTrainerAutoEncoder(BaseTrain):
             dir_name = "auto_encoding_features_5_objects_50_rollouts"
         else:
             #dir_name = "auto_encoding_features_3_objects_15_rollouts"
-            dir_name = "auto_encoding_features_2_cubes_dataset_50_rollouts"
+            dir_name = "auto_encoding_features_2_bigger_cubes_dataset_50_rollouts"
 
         if train:
             next_element = self.next_element_train
