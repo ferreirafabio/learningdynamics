@@ -1,15 +1,3 @@
-# Graph networks for robotic interaction
+# Learning Visual Dynamics Models of Rigid Objects using Relational Inductive Biases
 
-## run the GN docker image
-1. install docker + nvidia-docker (https://github.com/NVIDIA/nvidia-docker)
-2. ```sudo docker pull ferreirafabio/gn:latest```
-3. ```sudo nvidia-docker run -it ferreirafabio/gn:latest /bin/bash```
-4. ```cd /repos/GNforInteraction/mains```
-5. Run the code with: ```python3 singulation_graph_nets.py --c "../configs/singulation2.json"```
-
-
-
-Pulling, Commiting and Pushing:
-- ```sudo docker ps -l```
-- ```sudo docker commit <id> ferreirafabio/gn```
-- sudo docker push ferreirafabio/gn```
+Endowing robots with human-like physical reasoning abilities remains challenging. We argue that existing methods often disregard spatio-temporal relations and by using Graph Neural Networks (GNNs) that incorporate a relational inductive bias, we can shift the learning process towards exploiting relations. In this work, we learn action-conditional forward dynamics models of a simulated manipulation task from visual observations involving cluttered and irregularly shaped objects. Overall, we investigate two GNN approaches and empirically assess their capability to generalize to scenarios with novel and an increasing number of objects. The ﬁrst, Graph Networks (GN) based approach, considers explicitly deﬁned edge attributes and not only does it consistently underperform an auto-encoder baseline that we modiﬁed to predict future states, our results indicate how different edge attributes can signiﬁcantly inﬂuence the predictions. Consequently, we develop the Auto-Predictor that does not rely on explicitly deﬁned edge attributes. It outperforms the baseline and the GN-based models. Our results show the sensitivity of GNN-based approaches to the task representation, the efﬁcacy of relational inductive biases and advocate choosing lightweight approaches that implicitly reason about relations over ones that leave these decisions to human designers.
