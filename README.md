@@ -11,7 +11,7 @@ https://arxiv.org/abs/1909.03749
 @article{dynamicsmodels,
   title={Learning Visual Dynamics Models of Rigid Objects using Relational Inductive Biases},
   author={Ferreira, Fabio and Shao, Lin and Asfour, Tamim and Bohg, Jeannette},
-  journal={submit/2836373},
+  journal={NeurIPS 2019 Graph Representation Learning Workshop},
   year={2019}
 }
 ```
